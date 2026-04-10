@@ -18,3 +18,4 @@ export * from "./generateResponse";
 export * from "./generateResponseVariationsItem";
 export * from "./healthStatus";
 export * from "./listContentParams";
+export * from "./updateBrandBody";

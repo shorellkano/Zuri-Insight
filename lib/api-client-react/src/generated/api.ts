@@ -27,6 +27,7 @@ import type {
   GenerateResponse,
   HealthStatus,
   ListContentParams,
+  UpdateBrandBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -366,14 +367,14 @@ export const getUpdateBrandUrl = (brandId: string) => {
 
 export const updateBrand = async (
   brandId: string,
-  createBrandBody: CreateBrandBody,
+  updateBrandBody: UpdateBrandBody,
   options?: RequestInit,
 ): Promise<Brand> => {
   return customFetch<Brand>(getUpdateBrandUrl(brandId), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createBrandBody),
+    body: JSON.stringify(updateBrandBody),
   });
 };
 
@@ -384,14 +385,14 @@ export const getUpdateBrandMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateBrand>>,
     TError,
-    { brandId: string; data: BodyType<CreateBrandBody> },
+    { brandId: string; data: BodyType<UpdateBrandBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof updateBrand>>,
   TError,
-  { brandId: string; data: BodyType<CreateBrandBody> },
+  { brandId: string; data: BodyType<UpdateBrandBody> },
   TContext
 > => {
   const mutationKey = ["updateBrand"];
@@ -405,7 +406,7 @@ export const getUpdateBrandMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof updateBrand>>,
-    { brandId: string; data: BodyType<CreateBrandBody> }
+    { brandId: string; data: BodyType<UpdateBrandBody> }
   > = (props) => {
     const { brandId, data } = props ?? {};
 
@@ -418,7 +419,7 @@ export const getUpdateBrandMutationOptions = <
 export type UpdateBrandMutationResult = NonNullable<
   Awaited<ReturnType<typeof updateBrand>>
 >;
-export type UpdateBrandMutationBody = BodyType<CreateBrandBody>;
+export type UpdateBrandMutationBody = BodyType<UpdateBrandBody>;
 export type UpdateBrandMutationError = ErrorType<unknown>;
 
 /**
@@ -431,14 +432,14 @@ export const useUpdateBrand = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateBrand>>,
     TError,
-    { brandId: string; data: BodyType<CreateBrandBody> },
+    { brandId: string; data: BodyType<UpdateBrandBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof updateBrand>>,
   TError,
-  { brandId: string; data: BodyType<CreateBrandBody> },
+  { brandId: string; data: BodyType<UpdateBrandBody> },
   TContext
 > => {
   return useMutation(getUpdateBrandMutationOptions(options));

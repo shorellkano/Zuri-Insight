@@ -13,11 +13,17 @@ export interface Brand {
   industry?: string;
   targetMarket?: string;
   logoUrl?: string;
+  continent?: string;
+  country?: string;
+  city?: string;
+  language?: string;
   instagramHandle?: string;
   twitterHandle?: string;
   linkedinUrl?: string;
   facebookUrl?: string;
   tiktokHandle?: string;
+  youtubeHandle?: string;
+  whatsappHandle?: string;
   dnaBuilt: boolean;
   createdAt: string;
   updatedAt: string;

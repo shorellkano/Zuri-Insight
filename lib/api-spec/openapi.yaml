@@ -97,7 +97,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateBrandBody"
+              $ref: "#/components/schemas/UpdateBrandBody"
       responses:
         "200":
           description: Brand updated
@@ -365,6 +365,14 @@ components:
           type: string
         logoUrl:
           type: string
+        continent:
+          type: string
+        country:
+          type: string
+        city:
+          type: string
+        language:
+          type: string
         instagramHandle:
           type: string
         twitterHandle:
@@ -374,6 +382,10 @@ components:
         facebookUrl:
           type: string
         tiktokHandle:
+          type: string
+        youtubeHandle:
+          type: string
+        whatsappHandle:
           type: string
         dnaBuilt:
           type: boolean
@@ -399,6 +411,14 @@ components:
           type: string
         targetMarket:
           type: string
+        continent:
+          type: string
+        country:
+          type: string
+        city:
+          type: string
+        language:
+          type: string
         instagramHandle:
           type: string
         twitterHandle:
@@ -409,8 +429,46 @@ components:
           type: string
         tiktokHandle:
           type: string
+        youtubeHandle:
+          type: string
+        whatsappHandle:
+          type: string
       required:
         - name
+
+    UpdateBrandBody:
+      type: object
+      properties:
+        name:
+          type: string
+        websiteUrl:
+          type: string
+        industry:
+          type: string
+        targetMarket:
+          type: string
+        continent:
+          type: string
+        country:
+          type: string
+        city:
+          type: string
+        language:
+          type: string
+        instagramHandle:
+          type: string
+        twitterHandle:
+          type: string
+        linkedinUrl:
+          type: string
+        facebookUrl:
+          type: string
+        tiktokHandle:
+          type: string
+        youtubeHandle:
+          type: string
+        whatsappHandle:
+          type: string
 
     BrandDna:
       type: object

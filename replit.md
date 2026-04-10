@@ -27,7 +27,7 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 
 ## DB Schema (lib/db/src/schema/)
 
-- **brands** — brand profiles (name, website, industry, target market, social handles, dnaBuilt flag)
+- **brands** — brand profiles (name, website, industry, target market, continent, country, city, language, social handles × 7, dnaBuilt flag)
 - **brand_dna** — Brand DNA intelligence profile (tone of voice, core values, target audience, cultural context, etc.)
 - **content** — saved generated content (type, brand, prompt, content, platform, tone)
 
@@ -48,7 +48,7 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 - `/` — Marketing landing page (home.tsx)
 - `/dashboard` — Stats, quick-generate, recent activity, brands overview
 - `/brands` — Brand grid with DNA status
-- `/brands/new` — Multi-step brand setup wizard
+- `/brands/new` — 4-step brand setup wizard (basics → market/culture → social handles → DNA build animation)
 - `/brands/:brandId` — Brand detail with DNA and content tabs
 - `/generate` — Content format hub
 - `/generate/ad-copy|social-posts|email|whatsapp|video-scripts` — Individual generators
