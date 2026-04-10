@@ -1,0 +1,49 @@
+Build all 5 content generation API routes and the shared system prompt builder.
+
+FILE: lib/generators/shared.ts
+Build the buildSystemPrompt(brandId, contentType, platform?) async function that:
+1. Loads brand DNA from brand_dna table
+2. Loads brand name and country from brands table
+3. Gets cultural context from getCulturalContext()
+4. Loads up to 12 voice examples from voice_examples table, ordered by is_pinned DESC, quality_score DESC
+5. Loads active lessons from lessons table filtered to this contentType and platform
+6. Returns a complete system prompt string combining all of the above
+
+The system prompt must always start with these three absolute rules:
+"ABSOLUTE RULES — NEVER BREAK:
+1. Never fabricate stats, testimonials, or story details.
+2. Use only documented, real examples the user has provided.
+3. Be concise — remove every word that does not earn its place."
+
+FILE: app/api/generate/ad-copy/route.ts
+POST. Body: { brandId, platform, product, goal, count }
+Platforms: facebook, instagram, tiktok, twitter, google, linkedin
+Build system prompt, then send this user prompt to Claude:
+"Generate [count] ad copy variations for [platform]. Product: [product]. Goal: [goal]. Platform limits: [limits per platform]. Return JSON array where each object has: variation_number, hook, body, cta, tone_label, emotional_angle, char_count."
+
+FILE: app/api/generate/social-posts/route.ts
+POST. Body: { brandId, platform, topic, contentPillar, includeHashtags }
+Return 8 variations. Each has: post_number, caption, hashtags array, post_format, best_time, char_count.
+
+FILE: app/api/generate/email/route.ts
+POST. Body: { brandId, emailType, productOrOffer, goal, audienceSegment }
+emailType options: promotional, welcome, abandoned_cart, newsletter, reengagement, product_launch
+Return one object with: subject_lines array (5 options each with text, preview_text, style), email_body object (greeting, opening_hook, body_1, body_2, cta_text, cta_context, urgency_line, sign_off, ps_line), estimated_read_time, word_count.
+
+FILE: app/api/generate/whatsapp/route.ts
+POST. Body: { brandId, messageType, productOrOffer, sequenceLength }
+Critical WhatsApp rules to include in every prompt: personal not corporate, under 160 words, use line breaks, max one emoji, one clear action per message, feels like a message from a person not a company.
+Return array of messages each with: message_number, send_delay, message_text, word_count, action_type.
+
+FILE: app/api/generate/video-scripts/route.ts
+POST. Body: { brandId, scriptType, duration, product, platform }
+scriptType options: ugc, talking_head, product_demo, brand_story, hook_pack
+For hook_pack: return 10 hooks each with text, style, why_it_works.
+For all others: return object with hook, scenes array (each with scene_number, duration, spoken_script, action_note, visual_suggestion), cta, b_roll_suggestions, total_word_count, delivery_notes.
+
+All 5 routes must:
+- Verify auth before processing
+- Save results to generated_content table after generation
+- Return { variations } or { result } depending on format
+- Handle errors gracefully and return { error: string } with appropriate status code
+```
