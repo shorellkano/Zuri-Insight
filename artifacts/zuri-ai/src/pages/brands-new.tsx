@@ -63,7 +63,7 @@ function StepBar({ step }: { step: number }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-foreground">Step {step + 1} of {STEPS.length} — {STEPS[step]}</span>
+        <span className="text-sm font-semibold text-foreground">Step {step + 1} of {STEPS.length}: {STEPS[step]}</span>
         <span className="text-xs text-muted-foreground">{pct}%</span>
       </div>
       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -191,7 +191,7 @@ export default function BrandsNew() {
   // ── Step 2 → save market data ──────────────────────────────────────────────
   async function submitStep2() {
     if (!brandId) { setStep(2); return; }
-    updateBrand.mutate({ brandId, data: { continent: form.continent, country: form.country, city: form.city || undefined, language: form.language, targetMarket: `${form.continent} — ${form.country}` } }, {
+    updateBrand.mutate({ brandId, data: { continent: form.continent, country: form.country, city: form.city || undefined, language: form.language, targetMarket: `${form.continent} - ${form.country}` } }, {
       onSuccess: () => setStep(2),
       onError: () => toast({ title: "Error", description: "Failed to save market info.", variant: "destructive" }),
     });
@@ -316,7 +316,7 @@ export default function BrandsNew() {
                 {(COUNTRIES[form.continent] ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
               </Select>
             </Field>
-            <Field label="City" hint="Optional — helps with hyper-local content">
+            <Field label="City" hint="Optional - helps with hyper-local content">
               <Input value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="e.g. Lagos, Nairobi, Accra" data-testid="input-city" />
             </Field>
             <Field label="Primary content language">

@@ -24,7 +24,7 @@ export default function Settings() {
           title: "Regional Preferences",
           desc: "Customize Zuri AI for your primary market.",
           items: [
-            { label: "Primary Market", placeholder: "e.g. West Africa — Nigeria, Ghana" },
+            { label: "Primary Market", placeholder: "e.g. West Africa - Nigeria, Ghana" },
             { label: "Preferred Language", placeholder: "English" },
           ]
         },

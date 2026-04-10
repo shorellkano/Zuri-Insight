@@ -56,7 +56,7 @@ export default function Dashboard() {
             <StatCard label="Total Brands" value={stats?.totalBrands ?? 0} icon={Layers} sub="Managed brand profiles" />
             <StatCard label="Content Generated" value={stats?.totalContentGenerated ?? 0} icon={Sparkles} sub="All time" />
             <StatCard label="This Month" value={stats?.contentThisMonth ?? 0} icon={TrendingUp} sub="Content pieces created" />
-            <StatCard label="Most Active" value={stats?.mostActiveBrand ?? "—"} icon={Activity} sub="Top brand by content" />
+            <StatCard label="Most Active" value={stats?.mostActiveBrand ?? "-"} icon={Activity} sub="Top brand by content" />
           </>
         )}
       </div>

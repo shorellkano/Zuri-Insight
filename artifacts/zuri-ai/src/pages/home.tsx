@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Sparkles, Zap, Globe, Shield, ArrowRight, CheckCircle2, Star } from "lucide-react";
+import { useState, useEffect } from "react";
 
 const features = [
   {
@@ -41,6 +42,48 @@ const testimonials = [
   { quote: "We cut our content creation time by 80% while maintaining our brand voice perfectly.", name: "Lerato Molefe", company: "Ubuntu Foods, Johannesburg" },
 ];
 
+const BADGE_LINES = [
+  { flag: "🇳🇬", text: "Nigeria-First Brand Intelligence" },
+  { flag: "⚡", text: "From Lagos to Nairobi in seconds" },
+  { flag: "🧬", text: "Built on real Brand DNA, not guesswork" },
+  { flag: "🌍", text: "Cultural AI that speaks your market" },
+  { flag: "🚀", text: "Beta - Now powering African brands" },
+];
+
+function LiveBadge() {
+  const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % BADGE_LINES.length);
+        setVisible(true);
+      }, 300);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const { flag, text } = BADGE_LINES[idx];
+
+  return (
+    <div className="inline-flex items-center gap-3 px-4 py-2 bg-background border border-primary/30 rounded-full text-sm font-medium shadow-sm shadow-primary/10 mb-6 select-none">
+      <span className="relative flex h-2.5 w-2.5 shrink-0">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+      </span>
+      <span
+        className="transition-all duration-300 text-foreground"
+        style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(-6px)" }}
+      >
+        <span className="mr-1">{flag}</span>
+        {text}
+      </span>
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
@@ -68,17 +111,14 @@ export default function Home() {
       <section className="pt-32 pb-20 px-4 text-center relative overflow-hidden" data-testid="hero-section">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 pointer-events-none" />
         <div className="relative max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-accent/20 text-foreground rounded-full text-sm font-medium border border-accent/30 mb-6">
-            <Star className="h-3.5 w-3.5 text-accent fill-accent" />
-            AI Marketing Built for African Businesses
-          </div>
+          <LiveBadge />
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-foreground leading-tight mb-6">
             Your Brand's DNA.
             <br />
             <span className="text-primary">Instantly</span> into Content.
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Zuri AI reads your brand, understands your market, and generates marketing content that resonates with African consumers — in seconds.
+            Zuri AI reads your brand, understands your market, and generates marketing content that resonates with African consumers in seconds.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/brands/new" data-testid="hero-cta-primary">
@@ -215,7 +255,7 @@ export default function Home() {
             <img src="/zuri-ai-logo.png" alt="Zuri AI" className="h-8 w-8 rounded-full object-cover" />
             <span className="font-bold text-foreground">Zuri <span className="text-primary">AI</span></span>
           </div>
-          <p className="text-sm text-muted-foreground">AI Marketing Content for African Businesses</p>
+          <p className="text-sm text-muted-foreground">Brand Intelligence. African Markets. Real Results.</p>
           <p className="text-sm text-muted-foreground">© 2026 Zuri AI. All rights reserved.</p>
         </div>
       </footer>
