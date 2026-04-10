@@ -1,0 +1,66 @@
+ PROMPT 9 — Voice File and Lessons pages
+
+```
+Build the Voice File and Lessons Bank features.
+
+VOICE FILE PAGE (app/(dashboard)/brands/[brandId]/voice/page.tsx):
+
+Header section:
+- Title "Voice File", subtitle "The more real examples you add, the more Orin AI sounds like you."
+- Status badge: "Empty" (gray) if 0 examples, "Building — X examples" (amber) if 1-9, "Ready" (green) if 10+
+- Horizontal progress bar: X of 25 recommended examples
+
+Three input tabs (Email, Social Posts, Website / Other):
+Tab 1 — Email (shown first, highlighted as most important):
+  Instruction text at top: "Open your Sent folder. Find 10-25 emails you are proud of. Paste the subject line and body of each one here."
+  Fields: Platform dropdown (Gmail, Kit, Mailchimp, ActiveCampaign, Other), Title (optional), Content (large textarea)
+  "Add This Example" button
+
+Tab 2 — Social Posts:
+  Platform select (Instagram, TikTok, Facebook, X, LinkedIn), Title optional, Content textarea
+
+Tab 3 — Website / Other:
+  Format select (Website copy, Ad copy, WhatsApp, Customer response, Other), Title, Content
+
+Bulk import section (collapsible, below the tabs):
+  Large textarea. Instruction: "Paste multiple examples separated by --- on its own line"
+  Format select, "Import All" button. On submit: split by /^---$/m, save each chunk as a separate voice_example row.
+
+Saved examples grid below:
+  Card per example showing format badge, platform badge, title or first 60 chars, 3-line preview, char count, pin button (amber when pinned), delete button.
+
+POST to /api/brands/[brandId]/voice on form submit. Update voice_file status after saving.
+
+LESSONS BANK PAGE (app/(dashboard)/brands/[brandId]/lessons/page.tsx):
+
+Header: "Lessons Bank", subtitle "Everything Orin AI has learned about your brand. Applied to every piece of content we generate."
+Stats: total lessons, active lessons count.
+"Add lesson manually" button opens the feedback panel.
+
+Lessons displayed in groups by type, each group collapsible:
+- NEVER DO (red left border)
+- ALWAYS DO (green left border)
+- TONE RULES (purple left border)
+- FORMAT RULES (blue left border)
+- CONTENT RULES (amber left border)
+- CULTURAL RULES (teal left border)
+- WHAT WORKS (green badge)
+
+Each lesson card: type badge, lesson text, applies_to badges, platform badge if applicable, "Applied X times" counter, date, Active/Paused toggle, edit button, delete button.
+
+Empty state: "No lessons yet. Generate some content and give Orin AI feedback. Each piece of feedback becomes a permanent rule."
+
+FEEDBACK PANEL (add to VariationCard component):
+"Give Feedback" button opens a shadcn/ui Sheet from the right.
+Panel content:
+  Header: "Help Orin AI write better for [brand name]"
+  Subtext: "This becomes a permanent rule for all future content."
+  The source content displayed in a read-only card with amber left border.
+  Large textarea with placeholder examples.
+  Scope selector: All content / Ad copy / Email / Social posts / WhatsApp / Video scripts
+  Platform selector: All platforms / specific platform
+  "Save Lesson" button (amber, full width)
+  On submit: POST to /api/brands/[brandId]/lessons, show loading state "Orin AI is learning...", then show the parsed lesson_text in a success card so the user can verify it was understood correctly.
+
+POST /api/brands/[brandId]/lessons:
+  Use Claude to parse the raw feedback into a structured lesson. Return lesson_type, lesson_text,
