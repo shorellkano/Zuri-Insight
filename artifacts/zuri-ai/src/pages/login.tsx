@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'wouter'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import zuriLogo from '/zuri-ai-logo.png'
@@ -8,7 +8,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
+  const [, setLocation] = useLocation()
   const { toast } = useToast()
 
   async function handleLogin(e: React.FormEvent) {
@@ -19,7 +19,7 @@ export default function Login() {
     if (error) {
       toast({ title: 'Login failed', description: error.message, variant: 'destructive' })
     } else {
-      navigate('/dashboard')
+      setLocation('/dashboard')
     }
   }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'wouter'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import zuriLogo from '/zuri-ai-logo.png'
@@ -10,7 +10,7 @@ export default function Signup() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
-  const navigate = useNavigate()
+  const [, setLocation] = useLocation()
   const { toast } = useToast()
 
   async function handleSignup(e: React.FormEvent) {
@@ -44,7 +44,7 @@ export default function Signup() {
             </div>
             <h2 className="text-xl font-bold text-foreground mb-2">Check your email</h2>
             <p className="text-muted-foreground text-sm mb-6">We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account then sign in.</p>
-            <button onClick={() => navigate('/login')} className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors">
+            <button onClick={() => setLocation('/login')} className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors">
               Go to Sign In
             </button>
           </div>
