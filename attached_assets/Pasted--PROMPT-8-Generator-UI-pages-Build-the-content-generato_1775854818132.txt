@@ -1,0 +1,40 @@
+
+## PROMPT 8 — Generator UI pages
+
+```
+Build the content generator UI.
+
+GENERATE HUB (app/(dashboard)/generate/page.tsx):
+Page heading "Generate Content". Show the active brand name in an amber pill at the top. If no brand is selected, show a prompt to select or create one.
+
+Grid of 5 content type cards (2 columns on mobile, 3 on desktop). Each card has: large Lucide icon, content type name, short description, platform badges, arrow button to navigate. Cards:
+- Ad Copy (Megaphone) — "High-converting ads for every platform" — FB · IG · TikTok · Google · LinkedIn
+- Social Posts (Share2) — "Captions that actually get engagement" — IG · TikTok · FB · X · LinkedIn
+- Email (Mail) — "Campaigns that get opened and clicked" — All platforms
+- WhatsApp (MessageCircle) — "Personal messages that convert" — WhatsApp Business
+- Video Scripts (Video) — "Scripts for ads, reels, and demos" — TikTok · IG · YouTube
+
+Below the grid: a Brand DNA summary bar showing the active brand's formality, energy, humor, boldness scores as coloured progress bars.
+
+GENERATOR PAGE LAYOUT (use this pattern for all 5 generator pages):
+Two-column layout on desktop (40% form, 60% output). Stacked on mobile.
+
+LEFT PANEL — GeneratorForm:
+- Page title + icon
+- Active brand amber pill showing brand name
+- CulturalContextBadge component: small pill showing flag emoji + country + language. Clicking it opens a sheet/drawer to temporarily change the cultural context for this generation only.
+- Form fields specific to this content type (see below)
+- "Generate" button — amber, full width, shows spinner while loading
+
+RIGHT PANEL — ContentOutput:
+- Empty state before first generation: illustration, "Fill in the details and generate" text, 3 blurred example cards as a preview
+- After generation: scrollable list of VariationCard components
+- Each VariationCard has: content text, CopyButton (copies to clipboard, shows checkmark for 2 seconds), favourite button (heart icon, saves to DB), character count badge, platform badge, "Give Feedback" button (pencil icon)
+- "Regenerate" button and "Save all to library" button at the bottom
+
+Build all 5 generator pages with the appropriate form fields:
+- ad-copy: platform select, product textarea, goal select (awareness/conversion/engagement/traffic), count slider (3-10)
+- social-posts: platform select, topic input, content pillar select, hashtags toggle
+- email: email type select, product/offer input, goal input, audience segment input
+- whatsapp: message type select, product/offer input, sequence length slider (1-5)
+- video-scripts: script type select, duration select, product input, platform select

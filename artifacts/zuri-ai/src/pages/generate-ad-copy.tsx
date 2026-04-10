@@ -1,21 +1,25 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useGenerateAdCopy, getListContentQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { GeneratorForm, type GeneratorFormValues } from "@/components/generator-form";
-import { ContentOutput } from "@/components/content-output";
+import { ContentOutput, EmptyOutputState } from "@/components/content-output";
 import { Megaphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useBrand } from "@/context/brand-context";
+import { useNavigate } from "wouter";
 
-const PLATFORMS = ["Google Ads", "Facebook Ads", "Instagram Ads", "Twitter/X Ads", "LinkedIn Ads", "TikTok Ads", "General"];
-const TONES = ["Bold & Urgent", "Warm & Conversational", "Professional", "Inspirational", "Humorous", "Direct"];
+type Output = { id: string; type: string; brandId: string; variations: { id: string; content: string; platform?: string; tone?: string }[] };
 
 export default function GenerateAdCopy() {
-  const [output, setOutput] = useState<{ id: string; type: string; brandId: string; variations: { id: string; content: string; platform?: string; tone?: string }[] } | null>(null);
+  const [output, setOutput] = useState<Output | null>(null);
+  const [lastData, setLastData] = useState<GeneratorFormValues | null>(null);
   const generate = useGenerateAdCopy();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { activeBrandId } = useBrand();
 
-  function onSubmit(data: GeneratorFormValues) {
+  function onGenerate(data: GeneratorFormValues) {
+    setLastData(data);
     generate.mutate({ data }, {
       onSuccess: (res) => {
         setOutput(res);
@@ -25,30 +29,34 @@ export default function GenerateAdCopy() {
     });
   }
 
+  function onRegenerate() {
+    if (lastData) onGenerate(lastData);
+  }
+
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6" data-testid="generate-ad-copy-page">
+    <div className="p-6 max-w-6xl mx-auto space-y-5" data-testid="generate-ad-copy-page">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
           <Megaphone className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Ad Copy Generator</h1>
-          <p className="text-muted-foreground text-sm">Create high-converting ad copy tailored to your brand and market.</p>
+          <h1 className="text-xl font-bold text-foreground">Ad Copy Generator</h1>
+          <p className="text-muted-foreground text-sm">High-converting ads tailored to your brand and market.</p>
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-card border border-border rounded-2xl p-7">
-          <h2 className="font-semibold text-foreground mb-5">Configure</h2>
-          <GeneratorForm onSubmit={onSubmit} isPending={generate.isPending} platformOptions={PLATFORMS} toneOptions={TONES} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-6">
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <h2 className="font-semibold text-foreground mb-5 text-sm uppercase tracking-wide text-muted-foreground">Configure</h2>
+          <GeneratorForm type="ad-copy" onGenerate={onGenerate} isPending={generate.isPending} />
         </div>
-        <div>
+
+        <div className="bg-card border border-border rounded-2xl p-6 min-h-[500px]">
+          <h2 className="font-semibold text-foreground mb-5 text-sm uppercase tracking-wide text-muted-foreground">Output</h2>
           {output ? (
-            <ContentOutput variations={output.variations} type="ad-copy" />
+            <ContentOutput variations={output.variations} type="ad-copy" onRegenerate={onRegenerate} isRegenerating={generate.isPending} />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full py-16 text-center bg-muted/30 border border-dashed border-border rounded-2xl">
-              <Megaphone className="h-10 w-10 text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground">Generated ad copy will appear here.</p>
-            </div>
+            <EmptyOutputState type="ad-copy" />
           )}
         </div>
       </div>
