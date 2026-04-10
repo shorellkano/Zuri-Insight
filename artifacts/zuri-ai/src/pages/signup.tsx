@@ -20,10 +20,14 @@ export default function Signup() {
       return
     }
     setLoading(true)
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}login`
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+        emailRedirectTo: redirectTo,
+      },
     })
     setLoading(false)
     if (error) {
