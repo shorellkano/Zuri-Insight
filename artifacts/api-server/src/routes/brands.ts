@@ -176,7 +176,7 @@ Return ONLY this JSON structure (no explanation, no markdown fences):
   "brand_summary": "<2-3 sentence brand DNA summary capturing voice, audience and cultural positioning>"
 }`;
 
-      dnaResult = await aiJSON(system, user, 2048);
+      dnaResult = await aiJSON(system, user, 1800);
     } else {
       // Fallback DNA when no AI key is configured
       dnaResult = {

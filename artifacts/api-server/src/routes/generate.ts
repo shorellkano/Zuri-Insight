@@ -24,8 +24,8 @@ function stripJsonFences(raw: string): string {
     .trim();
 }
 
-async function safeAiJSON<T>(system: string, user: string): Promise<T> {
-  const raw = await aiComplete(system, user, 2048);
+async function safeAiJSON<T>(system: string, user: string, maxTokens = 1500): Promise<T> {
+  const raw = await aiComplete(system, user, maxTokens);
   return JSON.parse(stripJsonFences(raw)) as T;
 }
 

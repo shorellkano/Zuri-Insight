@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-const MODEL = "anthropic/claude-sonnet-4.6";
+const MODEL = "anthropic/claude-sonnet-4-5";
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -15,7 +15,7 @@ function getClient(): OpenAI {
   });
 }
 
-export async function aiComplete(system: string, user: string, maxTokens = 2048): Promise<string> {
+export async function aiComplete(system: string, user: string, maxTokens = 1500): Promise<string> {
   const client = getClient();
   const response = await client.chat.completions.create({
     model: MODEL,
@@ -30,7 +30,7 @@ export async function aiComplete(system: string, user: string, maxTokens = 2048)
   return content;
 }
 
-export async function aiJSON<T = any>(system: string, user: string, maxTokens = 2048): Promise<T> {
+export async function aiJSON<T = any>(system: string, user: string, maxTokens = 1500): Promise<T> {
   const raw = await aiComplete(system, user, maxTokens);
   const clean = raw
     .replace(/^```json\s*/i, "")
