@@ -1,8 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, Menu, X, LogOut } from "lucide-react";
+import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
+import { BrandProvider } from "@/context/brand-context";
+import { Topbar } from "@/components/topbar";
+import { MobileNav } from "@/components/mobile-nav";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -12,9 +15,18 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const planColors: Record<string, string> = {
+  free: "bg-gray-100 text-gray-600",
+  starter: "bg-blue-100 text-blue-700",
+  growth: "bg-teal-100 text-teal-700",
+  pro: "bg-amber-100 text-amber-700",
+  agency: "bg-purple-100 text-purple-700",
+};
+
 function Sidebar({ className, onClose }: { className?: string; onClose?: () => void }) {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
+  const plan = "free";
 
   return (
     <aside className={cn("flex flex-col h-full bg-card border-r border-border", className)}>
@@ -29,7 +41,8 @@ function Sidebar({ className, onClose }: { className?: string; onClose?: () => v
           </button>
         )}
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1" data-testid="sidebar-nav">
+
+      <nav className="flex-1 px-3 py-4 space-y-0.5" data-testid="sidebar-nav">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = location === href || (href !== "/" && location.startsWith(href));
           return (
@@ -39,19 +52,20 @@ function Sidebar({ className, onClose }: { className?: string; onClose?: () => v
               onClick={onClose}
               data-testid={`nav-link-${label.toLowerCase().replace(/\s/g, "-")}`}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative",
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
+                  ? "bg-primary/8 text-primary before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:bg-primary before:rounded-r-full"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <Icon className="h-4.5 w-4.5 shrink-0" />
+              <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{label}</span>
-              {isActive && <ChevronRight className="h-3.5 w-3.5 opacity-70" />}
+              {isActive && <ChevronRight className="h-3.5 w-3.5 opacity-50" />}
             </Link>
           );
         })}
       </nav>
+
       <div className="px-4 py-4 border-t border-border space-y-3">
         <Link href="/brands/new" onClick={onClose} data-testid="sidebar-new-brand-btn">
           <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
@@ -59,23 +73,27 @@ function Sidebar({ className, onClose }: { className?: string; onClose?: () => v
             New Brand
           </button>
         </Link>
+
         {user && (
-          <div className="flex items-center gap-2 px-1">
-            <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-              <span className="text-xs font-semibold text-primary">
+          <div className="flex items-center gap-2 px-1 pt-1">
+            <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+              <span className="text-xs font-bold text-primary">
                 {(user.user_metadata?.full_name || user.email || "U")[0].toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground truncate">
-                {user.user_metadata?.full_name || user.email}
+              <p className="text-xs font-semibold text-foreground truncate leading-tight">
+                {user.user_metadata?.full_name || user.email?.split("@")[0]}
               </p>
+              <span className={cn("inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5", planColors[plan] ?? planColors.free)}>
+                {plan}
+              </span>
             </div>
             <button
               onClick={() => signOut()}
               data-testid="btn-sign-out"
               title="Sign out"
-              className="p-1 rounded-md text-muted-foreground hover:text-destructive transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-destructive transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -86,32 +104,37 @@ function Sidebar({ className, onClose }: { className?: string; onClose?: () => v
   );
 }
 
+function SidebarSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-y-0 left-0 w-72 z-10">
+        <Sidebar className="flex w-full h-full" onClose={onClose} />
+      </div>
+    </div>
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar className="hidden lg:flex w-64 shrink-0" />
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-72 z-10">
-            <Sidebar className="flex w-full" onClose={() => setMobileOpen(false)} />
-          </div>
+    <BrandProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <Sidebar className="hidden lg:flex flex-col w-60 shrink-0" />
+        <SidebarSheet open={mobileOpen} onClose={() => setMobileOpen(false)} />
+
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <Topbar />
+          <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 bg-[#FAFAF9]" data-testid="main-content">
+            <div className="max-w-screen-xl mx-auto">
+              {children}
+            </div>
+          </main>
         </div>
-      )}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
-          <button onClick={() => setMobileOpen(true)} data-testid="mobile-menu-btn" className="p-1.5 rounded-md text-muted-foreground hover:text-foreground">
-            <Menu className="h-5 w-5" />
-          </button>
-          <img src="/zuri-ai-logo.png" alt="Zuri AI" className="h-7 w-7 rounded-full" />
-          <span className="font-bold text-foreground">Zuri <span className="text-primary">AI</span></span>
-        </header>
-        <main className="flex-1 overflow-y-auto" data-testid="main-content">
-          {children}
-        </main>
       </div>
-    </div>
+      <MobileNav />
+    </BrandProvider>
   );
 }

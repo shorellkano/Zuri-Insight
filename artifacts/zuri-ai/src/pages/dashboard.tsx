@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Sparkles, Layers, BookOpen, TrendingUp, ArrowRight, Activity } from "lucide-react";
 import { useGetDashboardStats, useGetDashboardActivity, useListBrands } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/auth-context";
 
 function StatCard({ label, value, icon: Icon, sub }: { label: string; value: string | number; icon: React.ElementType; sub?: string }) {
   return (
@@ -26,15 +27,24 @@ const contentTypes = [
   { type: "video-scripts", label: "Video Scripts", href: "/generate/video-scripts", color: "bg-purple-100 text-purple-700" },
 ];
 
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useGetDashboardStats();
   const { data: activity, isLoading: activityLoading } = useGetDashboardActivity();
   const { data: brands, isLoading: brandsLoading } = useListBrands();
+  const { user } = useAuth();
+  const name = user?.user_metadata?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8" data-testid="dashboard-page">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
+        <h1 className="text-2xl font-bold text-foreground">{greeting()}, {name}</h1>
         <p className="text-muted-foreground mt-1">Here's what's happening with your brands today.</p>
       </div>
 

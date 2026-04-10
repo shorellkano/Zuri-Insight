@@ -1,0 +1,37 @@
+Build the dashboard shell — the persistent layout that wraps all dashboard pages.
+
+DASHBOARD LAYOUT (app/(dashboard)/layout.tsx):
+Full height layout with sidebar on left, main content on right. Store the active brandId in a React context called BrandContext. Persist it in localStorage. Export a useBrand() hook that returns the active brand.
+
+SIDEBAR (components/layout/Sidebar.tsx):
+- Width 240px on desktop
+- Logo at top: waveform icon (use Radio from lucide-react) + "Orin AI" in amber bold
+- Navigation items with Lucide icons:
+    Home /dashboard LayoutDashboard
+    My Brands /brands Layers
+    Generate /generate Sparkles
+    Content /content FileText
+    Settings /settings Settings2
+- Active state: 3px amber left border + amber text + light amber (#FEF3C7) background on the nav item
+- Bottom section: user avatar circle (initials), user name, plan badge, logout button
+- Plan badge colors: free=gray, starter=blue, growth=teal, pro=amber, agency=purple
+- On mobile: hidden completely
+
+TOPBAR (components/layout/Topbar.tsx):
+- Brand switcher: dropdown showing all user's brands, currently selected brand is highlighted. "Add brand" option at bottom of dropdown that links to /brands/new
+- Credits display: "23 / 50 credits" with a small amber progress bar. Clicking it goes to /settings/billing
+- Mobile: hamburger menu icon that opens a slide-over sidebar
+
+MOBILE NAV (components/layout/MobileNav.tsx):
+Bottom navigation bar on mobile (position fixed, bottom 0). Four icons: Home, Brands, Generate, Content.
+
+MAIN CONTENT AREA:
+Background #FAFAF9. Padding p-6 desktop, p-4 mobile. Max width 1280px centered.
+
+DASHBOARD HOME (app/(dashboard)/dashboard/page.tsx):
+Simple welcome page showing:
+- "Good morning, [name]" heading
+- If no brands exist: empty state card "Create your first brand to get started" with a button linking to /brands/new
+- If brands exist: show a grid of BrandCard components
+- Stats row: total brands, total content generated, credits used this month
+```
