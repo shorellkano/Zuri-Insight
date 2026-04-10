@@ -51,7 +51,7 @@ export default function GenerateWhatsapp() {
         <div className="bg-card border border-border rounded-2xl p-6 min-h-[500px]">
           <h2 className="font-semibold text-foreground mb-5 text-sm uppercase tracking-wide text-muted-foreground">Output</h2>
           {output ? (
-            <ContentOutput variations={output.variations} type="whatsapp" onRegenerate={onRegenerate} isRegenerating={generate.isPending} />
+            <ContentOutput variations={output.variations} type="whatsapp" brandId={output.brandId} onRegenerate={onRegenerate} isRegenerating={generate.isPending} />
           ) : (
             <EmptyOutputState type="whatsapp" />
           )}

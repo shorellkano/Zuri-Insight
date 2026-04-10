@@ -23,6 +23,8 @@ import GenerateWhatsapp from "@/pages/generate-whatsapp";
 import GenerateVideoScripts from "@/pages/generate-video-scripts";
 import ContentLibrary from "@/pages/content-library";
 import Settings from "@/pages/settings";
+import BrandVoice from "@/pages/brand-voice";
+import BrandLessons from "@/pages/brand-lessons";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,8 @@ function Router() {
       <Route path="/dashboard"><ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute></Route>
       <Route path="/brands"><ProtectedRoute><Layout><Brands /></Layout></ProtectedRoute></Route>
       <Route path="/brands/new"><ProtectedRoute><Layout><BrandsNew /></Layout></ProtectedRoute></Route>
+      <Route path="/brands/:brandId/voice"><ProtectedRoute><Layout><BrandVoice /></Layout></ProtectedRoute></Route>
+      <Route path="/brands/:brandId/lessons"><ProtectedRoute><Layout><BrandLessons /></Layout></ProtectedRoute></Route>
       <Route path="/brands/:brandId"><ProtectedRoute><Layout><BrandDetail /></Layout></ProtectedRoute></Route>
       <Route path="/generate"><ProtectedRoute><Layout><GenerateHub /></Layout></ProtectedRoute></Route>
       <Route path="/generate/ad-copy"><ProtectedRoute><Layout><GenerateAdCopy /></Layout></ProtectedRoute></Route>

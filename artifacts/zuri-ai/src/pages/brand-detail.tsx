@@ -88,6 +88,19 @@ export default function BrandDetail() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <Link href={`/brands/${brand.id}/voice`} data-testid="btn-voice-file">
+          <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors">
+            <span>🎙</span> Voice File
+          </button>
+        </Link>
+        <Link href={`/brands/${brand.id}/lessons`} data-testid="btn-lessons">
+          <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors">
+            <span>📚</span> Lessons Bank
+          </button>
+        </Link>
+      </div>
+
       <div className="flex border-b border-border gap-0">
         {(["dna", "content"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} data-testid={`tab-${t}`} className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>

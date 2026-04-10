@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Copy, Check, Clock, Zap, Mail, MessageCircle, Video, Megaphone, Heart, Pencil, RefreshCw, BookmarkCheck, Sparkles } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Copy, Check, Clock, Zap, Mail, MessageCircle, Video, Megaphone, Heart, Pencil, RefreshCw, BookmarkCheck, Sparkles, Loader2, X } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useGetBrand } from "@workspace/api-client-react";
 
 interface Variation {
   id: string;
@@ -11,6 +14,7 @@ interface Variation {
 interface ContentOutputProps {
   variations: Variation[];
   type: string;
+  brandId?: string;
   onRegenerate?: () => void;
   isRegenerating?: boolean;
 }
@@ -47,54 +51,118 @@ function FavouriteButton({ variationId }: { variationId: string }) {
   );
 }
 
-function FeedbackButton({ variationId }: { variationId: string }) {
+function FeedbackSheet({ variationId, sourceContent, brandId }: { variationId: string; sourceContent: string; brandId?: string }) {
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [sent, setSent] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [contentType, setContentType] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [savedLesson, setSavedLesson] = useState<string | null>(null);
+  const { data: brand } = useGetBrand(brandId ?? "", { query: { enabled: !!brandId } });
 
-  function send() {
-    if (!text.trim()) return;
-    setSent(true);
-    setOpen(false);
-    setTimeout(() => setSent(false), 3000);
-  }
+  const save = useMutation({
+    mutationFn: () =>
+      fetch(`/api/brands/${brandId}/lessons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feedback, contentType: contentType || undefined, platform: platform || undefined, sourceContent: sourceContent.substring(0, 400) }),
+      }).then(r => r.json()),
+    onSuccess: (data: any) => {
+      setSavedLesson(data.rule ?? feedback);
+      setFeedback("");
+    },
+  });
+
+  if (!brandId) return null;
 
   return (
-    <div className="relative">
+    <>
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(true); setSavedLesson(null); }}
         data-testid="btn-feedback"
-        title="Give feedback on this variation"
-        className={`p-1.5 rounded-lg transition-colors ${sent ? "text-green-600 bg-green-50" : "text-muted-foreground hover:text-primary hover:bg-primary/5"}`}
+        title="Give feedback - teach Zuri AI"
+        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
       >
-        {sent ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+        <Pencil className="h-3.5 w-3.5" />
       </button>
-      {open && (
-        <div className="absolute right-0 top-8 z-20 w-64 bg-card border border-border rounded-xl shadow-lg p-3 space-y-2">
-          <p className="text-xs font-semibold text-foreground">Feedback on this variation</p>
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="What could be better? Too formal? Wrong tone?"
-            className="w-full text-xs border border-border rounded-lg px-2.5 py-2 resize-none bg-muted/30 focus:outline-none focus:ring-1 focus:ring-primary"
-            rows={3}
-          />
-          <div className="flex gap-2">
-            <button onClick={send} className="flex-1 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90">Send</button>
-            <button onClick={() => setOpen(false)} className="px-3 py-1.5 border border-border rounded-lg text-xs text-muted-foreground hover:bg-muted">Cancel</button>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader className="space-y-1">
+            <SheetTitle className="text-base">Help Zuri AI write better{brand ? ` for ${brand.name}` : ""}</SheetTitle>
+            <p className="text-xs text-muted-foreground">This becomes a permanent rule for all future content.</p>
+          </SheetHeader>
+
+          <div className="mt-5 space-y-5">
+            {/* Source content card */}
+            <div className="border-l-4 border-amber-400 bg-amber-50/40 px-4 py-3 rounded-r-xl">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Content this feedback is about</p>
+              <p className="text-xs text-foreground leading-relaxed line-clamp-4 whitespace-pre-line">{sourceContent.substring(0, 300)}{sourceContent.length > 300 ? "..." : ""}</p>
+            </div>
+
+            {savedLesson ? (
+              <div className="space-y-3">
+                <div className="border-l-4 border-green-500 bg-green-50 px-4 py-3 rounded-r-xl">
+                  <p className="text-xs font-semibold text-green-700 mb-1.5">Zuri AI learned this rule:</p>
+                  <p className="text-sm text-green-900 font-medium leading-relaxed">{savedLesson}</p>
+                </div>
+                <button onClick={() => { setSavedLesson(null); setOpen(false); }} className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your feedback</label>
+                  <textarea
+                    value={feedback}
+                    onChange={e => setFeedback(e.target.value)}
+                    placeholder="e.g. Too formal - this brand speaks casually. Use Pidgin. Stop using corporate words like 'leverage'."
+                    rows={5}
+                    className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Scope</label>
+                    <select value={contentType} onChange={e => setContentType(e.target.value)} className="w-full h-9 px-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary">
+                      <option value="">All content</option>
+                      <option value="ad-copy">Ad copy</option>
+                      <option value="email">Email</option>
+                      <option value="social-posts">Social posts</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="video-scripts">Video scripts</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Platform</label>
+                    <select value={platform} onChange={e => setPlatform(e.target.value)} className="w-full h-9 px-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary">
+                      <option value="">All platforms</option>
+                      {["Instagram", "TikTok", "Facebook", "Twitter/X", "LinkedIn", "WhatsApp"].map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={() => save.mutate()}
+                  disabled={save.isPending || !feedback.trim()}
+                  className="w-full py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {save.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Zuri AI is learning...</> : "Save Lesson"}
+                </button>
+              </div>
+            )}
           </div>
-        </div>
-      )}
-    </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
-function VariationActions({ variationId, copyText }: { variationId: string; copyText: string }) {
+function VariationActions({ variationId, copyText, brandId }: { variationId: string; copyText: string; brandId?: string }) {
   return (
     <div className="flex items-center gap-1">
       <CopyButton text={copyText} />
       <FavouriteButton variationId={variationId} />
-      <FeedbackButton variationId={variationId} />
+      <FeedbackSheet variationId={variationId} sourceContent={copyText} brandId={brandId} />
     </div>
   );
 }
@@ -105,7 +173,7 @@ function Label({ children }: { children: React.ReactNode }) {
 
 // ─── Ad Copy ──────────────────────────────────────────────────────────────────
 
-function AdCopyCard({ data, i, id }: { data: any; i: number; id: string }) {
+function AdCopyCard({ data, i, id, brandId }: { data: any; i: number; id: string; brandId?: string }) {
   const copyText = `HOOK: ${data.hook}\n\n${data.body}\n\n${data.cta}`;
   return (
     <div className="bg-card border border-border rounded-xl p-5 space-y-4" data-testid={`variation-card-${i}`}>
@@ -116,7 +184,7 @@ function AdCopyCard({ data, i, id }: { data: any; i: number; id: string }) {
           {data.tone_label && <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">{data.tone_label}</span>}
           {data.char_count && <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs">{data.char_count} chars</span>}
         </div>
-        <VariationActions variationId={id} copyText={copyText} />
+        <VariationActions variationId={id} copyText={copyText} brandId={brandId} />
       </div>
       <div className="space-y-3 divide-y divide-border">
         <div className="pb-3">
@@ -146,7 +214,7 @@ function AdCopyCard({ data, i, id }: { data: any; i: number; id: string }) {
 
 // ─── Social Posts ─────────────────────────────────────────────────────────────
 
-function SocialPostCard({ data, i, id }: { data: any; i: number; id: string }) {
+function SocialPostCard({ data, i, id, brandId }: { data: any; i: number; id: string; brandId?: string }) {
   const copyText = data.caption + (data.hashtags?.length ? "\n\n" + data.hashtags.map((h: string) => `#${h.replace(/^#/, "")}`).join(" ") : "");
   return (
     <div className="bg-card border border-border rounded-xl p-5 space-y-4" data-testid={`variation-card-${i}`}>
@@ -156,7 +224,7 @@ function SocialPostCard({ data, i, id }: { data: any; i: number; id: string }) {
           {data.post_format && <span className="px-2 py-0.5 bg-teal-100 text-teal-700 rounded-full text-xs">{data.post_format}</span>}
           {data.char_count && <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs">{data.char_count} chars</span>}
         </div>
-        <VariationActions variationId={id} copyText={copyText} />
+        <VariationActions variationId={id} copyText={copyText} brandId={brandId} />
       </div>
       <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{data.caption}</p>
       {data.hashtags?.length > 0 && (
@@ -178,7 +246,7 @@ function SocialPostCard({ data, i, id }: { data: any; i: number; id: string }) {
 
 // ─── Email ────────────────────────────────────────────────────────────────────
 
-function EmailCard({ data, id }: { data: any; id: string }) {
+function EmailCard({ data, id, brandId }: { data: any; id: string; brandId?: string }) {
   const body = data.email_body;
   const copyText = body ? [body.greeting, body.opening_hook, body.body_1, body.body_2, body.cta_context, body.cta_text, body.urgency_line, body.sign_off, body.ps_line].filter(Boolean).join("\n\n") : "";
   return (
@@ -187,7 +255,7 @@ function EmailCard({ data, id }: { data: any; id: string }) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Subject Lines</Label>
-            <VariationActions variationId={id} copyText={data.subject_lines.map((s: any) => s.text).join("\n")} />
+            <VariationActions variationId={id} copyText={data.subject_lines.map((s: any) => s.text).join("\n")} brandId={brandId} />
           </div>
           <div className="space-y-2">
             {data.subject_lines.map((s: any, i: number) => (
@@ -232,7 +300,7 @@ function EmailCard({ data, id }: { data: any; id: string }) {
 
 // ─── WhatsApp ─────────────────────────────────────────────────────────────────
 
-function WhatsAppCard({ data, i, id }: { data: any; i: number; id: string }) {
+function WhatsAppCard({ data, i, id, brandId }: { data: any; i: number; id: string; brandId?: string }) {
   const text = data.message_text ?? data.content ?? "";
   return (
     <div className="bg-card border border-border rounded-xl p-5 space-y-3" data-testid={`variation-card-${i}`}>
@@ -243,7 +311,7 @@ function WhatsAppCard({ data, i, id }: { data: any; i: number; id: string }) {
           {data.send_delay && <span className="px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs">{data.send_delay}</span>}
           {data.word_count && <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs">{data.word_count}w</span>}
         </div>
-        <VariationActions variationId={id} copyText={text} />
+        <VariationActions variationId={id} copyText={text} brandId={brandId} />
       </div>
       <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
         <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{text}</p>
@@ -260,13 +328,13 @@ function WhatsAppCard({ data, i, id }: { data: any; i: number; id: string }) {
 
 // ─── Video Script ─────────────────────────────────────────────────────────────
 
-function VideoScriptCard({ data, i, id }: { data: any; i: number; id: string }) {
+function VideoScriptCard({ data, i, id, brandId }: { data: any; i: number; id: string; brandId?: string }) {
   if (data.text && data.style) {
     return (
       <div className="bg-card border border-border rounded-xl p-4 space-y-2" data-testid={`variation-card-${i}`}>
         <div className="flex items-center justify-between">
           <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">{data.style}</span>
-          <VariationActions variationId={id} copyText={data.text} />
+          <VariationActions variationId={id} copyText={data.text} brandId={brandId} />
         </div>
         <p className="text-sm font-semibold text-foreground">{data.text}</p>
         {data.why_it_works && <p className="text-xs text-muted-foreground italic">{data.why_it_works}</p>}
@@ -289,7 +357,7 @@ function VideoScriptCard({ data, i, id }: { data: any; i: number; id: string }) 
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Script</span>
           {data.total_word_count && <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs">{data.total_word_count}w</span>}
         </div>
-        <VariationActions variationId={id} copyText={copyText} />
+        <VariationActions variationId={id} copyText={copyText} brandId={brandId} />
       </div>
       {data.hook && (
         <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
@@ -340,7 +408,7 @@ function VideoScriptCard({ data, i, id }: { data: any; i: number; id: string }) 
 
 // ─── Fallback ─────────────────────────────────────────────────────────────────
 
-function PlainCard({ variation, index }: { variation: Variation; index: number }) {
+function PlainCard({ variation, index, brandId }: { variation: Variation; index: number; brandId?: string }) {
   return (
     <div className="bg-card border border-border rounded-xl p-5" data-testid={`variation-card-${index}`}>
       <div className="flex items-center justify-between mb-3">
@@ -349,7 +417,7 @@ function PlainCard({ variation, index }: { variation: Variation; index: number }
           {variation.platform && <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs">{variation.platform}</span>}
           {variation.tone && <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs">{variation.tone}</span>}
         </div>
-        <VariationActions variationId={variation.id} copyText={variation.content} />
+        <VariationActions variationId={variation.id} copyText={variation.content} brandId={brandId} />
       </div>
       <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{variation.content}</p>
     </div>
@@ -358,19 +426,19 @@ function PlainCard({ variation, index }: { variation: Variation; index: number }
 
 // ─── Smart renderer ───────────────────────────────────────────────────────────
 
-function VariationCard({ variation, index, type }: { variation: Variation; index: number; type: string }) {
+function VariationCard({ variation, index, type, brandId }: { variation: Variation; index: number; type: string; brandId?: string }) {
   let parsed: any = null;
   try { parsed = JSON.parse(variation.content); } catch { /* plain text */ }
 
   if (parsed) {
-    if (type === "ad-copy") return <AdCopyCard data={parsed} i={index} id={variation.id} />;
-    if (type === "social-posts") return <SocialPostCard data={parsed} i={index} id={variation.id} />;
-    if (type === "email") return <EmailCard data={parsed} id={variation.id} />;
-    if (type === "whatsapp") return <WhatsAppCard data={parsed} i={index} id={variation.id} />;
-    if (type === "video-scripts") return <VideoScriptCard data={parsed} i={index} id={variation.id} />;
+    if (type === "ad-copy") return <AdCopyCard data={parsed} i={index} id={variation.id} brandId={brandId} />;
+    if (type === "social-posts") return <SocialPostCard data={parsed} i={index} id={variation.id} brandId={brandId} />;
+    if (type === "email") return <EmailCard data={parsed} id={variation.id} brandId={brandId} />;
+    if (type === "whatsapp") return <WhatsAppCard data={parsed} i={index} id={variation.id} brandId={brandId} />;
+    if (type === "video-scripts") return <VideoScriptCard data={parsed} i={index} id={variation.id} brandId={brandId} />;
   }
 
-  return <PlainCard variation={variation} index={index} />;
+  return <PlainCard variation={variation} index={index} brandId={brandId} />;
 }
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
@@ -418,7 +486,7 @@ export function EmptyOutputState({ type }: { type: string }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function ContentOutput({ variations, type, onRegenerate, isRegenerating }: ContentOutputProps) {
+export function ContentOutput({ variations, type, brandId, onRegenerate, isRegenerating }: ContentOutputProps) {
   const [savedAll, setSavedAll] = useState(false);
 
   if (!variations || variations.length === 0) return null;
@@ -439,7 +507,7 @@ export function ContentOutput({ variations, type, onRegenerate, isRegenerating }
 
       <div className="grid gap-4">
         {variations.map((v, i) => (
-          <VariationCard key={v.id} variation={v} index={i} type={type} />
+          <VariationCard key={v.id} variation={v} index={i} type={type} brandId={brandId} />
         ))}
       </div>
 
