@@ -106,13 +106,13 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
     return;
   }
 
-  const existing = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, params.data.brandId));
+  const [existing] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, params.data.brandId));
 
   try {
     // 1. Crawl website
     const websiteText = brand.websiteUrl ? await crawlWebsite(brand.websiteUrl) : "";
 
-    // 2. Crawl social profiles
+    // 2. Crawl social profiles using crawlPage() for each handle
     const socialData: Record<string, string> = {};
     const handleMap: Record<string, string | null> = {
       instagram: brand.instagramHandle ? `https://www.instagram.com/${brand.instagramHandle.replace("@", "")}/` : null,
@@ -120,6 +120,7 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
       tiktok: brand.tiktokHandle ? `https://www.tiktok.com/@${brand.tiktokHandle.replace("@", "")}` : null,
       linkedin: brand.linkedinUrl ?? null,
       facebook: brand.facebookUrl ?? null,
+      youtube: brand.youtubeHandle ? `https://www.youtube.com/@${brand.youtubeHandle.replace("@", "")}` : null,
     };
     for (const [platform, url] of Object.entries(handleMap)) {
       if (url) {
@@ -127,16 +128,15 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
       }
     }
 
-    // 3. Get cultural context
+    // 3. Get cultural context for the brand's country
     const cultural = getCulturalContext(brand.country ?? "NG");
 
-    // 4. Build DNA with Claude
-    const hasRealContent = websiteText.length > 100 || Object.values(socialData).some((v) => v.length > 50);
-
+    // 4. Build DNA with AI
     let dnaResult: any;
 
     if (hasAI()) {
-      const system = `You are a brand intelligence analyst specialising in African and emerging-market brands. Return ONLY valid JSON. Never fabricate data. Only extract what you can genuinely identify from the provided content. If no website or social content is provided, use the brand name, industry, country and cultural context to make reasonable inferences.`;
+      const system = `You are a brand intelligence analyst. Return ONLY valid JSON. Never fabricate data. Only extract what you can genuinely identify from the provided content. If limited content is available, use the brand name, industry, country and cultural context to make carefully reasoned inferences, clearly staying grounded in what is known.`;
+
       const user = `Analyse this brand and return a Brand DNA JSON object.
 
 Brand: ${brand.name}
@@ -144,7 +144,15 @@ Industry: ${brand.industry ?? "Unknown"}
 Country: ${brand.country ?? "NG"} | Continent: ${brand.continent ?? "Africa"}
 City: ${brand.city ?? "Unknown"}
 Primary Language: ${brand.language ?? "English"}
-Cultural Context: ${JSON.stringify(cultural)}
+
+Cultural Context for ${cultural.name}:
+- Language notes: ${cultural.language_notes}
+- Trust signals: ${cultural.trust_signals.join(", ")}
+- Buying triggers: ${cultural.buying_triggers.join(", ")}
+- Taboos to avoid: ${cultural.taboos.join(", ")}
+- Key platforms: ${cultural.platforms.join(", ")}
+- Payment references: ${cultural.payment_refs.join(", ")}
+- Festive peaks: ${cultural.festive_peaks.join(", ")}
 
 Website Content:
 ${websiteText || "No website content available."}
@@ -162,7 +170,7 @@ Return ONLY this JSON structure (no explanation, no markdown fences):
   "content_themes": ["<theme1>", "<theme2>", "<theme3>"],
   "audience_profile": { "age_range": "<range>", "gender": "<mix>", "income": "<level>", "interests": ["<interest>"], "pain_points": ["<pain>"] },
   "visual_identity": { "colors": ["<color>"], "style": "<style>", "mood": "<mood>" },
-  "cultural_context": { "primary_market": "<market>", "trust_signals": ${JSON.stringify(cultural.trust_signals)}, "buying_triggers": ${JSON.stringify(cultural.buying_triggers)}, "festive_peaks": ${JSON.stringify(cultural.festive_peaks)} },
+  "cultural_context": { "primary_market": "<market>", "trust_signals": ${JSON.stringify(cultural.trust_signals)}, "buying_triggers": ${JSON.stringify(cultural.buying_triggers)}, "festive_peaks": ${JSON.stringify(cultural.festive_peaks)}, "taboos": ${JSON.stringify(cultural.taboos)}, "payment_refs": ${JSON.stringify(cultural.payment_refs)} },
   "power_words": ["<word1>", "<word2>", "<word3>", "<word4>", "<word5>"],
   "taglines_found": ["<tagline or generated suggestion>"],
   "brand_summary": "<2-3 sentence brand DNA summary capturing voice, audience and cultural positioning>"
@@ -170,7 +178,7 @@ Return ONLY this JSON structure (no explanation, no markdown fences):
 
       dnaResult = await aiJSON(system, user, 2048);
     } else {
-      // Fallback DNA when no API keys or content
+      // Fallback DNA when no AI key is configured
       dnaResult = {
         formality: 6,
         energy: 7,
@@ -185,6 +193,8 @@ Return ONLY this JSON structure (no explanation, no markdown fences):
           trust_signals: cultural.trust_signals,
           buying_triggers: cultural.buying_triggers,
           festive_peaks: cultural.festive_peaks,
+          taboos: cultural.taboos,
+          payment_refs: cultural.payment_refs,
         },
         power_words: ["authentic", "quality", "community", "trusted"],
         taglines_found: [],
@@ -192,9 +202,11 @@ Return ONLY this JSON structure (no explanation, no markdown fences):
       };
     }
 
-    // 5. Save to DB
+    // 5. Save to DB with build_status='complete'
     const dnaValues = {
       brandId: params.data.brandId,
+      buildStatus: "complete",
+      errorMessage: null,
       toneOfVoice: dnaResult.brand_summary ?? "",
       coreValues: dnaResult.power_words ?? [],
       targetAudience: JSON.stringify(dnaResult.audience_profile ?? {}),
@@ -207,7 +219,7 @@ Return ONLY this JSON structure (no explanation, no markdown fences):
     };
 
     let dna;
-    if (existing.length > 0) {
+    if (existing) {
       [dna] = await db.update(brandDnaTable).set(dnaValues).where(eq(brandDnaTable.brandId, params.data.brandId)).returning();
     } else {
       [dna] = await db.insert(brandDnaTable).values(dnaValues).returning();
@@ -217,8 +229,35 @@ Return ONLY this JSON structure (no explanation, no markdown fences):
 
     res.json({ ...dna, dnaResult });
   } catch (err: any) {
-    console.error("DNA build error:", err);
-    res.status(500).json({ error: err?.message ?? "DNA build failed" });
+    const errorMessage = err?.message ?? "DNA build failed";
+    console.error("DNA build error:", errorMessage);
+
+    // Save build_status='failed' to DB so the client knows the build failed
+    try {
+      const failedValues = {
+        brandId: params.data.brandId,
+        buildStatus: "failed",
+        errorMessage,
+        toneOfVoice: "",
+        coreValues: [] as string[],
+        targetAudience: "",
+        uniqueSellingPoints: [] as string[],
+        culturalContext: "",
+        brandPersonality: "",
+        keyMessages: [] as string[],
+        writingStyle: "",
+        builtAt: new Date(),
+      };
+      if (existing) {
+        await db.update(brandDnaTable).set({ buildStatus: "failed", errorMessage }).where(eq(brandDnaTable.brandId, params.data.brandId));
+      } else {
+        await db.insert(brandDnaTable).values(failedValues);
+      }
+    } catch (dbErr) {
+      console.error("Failed to save error status to DB:", dbErr);
+    }
+
+    res.status(500).json({ error: errorMessage });
   }
 });
 

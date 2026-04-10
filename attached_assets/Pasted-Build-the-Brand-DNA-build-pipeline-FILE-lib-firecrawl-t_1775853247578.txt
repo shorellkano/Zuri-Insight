@@ -1,0 +1,89 @@
+Build the Brand DNA build pipeline.
+
+FILE: lib/firecrawl.ts
+Install @mendable/firecrawl-js if not already installed.
+
+export async function crawlWebsite(url: string): Promise<string> {
+  const FirecrawlApp = (await import('@mendable/firecrawl-js')).default
+  const app = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY! })
+  try {
+    const result = await app.crawlUrl(url, {
+      limit: 6,
+      scrapeOptions: {
+        formats: ['markdown'],
+        onlyMainContent: true,
+        excludeTags: ['nav','footer','header','script','style','iframe'],
+      }
+    })
+    if (result.success && result.data?.length > 0) {
+      return result.data
+        .filter((p: any) => p.markdown)
+        .map((p: any) => p.markdown)
+        .join('\n\n')
+        .slice(0, 8000)
+    }
+    return ''
+  } catch (e) {
+    console.error('Firecrawl error:', e)
+    return ''
+  }
+}
+
+export async function crawlPage(url: string): Promise<string> {
+  const FirecrawlApp = (await import('@mendable/firecrawl-js')).default
+  const app = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY! })
+  try {
+    const result = await app.scrapeUrl(url, {
+      formats: ['markdown'],
+      onlyMainContent: true,
+    })
+    return result.markdown?.slice(0, 3000) || ''
+  } catch {
+    return ''
+  }
+}
+
+FILE: lib/claude.ts
+
+import Anthropic from '@anthropic-ai/sdk'
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+
+export async function claudeComplete(system: string, user: string, maxTokens = 2000): Promise<string> {
+  const msg = await anthropic.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: maxTokens,
+    system,
+    messages: [{ role: 'user', content: user }]
+  })
+  const block = msg.content[0]
+  if (block.type !== 'text') throw new Error('Unexpected response type')
+  return block.text
+}
+
+export async function claudeJSON<T = any>(system: string, user: string, maxTokens = 2000): Promise<T> {
+  const raw = await claudeComplete(system, user, maxTokens)
+  const clean = raw.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim()
+  return JSON.parse(clean) as T
+}
+
+FILE: lib/cultural/profiles.ts
+Create a cultural profiles map with detailed entries for these countries: NG, KE, GH, ZA, EG, NG. Each entry has: name, language_notes, trust_signals (array), buying_triggers (array), taboos (array), platforms (array), payment_refs (array), festive_peaks (array). Export a getCulturalContext(country: string) function that returns the profile or a sensible default.
+
+Nigerian profile example:
+  language_notes: "Nigerian English with Pidgin markers. High energy, direct, community-focused. Lagos street culture is influential. WhatsApp is the primary business channel."
+  trust_signals: ["social proof numbers", "naija pride", "community endorsement", "verified badges"]
+  buying_triggers: ["FOMO", "value for money", "community", "aspirational lifestyle"]
+  taboos: ["religious insensitivity", "tribal stereotyping", "political commentary"]
+  platforms: ["Instagram", "WhatsApp", "TikTok", "Twitter/X"]
+  payment_refs: ["Paystack", "Flutterwave", "bank transfer", "USSD"]
+  festive_peaks: ["Detty December", "Sallah", "Easter", "Independence Day Oct 1", "Children's Day May 27"]
+
+FILE: app/api/brands/[brandId]/dna/build/route.ts
+POST endpoint. Auth check first. Load brand + social handles from DB. Call crawlWebsite() on brand.website_url. For each social handle, read public data (for now just use Firecrawl to scrape their public profile page using crawlPage()). Call Claude to synthesise Brand DNA using claudeJSON(). Save result to brand_dna table with build_status='complete'. On any error, set build_status='failed' and save the error message.
+
+The Claude synthesis prompt must:
+1. Pass brand name, industry, country, continent, website text, social data
+2. Request a JSON response with: formality(1-10), energy(1-10), humor(1-10), boldness(1-10), language_register object, content_themes array, audience_profile object, visual_identity object, cultural_context object, power_words array, taglines_found array, brand_summary string
+3. Include this system instruction: "You are a brand intelligence analyst. Return ONLY valid JSON. Never fabricate data. Only extract what you can genuinely identify from the provided content."
+```
