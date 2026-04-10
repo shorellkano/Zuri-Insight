@@ -27,6 +27,12 @@ import ContentLibrary from "@/pages/content-library";
 import Settings from "@/pages/settings";
 import BrandVoice from "@/pages/brand-voice";
 import BrandLessons from "@/pages/brand-lessons";
+import CreativeStudio from "@/pages/creative-studio";
+import CreativeStudioCarousel from "@/pages/creative-studio-carousel";
+import CreativeStudioQuoteCard from "@/pages/creative-studio-quote-card";
+import ContentCalendar from "@/pages/content-calendar";
+import BulkPlan from "@/pages/bulk-plan";
+import BrandCalendarPage from "@/pages/brand-calendar-page";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,13 +71,19 @@ function Router() {
       <Route path="/brands/:brandId/voice"><Wrap><BrandVoice /></Wrap></Route>
       <Route path="/brands/:brandId/lessons"><Wrap><BrandLessons /></Wrap></Route>
       <Route path="/brands/:brandId/dna"><Wrap><BrandDna /></Wrap></Route>
+      <Route path="/brands/:brandId/brand-calendar"><Wrap><BrandCalendarPage /></Wrap></Route>
       <Route path="/brands/:brandId"><Wrap><BrandDetail /></Wrap></Route>
+      <Route path="/generate/creative-studio/carousel"><Wrap><CreativeStudioCarousel /></Wrap></Route>
+      <Route path="/generate/creative-studio/quote-card"><Wrap><CreativeStudioQuoteCard /></Wrap></Route>
+      <Route path="/generate/creative-studio"><Wrap><CreativeStudio /></Wrap></Route>
+      <Route path="/generate/bulk-plan"><Wrap><BulkPlan /></Wrap></Route>
       <Route path="/generate"><Wrap><GenerateHub /></Wrap></Route>
       <Route path="/generate/ad-copy"><Wrap><GenerateAdCopy /></Wrap></Route>
       <Route path="/generate/social-posts"><Wrap><GenerateSocialPosts /></Wrap></Route>
       <Route path="/generate/email"><Wrap><GenerateEmail /></Wrap></Route>
       <Route path="/generate/whatsapp"><Wrap><GenerateWhatsapp /></Wrap></Route>
       <Route path="/generate/video-scripts"><Wrap><GenerateVideoScripts /></Wrap></Route>
+      <Route path="/calendar"><Wrap><ContentCalendar /></Wrap></Route>
       <Route path="/content"><Wrap><ContentLibrary /></Wrap></Route>
       <Route path="/settings"><Wrap><Settings /></Wrap></Route>
       <Route component={NotFound} />

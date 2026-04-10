@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Megaphone, Share2, Mail, MessageCircle, Video, ArrowRight, Sparkles } from "lucide-react";
+import { Megaphone, Share2, Mail, MessageCircle, Video, ArrowRight, Sparkles, LayoutGrid, CalendarDays } from "lucide-react";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
 import { BrandDNASummaryBar } from "@/components/brand-dna-summary-bar";
@@ -50,6 +50,15 @@ const generators = [
     platforms: ["TikTok", "IG", "YouTube"],
     platformColors: "bg-purple-50 text-purple-700",
   },
+  {
+    href: "/generate/creative-studio",
+    icon: LayoutGrid,
+    label: "Creative Studio",
+    desc: "Design on-brand visuals - carousels, quote cards, story covers",
+    color: "text-blue-700 bg-blue-100",
+    platforms: ["IG", "LinkedIn", "FB", "TikTok"],
+    platformColors: "bg-blue-50 text-blue-700",
+  },
 ];
 
 export default function GenerateHub() {
@@ -90,6 +99,24 @@ export default function GenerateHub() {
           {activeBrand.name}
         </span>
       </div>
+
+      <Link href="/generate/bulk-plan">
+        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/30 rounded-2xl p-6 hover:border-primary/60 hover:shadow-sm transition-all cursor-pointer group flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0">
+              <CalendarDays className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-foreground">Plan a Week or Month</h3>
+                <span className="px-2 py-0.5 bg-primary/15 text-primary text-[10px] font-semibold rounded-full">NEW</span>
+              </div>
+              <p className="text-muted-foreground text-sm">Tell Zuri your period and platforms. Get a full content calendar with key dates covered - birthday posts, product launches, and all.</p>
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform shrink-0" />
+        </div>
+      </Link>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {generators.map(({ href, icon: Icon, label, desc, color, platforms, platformColors }) => (

@@ -13,6 +13,7 @@ const TABS = [
   { label: "Brand DNA", path: "/dna" },
   { label: "Voice File", path: "/voice" },
   { label: "Lessons Bank", path: "/lessons" },
+  { label: "Brand Calendar", path: "/brand-calendar" },
 ];
 
 export function BrandSubNav({ brandId }: BrandSubNavProps) {

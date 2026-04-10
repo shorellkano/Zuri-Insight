@@ -1,0 +1,168 @@
+import { useState } from "react";
+import { useBrand } from "@/context/brand-context";
+import { useListBrands } from "@workspace/api-client-react";
+import { Loader2, Download, Calendar } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+import { cn } from "@/lib/utils";
+
+const API = (path: string) => `/api${path}`;
+
+export default function CreativeStudioQuoteCard() {
+  const { activeBrandId } = useBrand();
+  const { data: brands } = useListBrands();
+  const activeBrand = brands?.find(b => b.id === activeBrandId);
+  const { toast } = useToast();
+
+  const [quoteText, setQuoteText] = useState("");
+  const [attribution, setAttribution] = useState("");
+  const [backgroundStyle, setBackgroundStyle] = useState("solid");
+  const [format, setFormat] = useState("square");
+  const [loading, setLoading] = useState(false);
+  const [html, setHtml] = useState<string | null>(null);
+
+  async function generate() {
+    if (!activeBrandId || !quoteText.trim()) return;
+    setLoading(true);
+    try {
+      const r = await fetch(API("/generate/quote-card"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandId: activeBrandId, quoteText, attribution, backgroundStyle, format }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "Generation failed");
+      setHtml(data.html);
+    } catch (err: any) {
+      toast({ title: "Generation failed", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const aspectRatio = format === "story" ? "9/16" : format === "portrait" ? "4/5" : "1/1";
+
+  return (
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <Link href="/generate/creative-studio" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
+          Creative Studio
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-sm font-medium text-foreground">Quote Card</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-6 items-start">
+        <div className="space-y-5 bg-card border border-border rounded-2xl p-6">
+          <div>
+            <h2 className="font-semibold text-foreground mb-1">Create a Quote Card</h2>
+            <p className="text-xs text-muted-foreground">Bold text-forward design with your brand colours.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quote text</label>
+            <textarea
+              value={quoteText}
+              onChange={e => setQuoteText(e.target.value)}
+              placeholder="e.g. The best marketing doesn't feel like marketing."
+              rows={3}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Attribution (optional)</label>
+            <input
+              type="text"
+              value={attribution}
+              onChange={e => setAttribution(e.target.value)}
+              placeholder="e.g. Founder's name or brand name"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Background style</label>
+            <div className="grid grid-cols-3 gap-2">
+              {["solid", "gradient", "abstract"].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setBackgroundStyle(s)}
+                  className={cn(
+                    "py-2 rounded-lg border text-xs font-medium capitalize transition-all",
+                    backgroundStyle === s ? "border-primary bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-foreground/30"
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Format</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: "square", label: "Square 1:1" },
+                { value: "portrait", label: "Portrait 4:5" },
+                { value: "story", label: "Story 9:16" },
+              ].map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => setFormat(f.value)}
+                  className={cn(
+                    "py-2 rounded-lg border text-xs font-medium transition-all",
+                    format === f.value ? "border-primary bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-foreground/30"
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={generate}
+            disabled={loading || !quoteText.trim() || !activeBrandId}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Generating...</> : "Generate Quote Card"}
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {!html ? (
+            <div className="bg-card border border-dashed border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center gap-3" style={{ aspectRatio }}>
+              <div className="h-16 w-16 rounded-xl bg-muted opacity-30 flex items-center justify-center">
+                <span className="text-3xl text-muted-foreground">"</span>
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">Your quote card will appear here</p>
+              <p className="text-xs text-muted-foreground">Fill in the text and click Generate</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ aspectRatio }}>
+                <div
+                  style={{ width: "100%", height: "100%", position: "relative" }}
+                  dangerouslySetInnerHTML={{ __html: html }}
+                />
+              </div>
+              <div className="flex gap-3">
+                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                  <Download className="h-4 w-4" />
+                  Download PNG
+                </button>
+                <Link href="/calendar" className="flex-1">
+                  <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
+                    <Calendar className="h-4 w-4" />
+                    Schedule
+                  </button>
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut } from "lucide-react";
+import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -11,6 +11,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/brands", label: "Brands", icon: Layers },
   { href: "/generate", label: "Generate", icon: Sparkles },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/content", label: "Content Library", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

@@ -5,6 +5,10 @@ import generateRouter from "./generate";
 import contentRouter from "./content";
 import dashboardRouter from "./dashboard";
 import voiceLessonsRouter from "./voice-lessons";
+import creativeStudioRouter from "./creative-studio";
+import calendarRouter from "./calendar";
+import bulkPlanRouter from "./bulk-plan";
+import brandCalendarRouter from "./brand-calendar";
 
 const router: IRouter = Router();
 
@@ -14,5 +18,9 @@ router.use(generateRouter);
 router.use(contentRouter);
 router.use(dashboardRouter);
 router.use(voiceLessonsRouter);
+router.use(creativeStudioRouter);
+router.use(calendarRouter);
+router.use(bulkPlanRouter);
+router.use(brandCalendarRouter);
 
 export default router;
