@@ -14,6 +14,7 @@ const TABS = [
   { label: "Voice File", path: "/voice" },
   { label: "Lessons Bank", path: "/lessons" },
   { label: "Brand Calendar", path: "/brand-calendar" },
+  { label: "Settings", path: "/settings" },
 ];
 
 export function BrandSubNav({ brandId }: BrandSubNavProps) {

@@ -33,6 +33,7 @@ import CreativeStudioQuoteCard from "@/pages/creative-studio-quote-card";
 import ContentCalendar from "@/pages/content-calendar";
 import BulkPlan from "@/pages/bulk-plan";
 import BrandCalendarPage from "@/pages/brand-calendar-page";
+import BrandSettings from "@/pages/brand-settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/brands/:brandId/lessons"><Wrap><BrandLessons /></Wrap></Route>
       <Route path="/brands/:brandId/dna"><Wrap><BrandDna /></Wrap></Route>
       <Route path="/brands/:brandId/brand-calendar"><Wrap><BrandCalendarPage /></Wrap></Route>
+      <Route path="/brands/:brandId/settings"><Wrap><BrandSettings /></Wrap></Route>
       <Route path="/brands/:brandId"><Wrap><BrandDetail /></Wrap></Route>
       <Route path="/generate/creative-studio/carousel"><Wrap><CreativeStudioCarousel /></Wrap></Route>
       <Route path="/generate/creative-studio/quote-card"><Wrap><CreativeStudioQuoteCard /></Wrap></Route>
