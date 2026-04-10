@@ -146,6 +146,36 @@ export default function BrandDna() {
               {buildDna.isPending ? "Building DNA..." : "Build Brand DNA"}
             </button>
           </div>
+        ) : (dna as any)?.buildStatus === "failed" ? (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-8 flex flex-col items-center text-center gap-4">
+            <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center">
+              <svg className="h-7 w-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+            </div>
+            <div>
+              <h3 className="font-semibold text-red-900 mb-2">Brand DNA build failed</h3>
+              <p className="text-sm text-red-700 max-w-md">
+                {(dna as any)?.errorMessage ?? "Something went wrong while building the DNA. Please try again."}
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 items-center">
+              {brand.websiteUrl && (
+                <p className="text-xs text-red-600 bg-red-100 px-3 py-1.5 rounded-lg">
+                  Current URL: <strong>{brand.websiteUrl}</strong>
+                </p>
+              )}
+              <button
+                onClick={handleRebuild}
+                disabled={buildDna.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors text-sm"
+              >
+                {buildDna.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {buildDna.isPending ? "Trying again..." : "Try again"}
+              </button>
+            </div>
+            <p className="text-xs text-red-600 max-w-sm">
+              If your website is behind a login or uses an app subdomain (e.g. app.yoursite.com), update your brand URL to your main marketing site first.
+            </p>
+          </div>
         ) : (
           <div className="space-y-5">
 

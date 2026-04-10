@@ -131,13 +131,44 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
     // 3. Get cultural context for the brand's country
     const cultural = getCulturalContext(brand.country ?? "NG");
 
-    // 4. Build DNA with AI
+    // 4. Check content quality before calling AI
+    const totalContentLength = websiteText.length + Object.values(socialData).join("").length;
+    const hasEnoughContent = totalContentLength >= 400;
+
+    if (!hasEnoughContent && !Object.values(socialData).some(t => t.length > 100)) {
+      // Save a failed status with a helpful explanation
+      const insufficientMsg = websiteText.length < 100
+        ? "The website URL you provided could not be scraped. If it is an app login page (e.g. app.yoursite.com), Zuri cannot read it - please use your main marketing website URL (e.g. yoursite.com) instead."
+        : "The website returned very little content. Please try your main public-facing website URL instead of an app or dashboard URL.";
+      const failValues = {
+        brandId: params.data.brandId,
+        buildStatus: "failed",
+        errorMessage: insufficientMsg,
+        toneOfVoice: "", coreValues: [], targetAudience: "", uniqueSellingPoints: [],
+        culturalContext: "", brandPersonality: "", keyMessages: [], writingStyle: "", builtAt: new Date(),
+      };
+      if (existing) {
+        await db.update(brandDnaTable).set(failValues).where(eq(brandDnaTable.brandId, params.data.brandId));
+      } else {
+        await db.insert(brandDnaTable).values(failValues);
+      }
+      res.status(422).json({ error: "INSUFFICIENT_CONTENT", message: insufficientMsg });
+      return;
+    }
+
+    // 4b. Build DNA with AI
     let dnaResult: any;
 
     if (hasAI()) {
-      const system = `You are a brand intelligence analyst. Return ONLY valid JSON. Never fabricate data. Only extract what you can genuinely identify from the provided content. If limited content is available, use the brand name, industry, country and cultural context to make carefully reasoned inferences, clearly staying grounded in what is known.`;
+      const contentQualityNote = totalContentLength < 1000
+        ? `NOTE: Only limited content was available (${totalContentLength} characters). Extract ONLY what is explicitly present in the content below. Do NOT invent brand voice, personality, or taglines that are not supported by the actual text. If a field cannot be determined from the content, use a cautious generic value and note the limitation in brand_summary.`
+        : `Good content volume available (${totalContentLength} characters). Extract accurately from the content below.`;
+
+      const system = `You are a brand intelligence analyst. Return ONLY valid JSON. CRITICAL RULE: You must ONLY extract and reflect information that is explicitly present in the provided website and social media content. You must NEVER invent, assume, or infer a brand's personality, voice, industry focus, or positioning that is not directly supported by the text you are given. If the content is thin or unclear, say so honestly in brand_summary - do not fill gaps with plausible-sounding guesses.`;
 
       const user = `Analyse this brand and return a Brand DNA JSON object.
+
+${contentQualityNote}
 
 Brand: ${brand.name}
 Industry: ${brand.industry ?? "Unknown"}
@@ -154,26 +185,26 @@ Cultural Context for ${cultural.name}:
 - Payment references: ${cultural.payment_refs.join(", ")}
 - Festive peaks: ${cultural.festive_peaks.join(", ")}
 
-Website Content:
-${websiteText || "No website content available."}
+=== SCRAPED WEBSITE CONTENT (${websiteText.length} characters) ===
+${websiteText || "EMPTY - no content scraped from website."}
 
-Social Profiles:
-${Object.entries(socialData).map(([p, t]) => `${p}: ${t || "Not available"}`).join("\n\n")}
+=== SCRAPED SOCIAL PROFILES ===
+${Object.entries(socialData).map(([p, t]) => `[${p.toUpperCase()}] (${t.length} chars): ${t || "Not available"}`).join("\n\n")}
 
-Return ONLY this JSON structure (no explanation, no markdown fences):
+Return ONLY this JSON (no markdown fences, no explanation):
 {
   "formality": <1-10, where 1=very casual, 10=very formal>,
   "energy": <1-10, where 1=calm/slow, 10=high energy/urgent>,
   "humor": <1-10, where 1=serious, 10=very funny>,
   "boldness": <1-10, where 1=conservative, 10=very bold>,
-  "language_register": { "primary": "<language>", "markers": ["<word/phrase that fits brand>"], "avoid": ["<word/phrase to avoid>"] },
-  "content_themes": ["<theme1>", "<theme2>", "<theme3>"],
-  "audience_profile": { "age_range": "<range>", "gender": "<mix>", "income": "<level>", "interests": ["<interest>"], "pain_points": ["<pain>"] },
-  "visual_identity": { "colors": ["<color>"], "style": "<style>", "mood": "<mood>" },
+  "language_register": { "primary": "<language>", "markers": ["<exact phrases found in content>"], "avoid": ["<things to avoid based on content>"] },
+  "content_themes": ["<theme explicitly found in content>"],
+  "audience_profile": { "age_range": "<if determinable from content, else 'unknown'>", "gender": "<mix/male/female/unknown>", "income": "<level if determinable>", "interests": ["<interest from content>"], "pain_points": ["<pain from content>"] },
+  "visual_identity": { "colors": ["<only if mentioned or visible>"], "style": "<only from content>", "mood": "<only from content>" },
   "cultural_context": { "primary_market": "<market>", "trust_signals": ${JSON.stringify(cultural.trust_signals)}, "buying_triggers": ${JSON.stringify(cultural.buying_triggers)}, "festive_peaks": ${JSON.stringify(cultural.festive_peaks)}, "taboos": ${JSON.stringify(cultural.taboos)}, "payment_refs": ${JSON.stringify(cultural.payment_refs)} },
-  "power_words": ["<word1>", "<word2>", "<word3>", "<word4>", "<word5>"],
-  "taglines_found": ["<tagline or generated suggestion>"],
-  "brand_summary": "<2-3 sentence brand DNA summary capturing voice, audience and cultural positioning>"
+  "power_words": ["<only words/phrases explicitly found in content>"],
+  "taglines_found": ["<only actual taglines found - leave empty array if none found>"],
+  "brand_summary": "<honest 2-3 sentence summary of what you could actually determine from the content. If content was limited, say so and describe what the brand appears to be based on available evidence only.>"
 }`;
 
       dnaResult = await aiJSON(system, user, 1800);

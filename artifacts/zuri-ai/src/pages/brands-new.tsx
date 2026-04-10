@@ -268,6 +268,12 @@ export default function BrandsNew() {
             <Field label="Website URL" hint="We'll crawl this to build your Brand DNA">
               <Input value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="https://yourbrand.com" data-testid="input-website-url" />
               {errors.websiteUrl && <p className="text-xs text-destructive mt-1">{errors.websiteUrl}</p>}
+              {form.websiteUrl && /^https?:\/\/app\./i.test(form.websiteUrl) && (
+                <div className="mt-2 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <svg className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+                  <p className="text-xs text-amber-800"><strong>Heads up:</strong> App subdomains (app.*) are usually login pages - Zuri cannot read their content. Use your main marketing website instead, e.g. <strong>storvo.co</strong> not app.storvo.co</p>
+                </div>
+              )}
             </Field>
             <Field label="Industry">
               <Select value={form.industry} onChange={(e) => set("industry", e.target.value)} data-testid="select-industry">
