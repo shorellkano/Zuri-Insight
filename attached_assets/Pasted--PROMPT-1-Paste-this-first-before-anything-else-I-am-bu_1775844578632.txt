@@ -1,0 +1,164 @@
+
+
+## PROMPT 1 — Paste this first, before anything else
+
+```
+I am building a SaaS web application called Orin AI.
+
+Orin AI is an AI-powered marketing content platform for African businesses and global emerging markets. It reads a brand's website and social media profiles, builds a Brand DNA intelligence profile, and generates on-brand marketing content: ad copy, social posts, email campaigns, WhatsApp messages, and video scripts.
+
+Set up the full project with this exact stack:
+- Next.js 14 with App Router and TypeScript (strict mode)
+- Tailwind CSS
+- shadcn/ui component library (install it and initialise it)
+- Supabase for database, auth, and storage (@supabase/supabase-js and @supabase/ssr)
+- Anthropic Claude SDK (@anthropic-ai/sdk)
+- Firecrawl for website scraping (@mendable/firecrawl-js)
+- Sonner for toast notifications
+- Resend for transactional email
+- Lucide React for icons
+
+Create a .env.local file with these variables (leave values blank for me to fill in):
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ANTHROPIC_API_KEY=
+FIRECRAWL_API_KEY=
+REPLICATE_API_TOKEN=
+TWITTER_BEARER_TOKEN=
+TWITTER_API_KEY=
+TWITTER_API_SECRET=
+INSTAGRAM_APP_ID=
+INSTAGRAM_APP_SECRET=
+META_APP_ID=
+META_APP_SECRET=
+TIKTOK_CLIENT_KEY=
+TIKTOK_CLIENT_SECRET=
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+PAYSTACK_SECRET_KEY=
+NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=
+STRIPE_SECRET_KEY=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+RESEND_API_KEY=
+FROM_EMAIL=hello@orinai.co
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+Create this exact folder structure with empty stub files:
+app/
+  (auth)/
+    login/page.tsx
+    signup/page.tsx
+    layout.tsx
+  (dashboard)/
+    layout.tsx
+    dashboard/page.tsx
+    brands/
+      page.tsx
+      new/page.tsx
+      [brandId]/
+        page.tsx
+        dna/page.tsx
+        voice/page.tsx
+        lessons/page.tsx
+        socials/page.tsx
+        settings/page.tsx
+    generate/
+      page.tsx
+      ad-copy/page.tsx
+      social-posts/page.tsx
+      email/page.tsx
+      whatsapp/page.tsx
+      video-scripts/page.tsx
+    content/page.tsx
+    settings/
+      page.tsx
+      billing/page.tsx
+  api/
+    auth/callback/route.ts
+    brands/
+      route.ts
+      [brandId]/
+        route.ts
+        crawl/route.ts
+        dna/route.ts
+        dna/build/route.ts
+    social/
+      connect/route.ts
+      sync/route.ts
+    generate/
+      ad-copy/route.ts
+      social-posts/route.ts
+      email/route.ts
+      whatsapp/route.ts
+      video-scripts/route.ts
+    webhooks/
+      paystack/route.ts
+      stripe/route.ts
+    billing/
+      create-checkout/route.ts
+      portal/route.ts
+  layout.tsx
+  page.tsx
+components/
+  layout/
+    Sidebar.tsx
+    Topbar.tsx
+    MobileNav.tsx
+  brands/
+    BrandCard.tsx
+    BrandDNADisplay.tsx
+    BrandSetupWizard.tsx
+    SocialHandleConnector.tsx
+  generate/
+    GeneratorForm.tsx
+    ContentOutput.tsx
+    VariationCard.tsx
+    CulturalContextBadge.tsx
+  shared/
+    LoadingSpinner.tsx
+    EmptyState.tsx
+    CopyButton.tsx
+lib/
+  supabase/
+    client.ts
+    server.ts
+    admin.ts
+  claude.ts
+  firecrawl.ts
+  social/
+    twitter.ts
+    instagram.ts
+    tiktok.ts
+    linkedin.ts
+    facebook.ts
+  brand-dna/
+    builder.ts
+    website-parser.ts
+    social-parser.ts
+  cultural/
+    profiles.ts
+  generators/
+    shared.ts
+    ad-copy.ts
+    social-posts.ts
+    email.ts
+    whatsapp.ts
+    video-scripts.ts
+  paystack.ts
+  stripe.ts
+hooks/
+  useBrand.ts
+  useBrandDNA.ts
+  useGenerate.ts
+  useUser.ts
+types/
+  brand.ts
+  content.ts
+  dna.ts
+  social.ts
+supabase/
+  migrations/
+
+Do not build any page content yet. Only scaffold the structure, install all packages, and confirm everything compiles without errors.

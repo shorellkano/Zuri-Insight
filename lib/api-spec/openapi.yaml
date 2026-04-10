@@ -3,20 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Zuri AI - AI-powered marketing content platform for African businesses
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: brands
+    description: Brand management
+  - name: generate
+    description: Content generation
+  - name: content
+    description: Saved content library
+  - name: dashboard
+    description: Dashboard stats and activity
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,315 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /brands:
+    get:
+      operationId: listBrands
+      tags: [brands]
+      summary: List all brands
+      responses:
+        "200":
+          description: List of brands
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Brand"
+    post:
+      operationId: createBrand
+      tags: [brands]
+      summary: Create a new brand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBrandBody"
+      responses:
+        "201":
+          description: Brand created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Brand"
+
+  /brands/{brandId}:
+    get:
+      operationId: getBrand
+      tags: [brands]
+      summary: Get a brand by ID
+      parameters:
+        - name: brandId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Brand details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Brand"
+    put:
+      operationId: updateBrand
+      tags: [brands]
+      summary: Update a brand
+      parameters:
+        - name: brandId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBrandBody"
+      responses:
+        "200":
+          description: Brand updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Brand"
+    delete:
+      operationId: deleteBrand
+      tags: [brands]
+      summary: Delete a brand
+      parameters:
+        - name: brandId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Brand deleted
+
+  /brands/{brandId}/dna:
+    get:
+      operationId: getBrandDna
+      tags: [brands]
+      summary: Get Brand DNA profile
+      parameters:
+        - name: brandId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Brand DNA profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandDna"
+    post:
+      operationId: buildBrandDna
+      tags: [brands]
+      summary: Build or rebuild Brand DNA from website/socials
+      parameters:
+        - name: brandId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Brand DNA built
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandDna"
+
+  /brands/{brandId}/content:
+    get:
+      operationId: listBrandContent
+      tags: [brands]
+      summary: Get all content for a brand
+      parameters:
+        - name: brandId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of content items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentItem"
+
+  /generate/ad-copy:
+    post:
+      operationId: generateAdCopy
+      tags: [generate]
+      summary: Generate ad copy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "200":
+          description: Generated ad copy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResponse"
+
+  /generate/social-posts:
+    post:
+      operationId: generateSocialPosts
+      tags: [generate]
+      summary: Generate social media posts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "200":
+          description: Generated social posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResponse"
+
+  /generate/email:
+    post:
+      operationId: generateEmail
+      tags: [generate]
+      summary: Generate email campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "200":
+          description: Generated email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResponse"
+
+  /generate/whatsapp:
+    post:
+      operationId: generateWhatsapp
+      tags: [generate]
+      summary: Generate WhatsApp message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "200":
+          description: Generated WhatsApp message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResponse"
+
+  /generate/video-scripts:
+    post:
+      operationId: generateVideoScript
+      tags: [generate]
+      summary: Generate video script
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "200":
+          description: Generated video script
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResponse"
+
+  /content:
+    get:
+      operationId: listContent
+      tags: [content]
+      summary: List all saved content
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: brandId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of content items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentItem"
+
+  /content/{contentId}:
+    delete:
+      operationId: deleteContent
+      tags: [content]
+      summary: Delete a content item
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/activity:
+    get:
+      operationId: getDashboardActivity
+      tags: [dashboard]
+      summary: Get recent activity feed
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +350,241 @@ components:
       required:
         - status
 
+    Brand:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        websiteUrl:
+          type: string
+        industry:
+          type: string
+        targetMarket:
+          type: string
+        logoUrl:
+          type: string
+        instagramHandle:
+          type: string
+        twitterHandle:
+          type: string
+        linkedinUrl:
+          type: string
+        facebookUrl:
+          type: string
+        tiktokHandle:
+          type: string
+        dnaBuilt:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+        - dnaBuilt
+
+    CreateBrandBody:
+      type: object
+      properties:
+        name:
+          type: string
+        websiteUrl:
+          type: string
+        industry:
+          type: string
+        targetMarket:
+          type: string
+        instagramHandle:
+          type: string
+        twitterHandle:
+          type: string
+        linkedinUrl:
+          type: string
+        facebookUrl:
+          type: string
+        tiktokHandle:
+          type: string
+      required:
+        - name
+
+    BrandDna:
+      type: object
+      properties:
+        id:
+          type: string
+        brandId:
+          type: string
+        toneOfVoice:
+          type: string
+        coreValues:
+          type: array
+          items:
+            type: string
+        targetAudience:
+          type: string
+        uniqueSellingPoints:
+          type: array
+          items:
+            type: string
+        culturalContext:
+          type: string
+        brandPersonality:
+          type: string
+        keyMessages:
+          type: array
+          items:
+            type: string
+        writingStyle:
+          type: string
+        builtAt:
+          type: string
+      required:
+        - id
+        - brandId
+        - toneOfVoice
+        - coreValues
+        - targetAudience
+        - uniqueSellingPoints
+        - culturalContext
+        - brandPersonality
+        - keyMessages
+        - writingStyle
+        - builtAt
+
+    GenerateRequest:
+      type: object
+      properties:
+        brandId:
+          type: string
+        prompt:
+          type: string
+        platform:
+          type: string
+        tone:
+          type: string
+        language:
+          type: string
+        culturalContext:
+          type: string
+        variations:
+          type: integer
+      required:
+        - brandId
+        - prompt
+
+    GenerateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        brandId:
+          type: string
+        variations:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              content:
+                type: string
+              platform:
+                type: string
+              tone:
+                type: string
+            required:
+              - id
+              - content
+        savedAt:
+          type: string
+      required:
+        - id
+        - type
+        - brandId
+        - variations
+
+    ContentItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        brandId:
+          type: string
+        brandName:
+          type: string
+        prompt:
+          type: string
+        content:
+          type: string
+        platform:
+          type: string
+        tone:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - type
+        - brandId
+        - brandName
+        - content
+        - createdAt
+
+    DashboardStats:
+      type: object
+      properties:
+        totalBrands:
+          type: integer
+        totalContentGenerated:
+          type: integer
+        contentThisMonth:
+          type: integer
+        mostActiveBrand:
+          type: string
+        contentByType:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              count:
+                type: integer
+            required:
+              - type
+              - count
+      required:
+        - totalBrands
+        - totalContentGenerated
+        - contentThisMonth
+        - contentByType
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+        brandId:
+          type: string
+        brandName:
+          type: string
+        contentType:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - action
+        - brandName
+        - createdAt
