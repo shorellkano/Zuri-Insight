@@ -1,0 +1,34 @@
+
+## PROMPT 10 — Final wiring and testing
+
+```
+Wire everything together and fix any broken connections.
+
+1. Update the brand sub-navigation. When a user is inside a brand (any /brands/[brandId]/* route), show a horizontal sub-nav or secondary sidebar section with these links:
+   Overview, Brand DNA, Voice File, Lessons Bank, Social Handles, Settings
+   Voice File shows a dot indicator: amber if under 10 examples, green if 10+.
+   Lessons Bank shows the lesson count.
+
+2. Build the Brand DNA display page (app/(dashboard)/brands/[brandId]/dna/page.tsx):
+   - Brand header with logo, name, industry tag, country flag, "Rebuild DNA" button, last updated time
+   - Voice Scores section: 4 horizontal progress bars for Formality, Energy, Humor, Boldness with coloured fills
+   - Connected Sources: pills for each source read (website, each social handle), green = connected, amber = public read only
+   - Audience Profile: 2-column card showing age range, interests, pain points, trust triggers, aspirations as coloured tag pills
+   - Cultural Context card: flag, country, trust signals, buying triggers, platforms, festive peaks
+   - Content Themes: tag cloud of top themes, larger pills for more prominent themes
+   - Power Words: amber outlined pill tags
+   - Brand Summary: 2-3 sentence description in a callout box with an edit button
+
+3. Make the BrandCard component (components/brands/BrandCard.tsx):
+   Shows brand logo (or initial avatar), brand name, industry, country flag, content count, DNA status badge (Pending/Building/Ready), links to /brands/[brandId].
+
+4. Verify these end-to-end flows work:
+   - Sign up → create brand → DNA builds → generate ad copy → save to library → give feedback → lesson saves
+   - Log out → log back in → active brand is remembered
+
+5. Add error boundaries on all major pages so a crashed component shows a "Something went wrong" message instead of a blank screen.
+
+6. Make sure all pages are responsive and work on a 375px wide mobile screen.
+
+Tell me what is working and what still needs attention.
+```

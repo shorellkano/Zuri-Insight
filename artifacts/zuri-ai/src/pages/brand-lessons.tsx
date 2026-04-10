@@ -1,9 +1,9 @@
-import { useParams, Link } from "wouter";
+import { useParams } from "wouter";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Loader2, BookOpen } from "lucide-react";
+import { Plus, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Loader2, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useGetBrand } from "@workspace/api-client-react";
+import { BrandSubNav } from "@/components/brand-sub-nav";
 import { cn } from "@/lib/utils";
 
 const API = (path: string) => `/api${path}`;
@@ -156,7 +156,6 @@ function AddLessonPanel({ brandId, onClose }: { brandId: string; onClose: () => 
 
 export default function BrandLessons() {
   const { brandId } = useParams<{ brandId: string }>();
-  const { data: brand } = useGetBrand(brandId);
   const { data: lessons = [], isLoading } = useBrandLessons(brandId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -182,23 +181,21 @@ export default function BrandLessons() {
   }, {});
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6" data-testid="brand-lessons-page">
-      <div className="flex items-center gap-3">
-        <Link href={`/brands/${brandId}`}>
-          <button className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-        </Link>
-        <div className="flex-1 min-w-0">
+    <div data-testid="brand-lessons-page">
+      <BrandSubNav brandId={brandId} />
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
           <h1 className="text-2xl font-bold text-foreground">Lessons Bank</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Everything Zuri AI has learned about your brand. Applied to every piece of content generated.</p>
         </div>
         <button
           onClick={() => setAddingLesson(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shrink-0"
         >
           <Plus className="h-4 w-4" />
-          Add lesson
+          <span className="hidden sm:inline">Add lesson</span>
+          <span className="sm:hidden">Add</span>
         </button>
       </div>
 
@@ -246,6 +243,7 @@ export default function BrandLessons() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

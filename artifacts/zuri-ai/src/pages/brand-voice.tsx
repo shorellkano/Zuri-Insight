@@ -1,9 +1,9 @@
-import { useParams, Link } from "wouter";
+import { useParams } from "wouter";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pin, Trash2, Plus, FileText, Share2, Globe, ChevronDown, ChevronUp, Upload, Loader2 } from "lucide-react";
+import { Pin, Trash2, Plus, FileText, Share2, Globe, ChevronDown, ChevronUp, Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useGetBrand } from "@workspace/api-client-react";
+import { BrandSubNav } from "@/components/brand-sub-nav";
 import { cn } from "@/lib/utils";
 
 const API = (path: string) => `/api${path}`;
@@ -77,7 +77,6 @@ function ExampleCard({ example, onPin, onDelete }: { example: VoiceExample; onPi
 
 export default function BrandVoice() {
   const { brandId } = useParams<{ brandId: string }>();
-  const { data: brand } = useGetBrand(brandId);
   const { data: examples = [], isLoading } = useBrandVoice(brandId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -140,14 +139,11 @@ export default function BrandVoice() {
   const platformLabel = activeTab === "other" ? "Format" : "Platform";
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6" data-testid="brand-voice-page">
-      <div className="flex items-center gap-3">
-        <Link href={`/brands/${brandId}`}>
-          <button className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-        </Link>
-        <div className="flex-1 min-w-0">
+    <div data-testid="brand-voice-page">
+      <BrandSubNav brandId={brandId} />
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">Voice File</h1>
             <StatusBadge count={examples.length} />
@@ -288,6 +284,7 @@ export default function BrandVoice() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
