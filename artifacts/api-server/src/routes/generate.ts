@@ -9,8 +9,120 @@ import {
   GenerateVideoScriptBody,
 } from "@workspace/api-zod";
 import { randomUUID } from "crypto";
+import { aiComplete, hasAI } from "../lib/ai.js";
 
 const router: IRouter = Router();
+
+// ─── Brand + DNA loader ─────────────────────────────────────────────────────
+
+async function loadBrandAndDna(brandId: string) {
+  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  if (!brand) return null;
+  const [dna] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId));
+  return { brand, dna: dna ?? null };
+}
+
+function buildDnaContext(brand: typeof brandsTable.$inferSelect, dna: typeof brandDnaTable.$inferSelect | null): string {
+  const lines: string[] = [
+    `Brand: ${brand.name}`,
+    `Industry: ${brand.industry ?? "Unknown"}`,
+    `Country: ${brand.country ?? "Africa"} | City: ${brand.city ?? "Unknown"}`,
+    `Language: ${brand.language ?? "English"}`,
+    `Target Market: ${brand.targetMarket ?? "African consumers"}`,
+  ];
+  if (dna) {
+    lines.push(`Brand Voice: ${dna.toneOfVoice}`);
+    lines.push(`Core Values: ${dna.coreValues?.join(", ")}`);
+    lines.push(`Brand Personality: ${dna.brandPersonality}`);
+    lines.push(`Cultural Context: ${dna.culturalContext}`);
+    lines.push(`Writing Style: ${dna.writingStyle}`);
+    if (dna.keyMessages?.length) lines.push(`Key Messages: ${dna.keyMessages.join(" | ")}`);
+  }
+  return lines.join("\n");
+}
+
+// ─── AI generate helper ──────────────────────────────────────────────────────
+
+async function aiGenerateVariations(
+  type: string,
+  systemPrompt: string,
+  userPrompt: string,
+  platform: string,
+  tone: string,
+  count: number
+): Promise<{ id: string; content: string; platform: string; tone: string }[]> {
+  const fullSystem = `${systemPrompt}
+
+You are generating ${count} distinct variation(s). Return ONLY the numbered variations in this exact format:
+---VARIATION 1---
+<content here>
+---VARIATION 2---
+<content here>
+(and so on)
+
+Do not include explanations, titles, or anything outside this format.`;
+
+  const raw = await aiComplete(fullSystem, userPrompt, 2048);
+
+  // Parse numbered variations
+  const parts = raw.split(/---VARIATION \d+---/).filter((s) => s.trim().length > 0);
+
+  if (parts.length === 0) {
+    // Fallback: treat entire response as one variation
+    return [{ id: randomUUID(), content: raw.trim(), platform, tone }];
+  }
+
+  return parts.slice(0, count).map((content) => ({
+    id: randomUUID(),
+    content: content.trim(),
+    platform,
+    tone,
+  }));
+}
+
+// ─── Fallback templates ──────────────────────────────────────────────────────
+
+function fallbackVariations(
+  type: string,
+  brand: typeof brandsTable.$inferSelect,
+  dna: typeof brandDnaTable.$inferSelect | null,
+  prompt: string,
+  platform: string,
+  tone: string,
+  count: number
+): { id: string; content: string; platform: string; tone: string }[] {
+  const toneStr = tone || dna?.toneOfVoice || "warm and confident";
+  const cultural = dna?.culturalContext ? JSON.parse(dna.culturalContext)?.primary_market ?? "Africa" : "Africa";
+
+  const templates: Record<string, string[]> = {
+    "ad-copy": [
+      `[${brand.name}]\n\n${prompt}\n\nDiscover excellence that speaks to your community. ${cultural} quality — made for you.\n\nShop now and experience the difference.`,
+      `Breaking barriers, building legacies. ${brand.name} brings you ${prompt}.\n\nBecause you deserve a brand that celebrates who you are. ${cultural} pride, world-class quality.\n\n#${brand.name.replace(/\s/g, "")} #MadeForAfrica`,
+      `The world is watching Africa rise — and ${brand.name} is leading the charge.\n\n${prompt}\n\nJoin thousands who've chosen excellence. Act now.`,
+    ],
+    "social-posts": [
+      `${prompt}\n\nAt ${brand.name}, we believe in community. Every product tells a story — and yours starts here.\n\n#${brand.name.replace(/\s/g, "")} #Africa #OwnYourStory`,
+      `Real people. Real impact.\n\n${prompt}\n\n${brand.name} stands for excellence. Tag someone who needs to see this! 👀\n\n#AfricanBusiness #${brand.name.replace(/\s/g, "")}`,
+      `Did you know? ${prompt}\n\nThat's why ${brand.name} exists. Follow us for more.\n\n#${brand.name.replace(/\s/g, "")} #QualityFirst`,
+    ],
+    "email": [
+      `Subject: You deserve the best — here's why ${brand.name} delivers\n\nDear Valued Customer,\n\n${prompt}\n\nAt ${brand.name}, we've built everything with you in mind.\n\nWarm regards,\nThe ${brand.name} Team`,
+      `Subject: Exclusive: ${prompt}\n\nHello,\n\nWe have something special for our community.\n\n${prompt}\n\nDon't miss out.\n\nWith gratitude,\n${brand.name}`,
+    ],
+    "whatsapp": [
+      `Hi! 👋 ${prompt} — ${brand.name} has got you covered. Reply here to learn more!`,
+      `Hello from ${brand.name}! ✨ ${prompt}. We'd love to help. Message us now!`,
+    ],
+    "video-scripts": [
+      `[VIDEO SCRIPT — ${brand.name}]\n\nHOOK (0-3s): "${prompt}"\n\nBODY (3-25s):\nVoiceover: "At ${brand.name}, we understand what ${cultural} communities need. That's why we've created something truly special — for you."\n\n[Show: Product footage with cultural imagery]\n\nCTA (25-30s): "Join the movement. ${brand.name}. Link in bio."\n\n[End card: Logo + Social handles]`,
+    ],
+  };
+
+  const list = templates[type] ?? templates["ad-copy"];
+  return list.slice(0, count).map((content) => ({ id: randomUUID(), content, platform, tone: toneStr }));
+}
+
+// ─── Core generator ──────────────────────────────────────────────────────────
 
 type GenerateBody = {
   brandId: string;
@@ -25,176 +137,203 @@ type GenerateBody = {
 async function generateContent(
   type: string,
   body: GenerateBody,
-  generateVariations: (brand: { name: string; industry?: string | null }, dna: { toneOfVoice: string; culturalContext: string; brandPersonality: string } | null, prompt: string, platform?: string, tone?: string, count?: number) => { id: string; content: string; platform?: string; tone?: string }[]
+  buildSystemPrompt: (dnaContext: string, platform: string, tone: string, language: string) => string,
+  buildUserPrompt: (brand: typeof brandsTable.$inferSelect, dna: typeof brandDnaTable.$inferSelect | null, prompt: string, platform: string, tone: string, count: number) => string
 ) {
-  const { brandId, prompt, platform, tone, variations = 3 } = body;
+  const { brandId, prompt, platform = "general", tone = "authentic", language = "English", variations = 3 } = body;
+  const count = Math.min(Math.max(variations, 1), 3);
 
-  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
-  if (!brand) return null;
+  const loaded = await loadBrandAndDna(brandId);
+  if (!loaded) return null;
 
-  const [dna] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId));
+  const { brand, dna } = loaded;
+  const dnaContext = buildDnaContext(brand, dna);
 
-  const varList = generateVariations(brand, dna ?? null, prompt, platform, tone, variations);
+  let varList: { id: string; content: string; platform: string; tone: string }[];
 
-  const savedItems = await Promise.all(
+  if (hasAI()) {
+    try {
+      const systemPrompt = buildSystemPrompt(dnaContext, platform, tone, language);
+      const userPrompt = buildUserPrompt(brand, dna, prompt, platform, tone, count);
+      varList = await aiGenerateVariations(type, systemPrompt, userPrompt, platform, tone, count);
+    } catch (err) {
+      console.error(`AI generation failed for ${type}:`, err);
+      varList = fallbackVariations(type, brand, dna, prompt, platform, tone, count);
+    }
+  } else {
+    varList = fallbackVariations(type, brand, dna, prompt, platform, tone, count);
+  }
+
+  await Promise.all(
     varList.map((v) =>
-      db.insert(contentTable).values({
-        type,
-        brandId,
-        prompt,
-        content: v.content,
-        platform: v.platform ?? platform,
-        tone: v.tone ?? tone,
-      }).returning()
+      db.insert(contentTable).values({ type, brandId, prompt, content: v.content, platform: v.platform, tone: v.tone }).returning()
     )
   );
 
-  return {
-    id: randomUUID(),
-    type,
-    brandId,
-    variations: varList,
-    savedAt: new Date().toISOString(),
-  };
+  return { id: randomUUID(), type, brandId, variations: varList, savedAt: new Date().toISOString() };
 }
 
-function makeAdCopyVariations(brand: { name: string; industry?: string | null }, dna: { toneOfVoice: string; culturalContext: string; brandPersonality: string } | null, prompt: string, platform?: string, tone?: string, count = 3) {
-  const toneStr = tone ?? dna?.toneOfVoice ?? "warm and confident";
-  const cultural = dna?.culturalContext ?? "Pan-African";
-  return Array.from({ length: Math.min(count, 3) }, (_, i) => ({
-    id: randomUUID(),
-    content: [
-      `[${brand.name} — Ad Copy v${i + 1}]\n\n${prompt}\n\nDiscover the ${brand.industry ?? "difference"} that speaks to your community. ${cultural} — made for you, by people who understand you.\n\nTone: ${toneStr}. Shop now and experience excellence.`,
-      `Breaking barriers, building legacies. ${brand.name} brings you ${prompt}.\n\nBecause you deserve a brand that celebrates who you are. ${cultural} pride, world-class quality.\n\n#${brand.name.replace(/\s/g, "")} #MadeForAfrica`,
-      `The world is watching Africa rise — and ${brand.name} is leading the charge.\n\n${prompt}\n\nJoin thousands across the continent who've chosen excellence. Limited offer — act now.`,
-    ][i],
-    platform: platform ?? "general",
-    tone: toneStr,
-  }));
-}
-
-function makeSocialVariations(brand: { name: string; industry?: string | null }, dna: { toneOfVoice: string; culturalContext: string; brandPersonality: string } | null, prompt: string, platform?: string, tone?: string, count = 3) {
-  const toneStr = tone ?? dna?.toneOfVoice ?? "authentic";
-  const cultural = dna?.culturalContext ?? "Pan-African";
-  const plat = platform ?? "Instagram";
-  return Array.from({ length: Math.min(count, 3) }, (_, i) => ({
-    id: randomUUID(),
-    content: [
-      `${prompt}\n\nAt ${brand.name}, we believe in the power of ${cultural} communities. Every product tells a story — and yours starts here.\n\n#${brand.name.replace(/\s/g, "")} #Africa #OwnYourStory`,
-      `Real people. Real stories. Real impact.\n\n${prompt}\n\n${brand.name} stands for excellence in everything we do. Tag someone who needs to see this! 👀\n\n#AfricanBusiness #${brand.name.replace(/\s/g, "")}`,
-      `Did you know? ${prompt}\n\nThat's why ${brand.name} exists — to give ${cultural} communities the best. Follow us for more.\n\n#${plat.replace(/\//g, "")} #${brand.name.replace(/\s/g, "")} #QualityFirst`,
-    ][i],
-    platform: plat,
-    tone: toneStr,
-  }));
-}
-
-function makeEmailVariations(brand: { name: string; industry?: string | null }, dna: { toneOfVoice: string; culturalContext: string; brandPersonality: string } | null, prompt: string, platform?: string, tone?: string, count = 3) {
-  const toneStr = tone ?? "professional yet warm";
-  return Array.from({ length: Math.min(count, 3) }, (_, i) => ({
-    id: randomUUID(),
-    content: [
-      `Subject: You deserve the best — here's why ${brand.name} delivers\n\nDear Valued Customer,\n\n${prompt}\n\nAt ${brand.name}, we've built everything with you in mind. Your trust means everything to us, and we're committed to excellence every step of the way.\n\nWarm regards,\nThe ${brand.name} Team`,
-      `Subject: Exclusive: ${prompt}\n\nHello,\n\nWe have something special for our community.\n\n${prompt}\n\nThis is your chance to experience what makes ${brand.name} different. Don't miss out — this offer is for you.\n\nWith gratitude,\n${brand.name}`,
-      `Subject: A message from the heart of ${brand.name}\n\nTo our incredible community,\n\n${prompt}\n\nYour journey with us is just beginning, and we're honored to be part of it. Together, we're building something remarkable.\n\nWith African pride,\nTeam ${brand.name}`,
-    ][i],
-    platform: "email",
-    tone: toneStr,
-  }));
-}
-
-function makeWhatsappVariations(brand: { name: string; industry?: string | null }, dna: { toneOfVoice: string; culturalContext: string; brandPersonality: string } | null, prompt: string, platform?: string, tone?: string, count = 3) {
-  return Array.from({ length: Math.min(count, 3) }, (_, i) => ({
-    id: randomUUID(),
-    content: [
-      `Hi! 👋 ${prompt} — ${brand.name} has got you covered. Check us out and let's talk! Reply here or visit our page.`,
-      `Hello from ${brand.name}! ✨ ${prompt}. We'd love to show you how we can help. Send us a message and we'll get back to you right away!`,
-      `${brand.name} here! ${prompt}. Limited availability — reach out now and be first in line. We're just a message away! 🙌`,
-    ][i],
-    platform: "whatsapp",
-    tone: "conversational",
-  }));
-}
-
-function makeVideoScriptVariations(brand: { name: string; industry?: string | null }, dna: { toneOfVoice: string; culturalContext: string; brandPersonality: string } | null, prompt: string, platform?: string, tone?: string, count = 3) {
-  const cultural = dna?.culturalContext ?? "Pan-African";
-  return Array.from({ length: Math.min(count, 3) }, (_, i) => ({
-    id: randomUUID(),
-    content: [
-      `[VIDEO SCRIPT v${i + 1} — ${brand.name}]\n\nHOOK (0-3s): "${prompt}"\n\nBODY (3-25s):\nVoiceover: "At ${brand.name}, we understand ${cultural} communities like no one else. That's why we've created something truly special — for you, by people who get you."\n\n[Show: Product/service footage with cultural imagery]\n\nCTA (25-30s): "Join the movement. ${brand.name}. Link in bio."\n\n[End card: Logo + Social handles]`,
-    ][0],
-    platform: platform ?? "TikTok/Reels",
-    tone: tone ?? "energetic",
-  }));
-}
+// ─── Route handlers ──────────────────────────────────────────────────────────
 
 router.post("/generate/ad-copy", async (req, res): Promise<void> => {
   const parsed = GenerateAdCopyBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const result = await generateContent("ad-copy", parsed.data, makeAdCopyVariations);
-  if (!result) {
-    res.status(404).json({ error: "Brand not found" });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const result = await generateContent(
+    "ad-copy",
+    parsed.data,
+    (dnaCtx, platform, tone, language) => `You are an expert marketing copywriter specialising in African and emerging-market brands. You deeply understand cultural nuances, local buying triggers, and what makes content resonate in these markets.
+
+${dnaCtx}
+
+Write compelling ad copy that:
+- Matches the brand's voice and personality exactly
+- Resonates with the target cultural context
+- Creates urgency and desire without being pushy
+- Uses culturally relevant hooks and phrases
+- Fits the platform: ${platform}
+- Tone: ${tone}
+- Language: ${language}`,
+    (brand, dna, prompt, platform, tone, count) =>
+      `Create ${count} distinct ad copy variation(s) for ${brand.name}.
+
+Brief/Goal: ${prompt}
+Platform: ${platform}
+Tone: ${tone}
+
+Each variation should have a different angle (e.g., emotional, social proof, FOMO, aspirational). Keep each under 150 words.`
+  );
+
+  if (!result) { res.status(404).json({ error: "Brand not found" }); return; }
   res.json(result);
 });
 
 router.post("/generate/social-posts", async (req, res): Promise<void> => {
   const parsed = GenerateSocialPostsBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const result = await generateContent("social-posts", parsed.data, makeSocialVariations);
-  if (!result) {
-    res.status(404).json({ error: "Brand not found" });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const result = await generateContent(
+    "social-posts",
+    parsed.data,
+    (dnaCtx, platform, tone, language) => `You are a social media expert for African brands. You create scroll-stopping posts that get engagement.
+
+${dnaCtx}
+
+Create posts that:
+- Fit ${platform}'s native style and culture
+- Use relevant hashtags (5-10 max)
+- Include emojis naturally (not forced)
+- Drive likes, comments, and shares
+- Feel authentic to the brand voice
+- Language: ${language}`,
+    (brand, dna, prompt, platform, tone, count) =>
+      `Create ${count} distinct ${platform} post(s) for ${brand.name}.
+
+Topic/Goal: ${prompt}
+Platform: ${platform}
+Tone: ${tone}
+
+Each post should have a different hook and angle. Optimised for ${platform} algorithm and culture.`
+  );
+
+  if (!result) { res.status(404).json({ error: "Brand not found" }); return; }
   res.json(result);
 });
 
 router.post("/generate/email", async (req, res): Promise<void> => {
   const parsed = GenerateEmailBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const result = await generateContent("email", parsed.data, makeEmailVariations);
-  if (!result) {
-    res.status(404).json({ error: "Brand not found" });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const result = await generateContent(
+    "email",
+    parsed.data,
+    (dnaCtx, platform, tone, language) => `You are an email marketing specialist for African brands. You write emails that get opened, read, and clicked.
+
+${dnaCtx}
+
+Write emails that:
+- Have compelling subject lines
+- Open with a strong hook
+- Build trust and connection with the reader
+- Have a clear, single call-to-action
+- Feel personal and culturally relevant
+- Language: ${language}
+
+Format: Subject line first, then email body.`,
+    (brand, dna, prompt, platform, tone, count) =>
+      `Write ${count} email variation(s) for ${brand.name}.
+
+Campaign Goal: ${prompt}
+Tone: ${tone}
+
+Each email should have a different subject line and opening angle. Keep it under 300 words.`
+  );
+
+  if (!result) { res.status(404).json({ error: "Brand not found" }); return; }
   res.json(result);
 });
 
 router.post("/generate/whatsapp", async (req, res): Promise<void> => {
   const parsed = GenerateWhatsappBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const result = await generateContent("whatsapp", parsed.data, makeWhatsappVariations);
-  if (!result) {
-    res.status(404).json({ error: "Brand not found" });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const result = await generateContent(
+    "whatsapp",
+    parsed.data,
+    (dnaCtx, platform, tone, language) => `You are a WhatsApp Business messaging expert for African brands. WhatsApp is the #1 business channel across Africa.
+
+${dnaCtx}
+
+Write WhatsApp messages that:
+- Feel personal and conversational (like a friend)
+- Are concise and scannable (under 100 words)
+- Use emojis tastefully
+- Have a clear ask or CTA
+- Don't feel like spam
+- Sound authentic to how people actually text in ${language}`,
+    (brand, dna, prompt, platform, tone, count) =>
+      `Write ${count} WhatsApp message variation(s) for ${brand.name}.
+
+Message Goal: ${prompt}
+Tone: ${tone}
+
+Each message should feel personal and drive action. Keep each under 100 words.`
+  );
+
+  if (!result) { res.status(404).json({ error: "Brand not found" }); return; }
   res.json(result);
 });
 
 router.post("/generate/video-scripts", async (req, res): Promise<void> => {
   const parsed = GenerateVideoScriptBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const result = await generateContent("video-scripts", parsed.data, makeVideoScriptVariations);
-  if (!result) {
-    res.status(404).json({ error: "Brand not found" });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const result = await generateContent(
+    "video-scripts",
+    parsed.data,
+    (dnaCtx, platform, tone, language) => `You are a video script writer specialising in short-form African brand content (TikTok, Reels, YouTube Shorts).
+
+${dnaCtx}
+
+Write scripts that:
+- Hook in the first 3 seconds
+- Have a clear story arc (hook → value → CTA)
+- Are optimised for ${platform}
+- Use visual direction cues [like this] for b-roll and overlays
+- Fit the brand voice perfectly
+- Are 30-60 seconds when spoken aloud
+- Language: ${language}`,
+    (brand, dna, prompt, platform, tone, count) =>
+      `Write ${count} video script variation(s) for ${brand.name}.
+
+Video Concept: ${prompt}
+Platform: ${platform}
+Tone: ${tone}
+
+Format each script with: HOOK (0-3s), BODY (3-25s), CTA (25-30s). Include [visual direction] in brackets.`
+  );
+
+  if (!result) { res.status(404).json({ error: "Brand not found" }); return; }
   res.json(result);
 });
 

@@ -12,7 +12,7 @@ import {
   ListBrandContentParams,
 } from "@workspace/api-zod";
 import { crawlWebsite, crawlPage } from "../lib/firecrawl.js";
-import { claudeJSON } from "../lib/claude.js";
+import { aiJSON, hasAI } from "../lib/ai.js";
 import { getCulturalContext } from "../lib/cultural/profiles.js";
 
 const router: IRouter = Router();
@@ -135,13 +135,15 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
 
     let dnaResult: any;
 
-    if (hasRealContent && process.env.ANTHROPIC_API_KEY) {
-      const system = `You are a brand intelligence analyst. Return ONLY valid JSON. Never fabricate data. Only extract what you can genuinely identify from the provided content.`;
+    if (hasAI()) {
+      const system = `You are a brand intelligence analyst specialising in African and emerging-market brands. Return ONLY valid JSON. Never fabricate data. Only extract what you can genuinely identify from the provided content. If no website or social content is provided, use the brand name, industry, country and cultural context to make reasonable inferences.`;
       const user = `Analyse this brand and return a Brand DNA JSON object.
 
 Brand: ${brand.name}
 Industry: ${brand.industry ?? "Unknown"}
 Country: ${brand.country ?? "NG"} | Continent: ${brand.continent ?? "Africa"}
+City: ${brand.city ?? "Unknown"}
+Primary Language: ${brand.language ?? "English"}
 Cultural Context: ${JSON.stringify(cultural)}
 
 Website Content:
@@ -156,17 +158,17 @@ Return ONLY this JSON structure (no explanation, no markdown fences):
   "energy": <1-10, where 1=calm/slow, 10=high energy/urgent>,
   "humor": <1-10, where 1=serious, 10=very funny>,
   "boldness": <1-10, where 1=conservative, 10=very bold>,
-  "language_register": { "primary": "<language>", "markers": ["<word/phrase>"], "avoid": ["<word/phrase>"] },
-  "content_themes": ["<theme1>", "<theme2>"],
+  "language_register": { "primary": "<language>", "markers": ["<word/phrase that fits brand>"], "avoid": ["<word/phrase to avoid>"] },
+  "content_themes": ["<theme1>", "<theme2>", "<theme3>"],
   "audience_profile": { "age_range": "<range>", "gender": "<mix>", "income": "<level>", "interests": ["<interest>"], "pain_points": ["<pain>"] },
   "visual_identity": { "colors": ["<color>"], "style": "<style>", "mood": "<mood>" },
   "cultural_context": { "primary_market": "<market>", "trust_signals": ${JSON.stringify(cultural.trust_signals)}, "buying_triggers": ${JSON.stringify(cultural.buying_triggers)}, "festive_peaks": ${JSON.stringify(cultural.festive_peaks)} },
-  "power_words": ["<word1>", "<word2>"],
-  "taglines_found": ["<tagline>"],
-  "brand_summary": "<2-3 sentence brand DNA summary>"
+  "power_words": ["<word1>", "<word2>", "<word3>", "<word4>", "<word5>"],
+  "taglines_found": ["<tagline or generated suggestion>"],
+  "brand_summary": "<2-3 sentence brand DNA summary capturing voice, audience and cultural positioning>"
 }`;
 
-      dnaResult = await claudeJSON(system, user, 2000);
+      dnaResult = await aiJSON(system, user, 2048);
     } else {
       // Fallback DNA when no API keys or content
       dnaResult = {

@@ -13,6 +13,7 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 - **Frontend**: React + Vite (artifacts/zuri-ai) — terracotta/teal/gold branding
 - **API framework**: Express 5 (artifacts/api-server)
 - **Database**: PostgreSQL + Drizzle ORM
+- **AI**: OpenRouter (`OPENROUTER_API_KEY`) → `anthropic/claude-sonnet-4.6` via OpenAI-compatible SDK
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
