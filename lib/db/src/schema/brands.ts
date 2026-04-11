@@ -13,6 +13,7 @@ export const brandsTable = pgTable("brands", {
   country: text("country"),
   city: text("city"),
   language: text("language"),
+  brandBrief: text("brand_brief"),
   instagramHandle: text("instagram_handle"),
   twitterHandle: text("twitter_handle"),
   linkedinUrl: text("linkedin_url"),

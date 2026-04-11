@@ -131,15 +131,18 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
     // 3. Get cultural context for the brand's country
     const cultural = getCulturalContext(brand.country ?? "NG");
 
-    // 4. Check content quality before calling AI
-    const totalContentLength = websiteText.length + Object.values(socialData).join("").length;
-    const hasEnoughContent = totalContentLength >= 400;
+    // 3b. Brand brief (always available - written by the brand owner)
+    const brandBrief = brand.brandBrief ?? "";
 
-    if (!hasEnoughContent && !Object.values(socialData).some(t => t.length > 100)) {
-      // Save a failed status with a helpful explanation
-      const insufficientMsg = websiteText.length < 100
-        ? "The website URL you provided could not be scraped. If it is an app login page (e.g. app.yoursite.com), Zuri cannot read it - please use your main marketing website URL (e.g. yoursite.com) instead."
-        : "The website returned very little content. Please try your main public-facing website URL instead of an app or dashboard URL.";
+    // 4. Check content quality before calling AI
+    // Social platforms (Instagram, TikTok, Twitter) actively block scrapers - socialData will usually be empty.
+    // brandBrief is the reliable fallback for brands without a scrapeable website.
+    const scrapedLength = websiteText.length + Object.values(socialData).join("").length;
+    const totalContentLength = scrapedLength + brandBrief.length;
+    const hasEnoughContent = totalContentLength >= 100;
+
+    if (!hasEnoughContent) {
+      const insufficientMsg = "Not enough brand information to build a DNA. Please add a Brand Brief in your brand settings describing what your brand does, who it serves, and your tone of voice.";
       const failValues = {
         brandId: params.data.brandId,
         buildStatus: "failed",
@@ -160,11 +163,13 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
     let dnaResult: any;
 
     if (hasAI()) {
-      const contentQualityNote = totalContentLength < 1000
-        ? `NOTE: Only limited content was available (${totalContentLength} characters). Extract ONLY what is explicitly present in the content below. Do NOT invent brand voice, personality, or taglines that are not supported by the actual text. If a field cannot be determined from the content, use a cautious generic value and note the limitation in brand_summary.`
-        : `Good content volume available (${totalContentLength} characters). Extract accurately from the content below.`;
+      const primarySource = brandBrief.length > 100
+        ? "Brand Brief (written by brand owner - treat this as the most authoritative source)"
+        : scrapedLength > 400 ? "Scraped website/social content" : "Limited scraped content + brand brief";
 
-      const system = `You are a brand intelligence analyst. Return ONLY valid JSON. CRITICAL RULE: You must ONLY extract and reflect information that is explicitly present in the provided website and social media content. You must NEVER invent, assume, or infer a brand's personality, voice, industry focus, or positioning that is not directly supported by the text you are given. If the content is thin or unclear, say so honestly in brand_summary - do not fill gaps with plausible-sounding guesses.`;
+      const contentQualityNote = `Primary source: ${primarySource}. Total content: ${totalContentLength} characters (${brandBrief.length} from brand brief, ${scrapedLength} from scraped sources). Extract ONLY what is explicitly supported by the provided content.`;
+
+      const system = `You are a brand intelligence analyst. Return ONLY valid JSON. CRITICAL RULE: You must ONLY extract and reflect information that is explicitly present in the provided content. You must NEVER invent, assume, or infer a brand's personality, voice, or positioning that is not directly supported by the text you are given. The Brand Brief, if provided, is written directly by the brand owner and is the most reliable source - weight it heavily. If content is thin, say so honestly in brand_summary.`;
 
       const user = `Analyse this brand and return a Brand DNA JSON object.
 
@@ -185,11 +190,14 @@ Cultural Context for ${cultural.name}:
 - Payment references: ${cultural.payment_refs.join(", ")}
 - Festive peaks: ${cultural.festive_peaks.join(", ")}
 
-=== SCRAPED WEBSITE CONTENT (${websiteText.length} characters) ===
-${websiteText || "EMPTY - no content scraped from website."}
+=== BRAND BRIEF (written by brand owner - highest authority) ===
+${brandBrief || "Not provided."}
 
-=== SCRAPED SOCIAL PROFILES ===
-${Object.entries(socialData).map(([p, t]) => `[${p.toUpperCase()}] (${t.length} chars): ${t || "Not available"}`).join("\n\n")}
+=== SCRAPED WEBSITE CONTENT (${websiteText.length} characters) ===
+${websiteText || "EMPTY - no website content available."}
+
+=== SCRAPED SOCIAL PROFILES (note: Instagram/TikTok/Twitter block scrapers so these are often empty) ===
+${Object.entries(socialData).map(([p, t]) => `[${p.toUpperCase()}] (${t.length} chars): ${t || "Blocked by platform - not available"}`).join("\n\n")}
 
 Return ONLY this JSON (no markdown fences, no explanation):
 {

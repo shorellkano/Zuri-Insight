@@ -43,6 +43,7 @@ export default function BrandSettings() {
     name: "",
     websiteUrl: "",
     industry: "",
+    brandBrief: "",
     instagramHandle: "",
     twitterHandle: "",
     tiktokHandle: "",
@@ -56,6 +57,7 @@ export default function BrandSettings() {
         name: brand.name ?? "",
         websiteUrl: brand.websiteUrl ?? "",
         industry: brand.industry ?? "",
+        brandBrief: (brand as any).brandBrief ?? "",
         instagramHandle: (brand as any).instagramHandle ?? "",
         twitterHandle: (brand as any).twitterHandle ?? "",
         tiktokHandle: (brand as any).tiktokHandle ?? "",
@@ -77,6 +79,7 @@ export default function BrandSettings() {
         name: form.name || undefined,
         websiteUrl: form.websiteUrl || undefined,
         industry: form.industry || undefined,
+        brandBrief: form.brandBrief || undefined,
         instagramHandle: form.instagramHandle || undefined,
         twitterHandle: form.twitterHandle || undefined,
         tiktokHandle: form.tiktokHandle || undefined,
@@ -120,6 +123,32 @@ export default function BrandSettings() {
           </div>
         </div>
 
+        {/* Brand Brief - the most important field */}
+        <div className="bg-primary/5 border-2 border-primary/20 rounded-2xl p-5 sm:p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-primary uppercase tracking-wider">Brand Brief</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              This is the most important field. Describe your brand in your own words - what you do, who you serve, your vibe and tone of voice.
+              Zuri uses this to build your Brand DNA when your website or social pages cannot be read automatically.
+            </p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-xs text-amber-800">
+              <strong>Why this matters:</strong> Instagram, TikTok and Twitter actively block automated reading tools. No AI platform can scrape them - not even the big ones.
+              A Brand Brief written by you is more accurate than any scraper anyway.
+            </p>
+          </div>
+          <textarea
+            value={form.brandBrief}
+            onChange={e => set("brandBrief", e.target.value)}
+            placeholder={`e.g. Storvo is a Nigerian fintech platform helping SMEs manage invoices and get paid faster. Our tone is confident but friendly - we speak to hustling business owners who want tools that actually work. We avoid jargon and keep things practical. Our audience is 25-45 year old entrepreneurs across Lagos, Abuja and Port Harcourt.`}
+            rows={6}
+            data-testid="settings-input-brief"
+            className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
+          />
+          <p className="text-xs text-muted-foreground">{form.brandBrief.length} characters {form.brandBrief.length < 100 ? "- aim for at least 100 for a good DNA" : form.brandBrief.length < 300 ? "- more detail = better DNA" : "- great amount of detail"}</p>
+        </div>
+
         <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-5">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Basic Details</h2>
 
@@ -132,7 +161,7 @@ export default function BrandSettings() {
             />
           </Field>
 
-          <Field label="Website URL" hint="Use your main public marketing site, not an app login page">
+          <Field label="Website URL" hint="Optional - use your main public marketing site, not an app login page">
             <Input
               value={form.websiteUrl}
               onChange={e => set("websiteUrl", e.target.value)}

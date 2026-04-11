@@ -1,9 +1,9 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useGetBrand, useGetBrandDna, useBuildBrandDna, getGetBrandDnaQueryKey, getListBrandsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrandSubNav } from "@/components/brand-sub-nav";
-import { Sparkles, Globe, CheckCircle2, Clock, Loader2, RefreshCw, Dna, Target, Users, Lightbulb, MessageSquare } from "lucide-react";
+import { Sparkles, Globe, CheckCircle2, Clock, Loader2, RefreshCw, Dna, Target, Users, Lightbulb, MessageSquare, Settings } from "lucide-react";
 
 function ScoreBar({ label, score, color, track }: { label: string; score: number; color: string; track: string }) {
   return (
@@ -133,18 +133,26 @@ export default function BrandDna() {
             {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-40 rounded-2xl" />)}
           </div>
         ) : !dna ? (
-          <div className="flex flex-col items-center py-20 text-center bg-card border border-dashed border-border rounded-2xl">
+          <div className="flex flex-col items-center py-16 text-center bg-card border border-dashed border-border rounded-2xl px-6">
             <Dna className="h-12 w-12 text-muted-foreground/30 mb-4" />
             <h3 className="font-semibold text-foreground mb-2">No Brand DNA yet</h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-xs">Build your Brand DNA so Zuri AI can understand your brand and generate content that sounds like you.</p>
-            <button
-              onClick={handleRebuild}
-              disabled={buildDna.isPending}
-              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {buildDna.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {buildDna.isPending ? "Building DNA..." : "Build Brand DNA"}
-            </button>
+            <p className="text-sm text-muted-foreground mb-4 max-w-sm">For the best results, go to Settings and write a Brand Brief first - describe your brand in your own words. Then come back and build your DNA.</p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Link href={`/brands/${brandId}/settings`}>
+                <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-sm font-medium hover:bg-muted transition-colors">
+                  <Settings className="h-4 w-4" />
+                  Add Brand Brief
+                </button>
+              </Link>
+              <button
+                onClick={handleRebuild}
+                disabled={buildDna.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm"
+              >
+                {buildDna.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {buildDna.isPending ? "Building DNA..." : "Build anyway"}
+              </button>
+            </div>
           </div>
         ) : (dna as any)?.buildStatus === "failed" ? (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-8 flex flex-col items-center text-center gap-4">
@@ -152,29 +160,27 @@ export default function BrandDna() {
               <svg className="h-7 w-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
             </div>
             <div>
-              <h3 className="font-semibold text-red-900 mb-2">Brand DNA build failed</h3>
+              <h3 className="font-semibold text-red-900 mb-2">Brand DNA needs more information</h3>
               <p className="text-sm text-red-700 max-w-md">
-                {(dna as any)?.errorMessage ?? "Something went wrong while building the DNA. Please try again."}
+                {(dna as any)?.errorMessage ?? "Not enough brand information. Please add a Brand Brief in Settings."}
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 items-center">
-              {brand.websiteUrl && (
-                <p className="text-xs text-red-600 bg-red-100 px-3 py-1.5 rounded-lg">
-                  Current URL: <strong>{brand.websiteUrl}</strong>
-                </p>
-              )}
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Link href={`/brands/${brandId}/settings`}>
+                <button className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors text-sm">
+                  <Settings className="h-4 w-4" />
+                  Go to Settings - Add Brand Brief
+                </button>
+              </Link>
               <button
                 onClick={handleRebuild}
                 disabled={buildDna.isPending}
-                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors text-sm"
+                className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-700 rounded-xl font-medium hover:bg-red-100 disabled:opacity-50 transition-colors text-sm"
               >
                 {buildDna.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                {buildDna.isPending ? "Trying again..." : "Try again"}
+                {buildDna.isPending ? "Trying..." : "Try again"}
               </button>
             </div>
-            <p className="text-xs text-red-600 max-w-sm">
-              If your website is behind a login or uses an app subdomain (e.g. app.yoursite.com), update your brand URL to your main marketing site first.
-            </p>
           </div>
         ) : (
           <div className="space-y-5">
