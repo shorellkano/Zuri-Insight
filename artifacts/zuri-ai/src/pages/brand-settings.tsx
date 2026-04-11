@@ -116,7 +116,8 @@ export default function BrandSettings() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Analysis failed");
-      set("brandBrief", data.brief);
+      const existing = form.brandBrief.trim();
+      set("brandBrief", existing ? `${existing}\n\n${data.brief}` : data.brief);
       setAnalysed(true);
     } catch (err: any) {
       setAnalyseError(err.message || "Something went wrong. Please try again.");
@@ -181,14 +182,14 @@ export default function BrandSettings() {
           <div>
             <h2 className="text-sm font-semibold text-primary uppercase tracking-wider">Brand Brief</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Zuri reads this to understand your brand. You can type it yourself, or upload screenshots of your social media profile and Zuri will read the images and write it for you.
+              Zuri reads this to understand your brand voice, audience and personality. Use screenshots, type it yourself, or both - they combine together.
             </p>
           </div>
 
           {/* Screenshot upload zone */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Option 1: Upload screenshots</p>
-            <p className="text-xs text-muted-foreground">Screenshot your Instagram/TikTok/Twitter bio and first page of posts. Zuri will read the images and auto-fill the brief below.</p>
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Upload screenshots (optional)</p>
+            <p className="text-xs text-muted-foreground">Screenshot your Instagram/TikTok/Twitter bio and first page of posts. Zuri reads the images and adds what it finds to the brief below.</p>
 
             {/* Drop zone */}
             <div
@@ -257,7 +258,7 @@ export default function BrandSettings() {
                 {analysed && !analysing && (
                   <p className="flex items-center gap-1.5 text-xs text-green-700 font-medium">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Brand brief extracted - review and edit below, then save
+                    Added to your brief below - you can edit it, then add more screenshots or type additional details
                   </p>
                 )}
                 {analyseError && (
@@ -270,13 +271,13 @@ export default function BrandSettings() {
           {/* Divider */}
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground font-medium">or</span>
+            <span className="text-xs text-muted-foreground font-medium">your brand brief</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           {/* Manual text input */}
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Option 2: Type it yourself</p>
+            <p className="text-xs text-muted-foreground">Screenshot analysis fills this in automatically. You can also type here directly, or add extra details on top of what was extracted.</p>
             <textarea
               value={form.brandBrief}
               onChange={e => set("brandBrief", e.target.value)}
