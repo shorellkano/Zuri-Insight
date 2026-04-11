@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STEPS = ["Brand Basics", "Your Market", "Social Handles", "Build DNA"];
+const STEPS = ["Brand Basics", "Your Market", "Social Handles", "Brand Brief", "Build DNA"];
 
 const INDUSTRIES = [
   "Fashion & Apparel", "Beauty & Cosmetics", "Food & Beverage", "Fintech & Payments",
@@ -136,12 +136,14 @@ interface FormData {
   linkedinUrl: string;
   youtubeHandle: string;
   whatsappHandle: string;
+  brandBrief: string;
 }
 
 const defaults: FormData = {
   name: "", websiteUrl: "", industry: "", continent: "africa", country: "Nigeria",
   city: "", language: "English", instagramHandle: "", twitterHandle: "",
   facebookUrl: "", tiktokHandle: "", linkedinUrl: "", youtubeHandle: "", whatsappHandle: "",
+  brandBrief: "",
 };
 
 export default function BrandsNew() {
@@ -216,9 +218,20 @@ export default function BrandsNew() {
     });
   }
 
-  // ── Step 4 DNA animation ───────────────────────────────────────────────────
+  // ── Step 4 → save brand brief then go to DNA ──────────────────────────────
+  async function submitStep4() {
+    if (!brandId) { setStep(4); return; }
+    const brief = form.brandBrief.trim();
+    if (!brief) { setStep(4); return; }
+    updateBrand.mutate({ brandId, data: { brandBrief: brief } }, {
+      onSuccess: () => setStep(4),
+      onError: () => toast({ title: "Error", description: "Failed to save brief.", variant: "destructive" }),
+    });
+  }
+
+  // ── Step 5 DNA animation ───────────────────────────────────────────────────
   useEffect(() => {
-    if (step !== 3 || dnaStarted.current || !brandId) return;
+    if (step !== 4 || dnaStarted.current || !brandId) return;
     dnaStarted.current = true;
 
     async function runDna() {
@@ -373,14 +386,45 @@ export default function BrandsNew() {
               <Btn variant="ghost" onClick={() => setStep(1)} data-testid="btn-back-step3"><ChevronLeft className="h-4 w-4" /> Back</Btn>
               <Btn onClick={submitStep3} disabled={isPending} data-testid="btn-next-step3">
                 {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Next: Build My DNA <ChevronRight className="h-4 w-4" />
+                Next: Brand Brief <ChevronRight className="h-4 w-4" />
               </Btn>
             </div>
           </div>
         )}
 
-        {/* ── STEP 4: DNA Building ───────────────────────────────────────── */}
+        {/* ── STEP 4: Brand Brief ────────────────────────────────────────── */}
         {step === 3 && (
+          <div className="space-y-5" data-testid="step-4-brief">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Tell Zuri about your brand</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                If you have a website we can usually figure this out automatically. But a brief helps a lot - especially if your site is behind a login or your social pages are new.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground">Brand Brief <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <textarea
+                value={form.brandBrief}
+                onChange={e => set("brandBrief", e.target.value)}
+                placeholder={`e.g. "We are a Lagos-based streetwear brand targeting fashion-forward Nigerian youth aged 18-28. Our tone is bold, playful and unapologetically African. We create limited-edition drops inspired by Afrobeats culture."`}
+                rows={6}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                data-testid="input-brand-brief"
+              />
+              <p className="text-xs text-muted-foreground">Describe what you sell, who your customers are, your tone of voice, and anything that makes your brand unique.</p>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Btn variant="ghost" onClick={() => setStep(2)} data-testid="btn-back-step4"><ChevronLeft className="h-4 w-4" /> Back</Btn>
+              <Btn onClick={submitStep4} disabled={isPending} data-testid="btn-next-step4">
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {form.brandBrief.trim() ? "Save & Build My DNA" : "Skip & Build DNA"} <ChevronRight className="h-4 w-4" />
+              </Btn>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 5: DNA Building ───────────────────────────────────────── */}
+        {step === 4 && (
           <div className="text-center py-4 space-y-6" data-testid="step-4-dna">
             {dnaPhase === 7 ? (
               <div className="space-y-4">
@@ -391,7 +435,7 @@ export default function BrandsNew() {
                   <h2 className="text-lg font-semibold text-foreground mb-1">DNA build failed</h2>
                   <p className="text-sm text-muted-foreground">{dnaError || "Something went wrong. Please try again."}</p>
                 </div>
-                <Btn onClick={() => { dnaStarted.current = false; setDnaPhase(-1); setDnaError(""); setStep(3); }} className="mx-auto">
+                <Btn onClick={() => { dnaStarted.current = false; setDnaPhase(-1); setDnaError(""); setStep(4); }} className="mx-auto">
                   Try again
                 </Btn>
               </div>
