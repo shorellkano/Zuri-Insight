@@ -12,7 +12,7 @@ import {
   ListBrandContentParams,
 } from "@workspace/api-zod";
 import { crawlWebsite, crawlPage } from "../lib/firecrawl.js";
-import { aiJSON, hasAI } from "../lib/ai.js";
+import { aiJSON, aiVision, hasAI } from "../lib/ai.js";
 import { getCulturalContext } from "../lib/cultural/profiles.js";
 
 const router: IRouter = Router();
@@ -91,6 +91,51 @@ router.get("/brands/:brandId/dna", async (req, res): Promise<void> => {
     return;
   }
   res.json(dna);
+});
+
+router.post("/brands/:brandId/analyze-screenshots", async (req, res): Promise<void> => {
+  const { brandId } = req.params;
+  const { images } = req.body as { images: string[] };
+
+  if (!Array.isArray(images) || images.length === 0) {
+    res.status(400).json({ error: "No images provided" });
+    return;
+  }
+  if (images.length > 5) {
+    res.status(400).json({ error: "Maximum 5 screenshots allowed" });
+    return;
+  }
+  // Validate that each entry looks like a base64 data URL
+  const validImages = images.filter(img => typeof img === "string" && img.startsWith("data:image/"));
+  if (validImages.length === 0) {
+    res.status(400).json({ error: "Invalid image format" });
+    return;
+  }
+  if (!hasAI()) {
+    res.status(503).json({ error: "AI not configured" });
+    return;
+  }
+
+  try {
+    const system = `You are a brand intelligence expert. Your job is to analyse screenshots of a brand's social media profile (Instagram, TikTok, Twitter/X, LinkedIn, etc.) and extract a clear, factual Brand Brief. Write in plain English. Be specific - use actual words, phrases and tone cues you can see in the screenshots. Do NOT invent anything not visible in the images.`;
+
+    const prompt = `These are screenshots of a brand's social media profile(s) and/or first page of content.
+
+Please extract and write a Brand Brief that covers:
+1. What the brand does (product/service)
+2. Who their target audience appears to be
+3. Their tone of voice and communication style (based on actual captions/bio text you can see)
+4. Any values, personality traits or positioning that comes through
+5. Any taglines, slogans or key phrases visible
+
+Write this as 3-5 sentences in plain English that a marketing team could use to brief a content writer. Only include what you can actually see in the images - do not guess or infer beyond what is visible.`;
+
+    const brief = await aiVision(system, prompt, validImages, 800);
+    res.json({ brief: brief.trim() });
+  } catch (err: any) {
+    console.error("Screenshot analysis error:", err);
+    res.status(500).json({ error: "Failed to analyse screenshots. Please try again." });
+  }
 });
 
 router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {

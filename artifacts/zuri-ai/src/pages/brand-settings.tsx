@@ -1,10 +1,12 @@
 import { useParams } from "wouter";
 import { useGetBrand, useUpdateBrand, getListBrandsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { BrandSubNav } from "@/components/brand-sub-nav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, CheckCircle2, Settings } from "lucide-react";
+import { Loader2, CheckCircle2, Settings, Upload, X, ImageIcon, Sparkles } from "lucide-react";
+
+const API_BASE = "/api";
 
 const INDUSTRIES = [
   "Fashion & Beauty", "Food & Beverage", "Technology", "Fintech",
@@ -37,8 +39,15 @@ export default function BrandSettings() {
   const queryClient = useQueryClient();
   const { data: brand, isLoading } = useGetBrand(brandId);
   const updateBrand = useUpdateBrand();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [saved, setSaved] = useState(false);
+  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [analysing, setAnalysing] = useState(false);
+  const [analyseError, setAnalyseError] = useState("");
+  const [analysed, setAnalysed] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     websiteUrl: "",
@@ -70,6 +79,50 @@ export default function BrandSettings() {
   function set(key: keyof typeof form, value: string) {
     setForm(f => ({ ...f, [key]: value }));
     setSaved(false);
+  }
+
+  const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith("image/")).slice(0, 5 - screenshots.length);
+    if (imageFiles.length === 0) return;
+    const dataUrls = await Promise.all(imageFiles.map(readFileAsDataUrl));
+    setScreenshots(prev => [...prev, ...dataUrls].slice(0, 5));
+    setAnalysed(false);
+    setAnalyseError("");
+  }, [screenshots.length]);
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFiles(e.dataTransfer.files);
+  }
+
+  async function handleAnalyse() {
+    if (screenshots.length === 0) return;
+    setAnalysing(true);
+    setAnalyseError("");
+    try {
+      const res = await fetch(`${API_BASE}/brands/${brandId}/analyze-screenshots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images: screenshots }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      set("brandBrief", data.brief);
+      setAnalysed(true);
+    } catch (err: any) {
+      setAnalyseError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setAnalysing(false);
+    }
   }
 
   function handleSave() {
@@ -128,25 +181,115 @@ export default function BrandSettings() {
           <div>
             <h2 className="text-sm font-semibold text-primary uppercase tracking-wider">Brand Brief</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              This is the most important field. Describe your brand in your own words - what you do, who you serve, your vibe and tone of voice.
-              Zuri uses this to build your Brand DNA when your website or social pages cannot be read automatically.
+              Zuri reads this to understand your brand. You can type it yourself, or upload screenshots of your social media profile and Zuri will read the images and write it for you.
             </p>
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <p className="text-xs text-amber-800">
-              <strong>Why this matters:</strong> Instagram, TikTok and Twitter actively block automated reading tools. No AI platform can scrape them - not even the big ones.
-              A Brand Brief written by you is more accurate than any scraper anyway.
+
+          {/* Screenshot upload zone */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Option 1: Upload screenshots</p>
+            <p className="text-xs text-muted-foreground">Screenshot your Instagram/TikTok/Twitter bio and first page of posts. Zuri will read the images and auto-fill the brief below.</p>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                isDragging ? "border-primary bg-primary/10" : "border-border hover:border-primary/50 hover:bg-muted/50"
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={e => e.target.files && handleFiles(e.target.files)}
+                data-testid="settings-input-screenshots"
+              />
+              <Upload className="h-7 w-7 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm font-medium text-foreground">Drop screenshots here or tap to choose</p>
+              <p className="text-xs text-muted-foreground mt-1">Up to 5 images - PNG, JPG, WEBP</p>
+            </div>
+
+            {/* Thumbnails */}
+            {screenshots.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {screenshots.map((src, i) => (
+                    <div key={i} className="relative group">
+                      <img
+                        src={src}
+                        alt={`Screenshot ${i + 1}`}
+                        className="h-20 w-20 object-cover rounded-lg border border-border"
+                      />
+                      <button
+                        onClick={() => setScreenshots(prev => prev.filter((_, j) => j !== i))}
+                        className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {screenshots.length < 5 && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-20 w-20 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center text-muted-foreground hover:border-primary/50 transition-colors"
+                    >
+                      <ImageIcon className="h-5 w-5 mb-1" />
+                      <span className="text-[10px]">Add more</span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleAnalyse}
+                  disabled={analysing}
+                  data-testid="btn-analyse-screenshots"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {analysing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {analysing ? "Reading screenshots..." : `Analyse ${screenshots.length} screenshot${screenshots.length > 1 ? "s" : ""}`}
+                </button>
+
+                {analysed && !analysing && (
+                  <p className="flex items-center gap-1.5 text-xs text-green-700 font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Brand brief extracted - review and edit below, then save
+                  </p>
+                )}
+                {analyseError && (
+                  <p className="text-xs text-destructive">{analyseError}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground font-medium">or</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {/* Manual text input */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Option 2: Type it yourself</p>
+            <textarea
+              value={form.brandBrief}
+              onChange={e => set("brandBrief", e.target.value)}
+              placeholder="e.g. We are a Nigerian fintech platform helping SMEs get paid faster. Our tone is confident and practical - we speak to hustling business owners aged 25-45 in Lagos and Abuja who are tired of chasing late payments."
+              rows={5}
+              data-testid="settings-input-brief"
+              className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              {form.brandBrief.length} characters{" "}
+              {form.brandBrief.length === 0 ? "" : form.brandBrief.length < 100 ? "- aim for at least 100" : form.brandBrief.length < 300 ? "- more detail = better DNA" : "- great, lots to work with"}
             </p>
           </div>
-          <textarea
-            value={form.brandBrief}
-            onChange={e => set("brandBrief", e.target.value)}
-            placeholder={`e.g. Storvo is a Nigerian fintech platform helping SMEs manage invoices and get paid faster. Our tone is confident but friendly - we speak to hustling business owners who want tools that actually work. We avoid jargon and keep things practical. Our audience is 25-45 year old entrepreneurs across Lagos, Abuja and Port Harcourt.`}
-            rows={6}
-            data-testid="settings-input-brief"
-            className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
-          />
-          <p className="text-xs text-muted-foreground">{form.brandBrief.length} characters {form.brandBrief.length < 100 ? "- aim for at least 100 for a good DNA" : form.brandBrief.length < 300 ? "- more detail = better DNA" : "- great amount of detail"}</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-5">

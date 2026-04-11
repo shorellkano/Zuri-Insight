@@ -30,6 +30,31 @@ export async function aiComplete(system: string, user: string, maxTokens = 1500)
   return content;
 }
 
+export async function aiVision(system: string, prompt: string, images: string[], maxTokens = 1500): Promise<string> {
+  const client = getClient();
+  const imageContent = images.map(dataUrl => ({
+    type: "image_url" as const,
+    image_url: { url: dataUrl },
+  }));
+  const response = await client.chat.completions.create({
+    model: MODEL,
+    max_tokens: maxTokens,
+    messages: [
+      { role: "system", content: system },
+      {
+        role: "user",
+        content: [
+          ...imageContent,
+          { type: "text" as const, text: prompt },
+        ],
+      },
+    ],
+  });
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error("Empty response from AI vision");
+  return content;
+}
+
 export async function aiJSON<T = any>(system: string, user: string, maxTokens = 1500): Promise<T> {
   const raw = await aiComplete(system, user, maxTokens);
   const clean = raw
