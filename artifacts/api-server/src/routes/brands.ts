@@ -95,7 +95,7 @@ router.get("/brands/:brandId/dna", async (req, res): Promise<void> => {
 
 router.post("/brands/:brandId/analyze-screenshots", async (req, res): Promise<void> => {
   const { brandId } = req.params;
-  const { images } = req.body as { images: string[] };
+  const { images, hasVideo } = req.body as { images: string[]; hasVideo?: boolean };
 
   if (!Array.isArray(images) || images.length === 0) {
     res.status(400).json({ error: "No images provided" });
@@ -117,18 +117,22 @@ router.post("/brands/:brandId/analyze-screenshots", async (req, res): Promise<vo
   }
 
   try {
-    const system = `You are a brand intelligence expert. Your job is to analyse screenshots of a brand's social media profile (Instagram, TikTok, Twitter/X, LinkedIn, etc.) and extract a clear, factual Brand Brief. Write in plain English. Be specific - use actual words, phrases and tone cues you can see in the screenshots. Do NOT invent anything not visible in the images.`;
+    const mediaContext = hasVideo
+      ? "screenshots and video frames (frames were extracted at even intervals from one or more short videos)"
+      : "screenshots";
 
-    const prompt = `These are screenshots of a brand's social media profile(s) and/or first page of content.
+    const system = `You are a brand intelligence expert. Your job is to analyse ${mediaContext} of a brand's social media profile or content (Instagram, TikTok, Twitter/X, LinkedIn, etc.) and extract a clear, factual Brand Brief. Write in plain English. Be specific - use actual words, phrases and tone cues you can see. Do NOT invent anything not visible in the provided images.`;
+
+    const prompt = `These are ${mediaContext} from a brand's social media profile and/or content.${hasVideo ? " Some images are sequential frames from the same video - read them together to understand the full content." : ""}
 
 Please extract and write a Brand Brief that covers:
 1. What the brand does (product/service)
 2. Who their target audience appears to be
-3. Their tone of voice and communication style (based on actual captions/bio text you can see)
+3. Their tone of voice and communication style (based on captions, bio text, on-screen text you can see)
 4. Any values, personality traits or positioning that comes through
 5. Any taglines, slogans or key phrases visible
 
-Write this as 3-5 sentences in plain English that a marketing team could use to brief a content writer. Only include what you can actually see in the images - do not guess or infer beyond what is visible.`;
+Write this as 3-5 sentences in plain English that a marketing team could use to brief a content writer. Only include what you can actually see - do not guess or infer beyond what is visible.`;
 
     const brief = await aiVision(system, prompt, validImages, 800);
     res.json({ brief: brief.trim() });

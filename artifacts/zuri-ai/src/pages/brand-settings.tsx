@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { BrandSubNav } from "@/components/brand-sub-nav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, CheckCircle2, Settings, Upload, X, ImageIcon, Sparkles } from "lucide-react";
+import { Loader2, CheckCircle2, Settings, Upload, X, ImageIcon, Sparkles, Film } from "lucide-react";
 
 const API_BASE = "/api";
 
@@ -45,7 +45,8 @@ export default function BrandSettings() {
 
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [mediaItems, setMediaItems] = useState<{ id: string; type: "image" | "video"; thumbnail: string; frames: string[]; name: string }[]>([]);
+  const [extractingVideo, setExtractingVideo] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [analysing, setAnalysing] = useState(false);
   const [analyseError, setAnalyseError] = useState("");
@@ -92,14 +93,65 @@ export default function BrandSettings() {
       reader.readAsDataURL(file);
     });
 
+  const extractVideoFrames = (file: File, count = 4): Promise<string[]> =>
+    new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.muted = true;
+      video.playsInline = true;
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      video.onloadedmetadata = () => {
+        const canvas = document.createElement("canvas");
+        const maxW = 1024;
+        canvas.width = Math.min(video.videoWidth, maxW);
+        canvas.height = Math.round(canvas.width * (video.videoHeight / video.videoWidth));
+        const ctx = canvas.getContext("2d")!;
+        const duration = video.duration;
+        const frames: string[] = [];
+        let captured = 0;
+        function captureNext() {
+          if (captured >= count) {
+            URL.revokeObjectURL(url);
+            resolve(frames);
+            return;
+          }
+          const t = duration * (0.1 + 0.8 * (captured / Math.max(count - 1, 1)));
+          video.currentTime = t;
+        }
+        video.onseeked = () => {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          frames.push(canvas.toDataURL("image/jpeg", 0.75));
+          captured++;
+          captureNext();
+        };
+        video.onerror = reject;
+        captureNext();
+      };
+      video.onerror = reject;
+      video.load();
+    });
+
   const handleFiles = useCallback(async (files: FileList | File[]) => {
-    const imageFiles = Array.from(files).filter(f => f.type.startsWith("image/")).slice(0, 5 - screenshots.length);
-    if (imageFiles.length === 0) return;
-    const dataUrls = await Promise.all(imageFiles.map(readFileAsDataUrl));
-    setScreenshots(prev => [...prev, ...dataUrls].slice(0, 5));
+    const allowed = Array.from(files)
+      .filter(f => f.type.startsWith("image/") || f.type.startsWith("video/"))
+      .slice(0, 5 - mediaItems.length);
+    if (allowed.length === 0) return;
+    setExtractingVideo(allowed.some(f => f.type.startsWith("video/")));
     setAnalysed(false);
     setAnalyseError("");
-  }, [screenshots.length]);
+    const newItems = await Promise.all(allowed.map(async f => {
+      const id = Math.random().toString(36).slice(2);
+      if (f.type.startsWith("image/")) {
+        const dataUrl = await readFileAsDataUrl(f);
+        return { id, type: "image" as const, thumbnail: dataUrl, frames: [dataUrl], name: f.name };
+      } else {
+        const frames = await extractVideoFrames(f, 4);
+        return { id, type: "video" as const, thumbnail: frames[0] ?? "", frames, name: f.name };
+      }
+    }));
+    setMediaItems(prev => [...prev, ...newItems].slice(0, 5));
+    setExtractingVideo(false);
+  }, [mediaItems.length]);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -108,14 +160,16 @@ export default function BrandSettings() {
   }
 
   async function handleAnalyse() {
-    if (screenshots.length === 0) return;
+    if (mediaItems.length === 0) return;
     setAnalysing(true);
     setAnalyseError("");
     try {
+      const allFrames = mediaItems.flatMap(m => m.frames).slice(0, 15);
+      const hasVideo = mediaItems.some(m => m.type === "video");
       const res = await fetch(`${API_BASE}/brands/${brandId}/analyze-screenshots`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: screenshots }),
+        body: JSON.stringify({ images: allFrames, hasVideo }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Analysis failed");
@@ -198,10 +252,10 @@ export default function BrandSettings() {
             </p>
           </div>
 
-          {/* Screenshot upload zone */}
+          {/* Media upload zone */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Upload screenshots (optional)</p>
-            <p className="text-xs text-muted-foreground">Screenshot your Instagram/TikTok/Twitter bio and first page of posts. Zuri reads the images and adds what it finds to the brief below.</p>
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Upload screenshots or videos (optional)</p>
+            <p className="text-xs text-muted-foreground">Screenshot your bio/profile, or upload a short video. Zuri reads the content and adds what it finds to the brief below.</p>
 
             {/* Drop zone */}
             <div
@@ -216,37 +270,57 @@ export default function BrandSettings() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 multiple
                 className="hidden"
                 onChange={e => e.target.files && handleFiles(e.target.files)}
                 data-testid="settings-input-screenshots"
               />
-              <Upload className="h-7 w-7 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm font-medium text-foreground">Drop screenshots here or tap to choose</p>
-              <p className="text-xs text-muted-foreground mt-1">Up to 5 images - PNG, JPG, WEBP</p>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Upload className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">Drop files here or tap to choose</p>
+              <p className="text-xs text-muted-foreground mt-1">Images (PNG, JPG) or videos (MP4, MOV) - up to 5 files</p>
             </div>
 
+            {/* Extracting frames indicator */}
+            {extractingVideo && (
+              <div className="flex items-center gap-2 text-xs text-primary font-medium">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Extracting frames from video...
+              </div>
+            )}
+
             {/* Thumbnails */}
-            {screenshots.length > 0 && (
+            {mediaItems.length > 0 && !extractingVideo && (
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  {screenshots.map((src, i) => (
-                    <div key={i} className="relative group">
+                  {mediaItems.map((item) => (
+                    <div key={item.id} className="relative group">
                       <img
-                        src={src}
-                        alt={`Screenshot ${i + 1}`}
+                        src={item.thumbnail}
+                        alt={item.name}
                         className="h-20 w-20 object-cover rounded-lg border border-border"
                       />
+                      {item.type === "video" && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/30">
+                          <Film className="h-6 w-6 text-white" />
+                        </div>
+                      )}
+                      {item.type === "video" && (
+                        <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1 rounded font-medium">
+                          {item.frames.length}f
+                        </span>
+                      )}
                       <button
-                        onClick={() => setScreenshots(prev => prev.filter((_, j) => j !== i))}
+                        onClick={() => setMediaItems(prev => prev.filter(m => m.id !== item.id))}
                         className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <X className="h-3 w-3" />
                       </button>
                     </div>
                   ))}
-                  {screenshots.length < 5 && (
+                  {mediaItems.length < 5 && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="h-20 w-20 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center text-muted-foreground hover:border-primary/50 transition-colors"
@@ -264,13 +338,15 @@ export default function BrandSettings() {
                   className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {analysing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  {analysing ? "Reading screenshots..." : `Analyse ${screenshots.length} screenshot${screenshots.length > 1 ? "s" : ""}`}
+                  {analysing
+                    ? "Analysing..."
+                    : `Analyse ${mediaItems.length} file${mediaItems.length > 1 ? "s" : ""} (${mediaItems.flatMap(m => m.frames).length} frames)`}
                 </button>
 
                 {analysed && !analysing && (
                   <p className="flex items-center gap-1.5 text-xs text-green-700 font-medium">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Added to your brief below - you can edit it, then add more screenshots or type additional details
+                    Added to your brief below - edit it freely, then save
                   </p>
                 )}
                 {analyseError && (
