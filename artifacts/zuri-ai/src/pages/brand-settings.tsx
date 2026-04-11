@@ -1,5 +1,5 @@
-import { useParams } from "wouter";
-import { useGetBrand, useUpdateBrand, getListBrandsQueryKey } from "@workspace/api-client-react";
+import { useParams, useLocation } from "wouter";
+import { useGetBrand, useUpdateBrand, useDeleteBrand, getListBrandsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { BrandSubNav } from "@/components/brand-sub-nav";
@@ -37,11 +37,14 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 export default function BrandSettings() {
   const { brandId } = useParams<{ brandId: string }>();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const { data: brand, isLoading } = useGetBrand(brandId);
   const updateBrand = useUpdateBrand();
+  const deleteBrand = useDeleteBrand();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [analysing, setAnalysing] = useState(false);
@@ -124,6 +127,15 @@ export default function BrandSettings() {
     } finally {
       setAnalysing(false);
     }
+  }
+
+  function handleDelete() {
+    deleteBrand.mutate({ brandId }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListBrandsQueryKey() });
+        setLocation("/brands");
+      },
+    });
   }
 
   function handleSave() {
@@ -424,6 +436,53 @@ export default function BrandSettings() {
 
           {updateBrand.isError && (
             <span className="text-sm text-destructive">Something went wrong. Please try again.</span>
+          )}
+        </div>
+
+        {/* Danger Zone */}
+        <div className="border border-red-200 rounded-2xl p-5 sm:p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-red-600 uppercase tracking-wider">Danger Zone</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Permanently delete this brand and all its data - DNA, content, voice examples, lessons and calendar events. This cannot be undone.
+            </p>
+          </div>
+
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              data-testid="btn-delete-brand-init"
+              className="px-4 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
+            >
+              Delete this brand
+            </button>
+          ) : (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-red-800">
+                Are you sure? This will permanently delete <strong>{brand?.name}</strong> and everything associated with it.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDelete}
+                  disabled={deleteBrand.isPending}
+                  data-testid="btn-delete-brand-confirm"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {deleteBrand.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {deleteBrand.isPending ? "Deleting..." : "Yes, delete permanently"}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleteBrand.isPending}
+                  className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+              {deleteBrand.isError && (
+                <p className="text-xs text-red-600">Something went wrong. Please try again.</p>
+              )}
+            </div>
           )}
         </div>
 
