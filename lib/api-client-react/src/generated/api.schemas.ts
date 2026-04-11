@@ -54,6 +54,7 @@ export interface UpdateBrandBody {
   name?: string;
   websiteUrl?: string;
   industry?: string;
+  brandBrief?: string;
   targetMarket?: string;
   continent?: string;
   country?: string;

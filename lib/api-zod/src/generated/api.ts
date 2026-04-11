@@ -103,6 +103,7 @@ export const UpdateBrandBody = zod.object({
   name: zod.string().optional(),
   websiteUrl: zod.string().optional(),
   industry: zod.string().optional(),
+  brandBrief: zod.string().optional(),
   targetMarket: zod.string().optional(),
   continent: zod.string().optional(),
   country: zod.string().optional(),

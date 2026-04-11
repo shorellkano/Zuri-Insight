@@ -439,6 +439,8 @@ components:
     UpdateBrandBody:
       type: object
       properties:
+        brandBrief:
+          type: string
         name:
           type: string
         websiteUrl:
