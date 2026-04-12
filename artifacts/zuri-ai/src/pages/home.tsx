@@ -44,7 +44,7 @@ const testimonials = [
 
 const BADGE_LINES = [
   { flag: "🇳🇬", text: "Nigeria-First Brand Intelligence" },
-  { flag: "⚡", text: "From Lagos to Nairobi in seconds" },
+  { flag: "⚡", text: "Your design agency — open 24/7" },
   { flag: "🧬", text: "Built on real Brand DNA, not guesswork" },
   { flag: "🌍", text: "Cultural AI that speaks your market" },
   { flag: "🚀", text: "Beta - Now powering African brands" },
@@ -113,12 +113,12 @@ export default function Home() {
         <div className="relative max-w-4xl mx-auto">
           <LiveBadge />
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-foreground leading-tight mb-6">
-            Your Brand's DNA.
+            Your AI design agency,
             <br />
-            <span className="text-primary">Instantly</span> into Content.
+            running <span className="text-primary">24 hours</span> a day.
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Zuri AI reads your brand, understands your market, and generates marketing content that resonates with African consumers in seconds.
+            Zuri AI learns your Brand DNA, understands African markets, and delivers on-brand campaigns, visuals, and copy the moment you need them — no briefs, no waiting.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/brands/new" data-testid="hero-cta-primary">
@@ -152,9 +152,9 @@ export default function Home() {
       <section className="py-20 px-4" data-testid="features-section">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Built Different. Built for Africa.</h2>
+            <h2 className="text-3xl font-bold text-foreground mb-4">A full creative team — built into one platform.</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Most AI tools ignore the nuances of African markets. Zuri AI was built from the ground up to understand your culture, your consumers, and your context.
+              Most AI tools ignore the nuances of African markets. Zuri AI was built from the ground up with the cultural intelligence, brand depth, and creative range of an agency — without the agency costs.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -173,8 +173,8 @@ export default function Home() {
 
       <section className="py-20 px-4 bg-muted/30" data-testid="how-it-works-section">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-foreground mb-4">From Website to Content in 3 Steps</h2>
-          <p className="text-lg text-muted-foreground mb-14">No lengthy onboarding. Just point Zuri at your brand and start creating.</p>
+          <h2 className="text-3xl font-bold text-foreground mb-4">Onboard your agency in 3 steps.</h2>
+          <p className="text-lg text-muted-foreground mb-14">No lengthy briefs. No waiting. Just point Zuri at your brand and your creative team is ready to work.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { step: "01", title: "Add Your Brand", desc: "Enter your website URL and social media handles." },
@@ -213,8 +213,8 @@ export default function Home() {
 
       <section className="py-20 px-4 bg-primary/5 border-y border-primary/10" data-testid="pricing-section">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-foreground mb-4">Simple, Transparent Pricing</h2>
-          <p className="text-lg text-muted-foreground mb-10">Start free. Scale as you grow.</p>
+          <h2 className="text-3xl font-bold text-foreground mb-4">Agency output. Fraction of the cost.</h2>
+          <p className="text-lg text-muted-foreground mb-10">Start free. Scale as your brand grows.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
             {[
               {
@@ -255,7 +255,7 @@ export default function Home() {
             <img src="/zuri-ai-logo.png" alt="Zuri AI" className="h-8 w-8 rounded-full object-cover" />
             <span className="font-bold text-foreground">Zuri <span className="text-primary">AI</span></span>
           </div>
-          <p className="text-sm text-muted-foreground">Brand Intelligence. African Markets. Real Results.</p>
+          <p className="text-sm text-muted-foreground">Your AI design agency for African brands.</p>
           <p className="text-sm text-muted-foreground">© 2026 Zuri AI. All rights reserved.</p>
         </div>
       </footer>
