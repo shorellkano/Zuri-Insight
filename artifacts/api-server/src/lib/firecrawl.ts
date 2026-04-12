@@ -1,7 +1,15 @@
 const FIRECRAWL_BASE = "https://api.firecrawl.dev/v1";
 
 function getFirecrawlKey(): string {
-  return (process.env.FIRECRAWL_API_KEY ?? "").trim();
+  const raw = (process.env.FIRECRAWL_API_KEY ?? "").trim();
+  if (!raw) return "";
+  // Firecrawl keys are always exactly: fc- + 32 hex chars (35 chars total)
+  const match = raw.match(/fc-[a-f0-9]{32}/);
+  if (match) return match[0];
+  // Fallback: extract first 32-char hex block and prepend fc-
+  const hexMatch = raw.match(/[a-f0-9]{32}/);
+  if (hexMatch) return `fc-${hexMatch[0]}`;
+  return raw;
 }
 
 async function firecrawlPost(path: string, body: Record<string, unknown>): Promise<any> {

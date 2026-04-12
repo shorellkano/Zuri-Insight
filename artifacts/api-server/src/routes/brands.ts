@@ -264,7 +264,7 @@ Return ONLY this JSON (no markdown fences, no explanation):
   "brand_summary": "<honest 2-3 sentence summary of what you could actually determine from the content. If content was limited, say so and describe what the brand appears to be based on available evidence only.>"
 }`;
 
-      dnaResult = await aiJSON(system, user, 1800);
+      dnaResult = await aiJSON(system, user, 1200);
     } else {
       // Fallback DNA when no AI key is configured
       dnaResult = {
