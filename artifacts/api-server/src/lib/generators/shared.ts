@@ -60,8 +60,10 @@ Language: ${brand.language ?? "English"}
 Target Market: ${brand.targetMarket ?? cultural.name}`);
   }
 
-  // Brand DNA (if built)
-  if (dna && dna.buildStatus === "complete") {
+  // Brand DNA — full profile if complete, graceful fallback if not yet built
+  const dnaComplete = dna && dna.buildStatus === "complete";
+
+  if (dnaComplete) {
     sections.push(`BRAND DNA:
 Voice & Tone: ${dna.toneOfVoice}
 Core Values: ${dna.coreValues?.join(", ") ?? ""}
@@ -85,11 +87,35 @@ Avoid: ${cultural.taboos.join(", ")}`);
       // ignore JSON parse error
     }
   } else {
-    // No DNA yet - use cultural context alone
+    // No completed DNA yet — use the brand brief the user typed during setup
+    // plus cultural context. This covers Day 1 users with no website or social handles.
+    const fallbackParts: string[] = [];
+
+    if (brand?.brandBrief?.trim()) {
+      fallbackParts.push(`Business description: ${brand.brandBrief.trim()}`);
+    }
+
+    if (brand?.industry && brand.industry !== "Other") {
+      fallbackParts.push(`Industry: ${brand.industry}`);
+    }
+
+    if (brand?.targetMarket) {
+      fallbackParts.push(`Target market: ${brand.targetMarket}`);
+    }
+
+    if (fallbackParts.length > 0) {
+      sections.push(`BRAND CONTEXT (early stage — no DNA built yet):
+${fallbackParts.join("\n")}
+Write content that feels authentic to a real ${brand?.industry ?? "business"} based in ${brand?.country ?? "Nigeria"}. Avoid generic filler. Be specific and grounded.`);
+    }
+
+    // Always include cultural intelligence when DNA is missing
     sections.push(`CULTURAL INTELLIGENCE (${cultural.name}):
 ${cultural.language_notes}
 Trust Signals: ${cultural.trust_signals.join(", ")}
 Buying Triggers: ${cultural.buying_triggers.join(", ")}
+Key Platforms: ${cultural.platforms.join(", ")}
+Festive Peaks: ${cultural.festive_peaks.join(", ")}
 Avoid: ${cultural.taboos.join(", ")}`);
   }
 

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Instagram, Youtube, Linkedin, Facebook, Ghost, PlaySquare,
   ChevronDown, ChevronUp, Copy, Check, X, Plus, Calendar,
-  Info, Download, Bookmark, RefreshCw, Zap, Edit2, Loader2,
+  Info, Download, Bookmark, RefreshCw, Zap, Edit2, Loader2, Sparkles,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -495,6 +495,24 @@ export default function QuickCreate() {
           </div>
           <p className="text-muted-foreground text-sm ml-11.5">Platform-ready content in under 60 seconds.</p>
         </div>
+
+        {/* DNA nudge — soft, non-blocking, shown when brand exists but DNA not built */}
+        {brand && !brand.dnaBuilt && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+            <Sparkles className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-amber-800">
+                <span className="font-semibold">Generating from your business description.</span>{" "}
+                Add a website or social handle to let Zuri learn your full brand voice and improve results.
+              </p>
+            </div>
+            <Link href={`/brands/${activeBrandId}/settings`}>
+              <button className="text-xs font-semibold text-amber-700 hover:text-amber-900 whitespace-nowrap shrink-0">
+                Add handles
+              </button>
+            </Link>
+          </div>
+        )}
 
         {/* ── MAIN FORM ── */}
         <div className="bg-card border border-border rounded-2xl p-6 space-y-7">
