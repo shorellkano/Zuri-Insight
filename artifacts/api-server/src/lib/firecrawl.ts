@@ -1,26 +1,43 @@
-export async function crawlWebsite(url: string): Promise<string> {
-  const apiKey = process.env.FIRECRAWL_API_KEY;
-  if (!apiKey) return "";
-  try {
-    const FirecrawlApp = (await import("@mendable/firecrawl-js")).default;
-    const app = new FirecrawlApp({ apiKey });
-    const client = (app as any).v1;
+const FIRECRAWL_BASE = "https://api.firecrawl.dev/v1";
 
-    // Scrape the homepage first for quick results
-    const homeResult = await client.scrapeUrl(url, {
+function getFirecrawlKey(): string {
+  return (process.env.FIRECRAWL_API_KEY ?? "").trim();
+}
+
+async function firecrawlPost(path: string, body: Record<string, unknown>): Promise<any> {
+  const apiKey = getFirecrawlKey();
+  if (!apiKey) throw new Error("FIRECRAWL_API_KEY not set");
+  const res = await fetch(`${FIRECRAWL_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Firecrawl ${path} failed: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+export async function crawlWebsite(url: string): Promise<string> {
+  if (!getFirecrawlKey()) return "";
+  try {
+    // Scrape homepage
+    const homeData = await firecrawlPost("/scrape", {
+      url,
       formats: ["markdown"],
       onlyMainContent: true,
       excludeTags: ["nav", "footer", "header", "script", "style", "iframe"],
     });
-    // v4 SDK may return markdown directly OR wrapped in a data object
-    let content: string =
-      homeResult?.markdown ??
-      homeResult?.data?.markdown ??
-      "";
+    let content: string = homeData?.data?.markdown ?? homeData?.markdown ?? "";
 
-    // If homepage is short, also try crawling a few more pages
+    // If homepage is short, crawl a few more pages
     if (content.length < 500) {
-      const crawlResult = await client.crawlUrl(url, {
+      const crawlData = await firecrawlPost("/crawl", {
+        url,
         limit: 4,
         scrapeOptions: {
           formats: ["markdown"],
@@ -28,8 +45,7 @@ export async function crawlWebsite(url: string): Promise<string> {
           excludeTags: ["nav", "footer", "header", "script", "style", "iframe"],
         },
       });
-      // crawlUrl result: data array of pages
-      const pages: any[] = crawlResult?.data ?? crawlResult?.pages ?? [];
+      const pages: any[] = crawlData?.data ?? crawlData?.pages ?? [];
       if (pages.length > 0) {
         const extra = pages
           .map((p: any) => p.markdown ?? p.data?.markdown ?? "")
@@ -47,17 +63,14 @@ export async function crawlWebsite(url: string): Promise<string> {
 }
 
 export async function crawlPage(url: string): Promise<string> {
-  const apiKey = process.env.FIRECRAWL_API_KEY;
-  if (!apiKey) return "";
+  if (!getFirecrawlKey()) return "";
   try {
-    const FirecrawlApp = (await import("@mendable/firecrawl-js")).default;
-    const app = new FirecrawlApp({ apiKey });
-    const client = (app as any).v1;
-    const result = await client.scrapeUrl(url, {
+    const data = await firecrawlPost("/scrape", {
+      url,
       formats: ["markdown"],
       onlyMainContent: true,
     });
-    const markdown = result?.markdown ?? result?.data?.markdown ?? "";
+    const markdown = data?.data?.markdown ?? data?.markdown ?? "";
     return markdown.slice(0, 3000);
   } catch {
     return "";
