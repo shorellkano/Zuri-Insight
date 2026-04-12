@@ -1,0 +1,281 @@
+Add Higgsfield AI and Canva Connect API to Zuri AI.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — ADD TO REPLIT SECRETS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Go to Replit sidebar → Tools → Secrets. Add these keys:
+  HIGGSFIELD_API_KEY    (get from higgsfield.ai → sign up → API)
+  CANVA_CLIENT_ID       (get from canva.com/developers → create app)
+  CANVA_CLIENT_SECRET   (from same Canva app)
+
+Also add them to .env.local for local development:
+  HIGGSFIELD_API_KEY=
+  CANVA_CLIENT_ID=
+  CANVA_CLIENT_SECRET=
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — HIGGSFIELD INTEGRATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: lib/higgsfield.ts
+
+const HIGGSFIELD_BASE = 'https://api.higgsfield.ai/v1'
+
+interface HiggsfieldJobResult {
+  jobId: string
+  status: 'pending' | 'processing' | 'complete' | 'failed'
+  videoUrl?: string
+  error?: string
+}
+
+export async function generateUGCVideo(input: {
+  prompt: string
+  imageUrl?: string
+  duration?: '5s' | '10s' | '15s'
+  style?: 'ugc' | 'cinematic' | 'product_demo' | 'testimonial'
+  aspectRatio?: '9:16' | '1:1' | '16:9'
+}): Promise<HiggsfieldJobResult> {
+  if (!process.env.HIGGSFIELD_API_KEY) {
+    throw new Error('HIGGSFIELD_API_KEY not configured in Secrets')
+  }
+  const res = await fetch(`${HIGGSFIELD_BASE}/generation`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.HIGGSFIELD_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      prompt: input.prompt,
+      ...(input.imageUrl && { image_url: input.imageUrl }),
+      duration: input.duration || '10s',
+      style: input.style || 'ugc',
+      aspect_ratio: input.aspectRatio || '9:16'
+    })
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Higgsfield API error ${res.status}: ${JSON.stringify(err)}`)
+  }
+  return res.json()
+}
+
+export async function pollVideoStatus(jobId: string): Promise<HiggsfieldJobResult> {
+  const res = await fetch(`${HIGGSFIELD_BASE}/generation/${jobId}`, {
+    headers: { 'Authorization': `Bearer ${process.env.HIGGSFIELD_API_KEY}` }
+  })
+  if (!res.ok) throw new Error(`Higgsfield status error: ${res.status}`)
+  return res.json()
+}
+
+export async function waitForVideo(
+  jobId: string,
+  maxWaitMs = 120000
+): Promise<string> {
+  const start = Date.now()
+  while (Date.now() - start < maxWaitMs) {
+    const result = await pollVideoStatus(jobId)
+    if (result.status === 'complete' && result.videoUrl) return result.videoUrl
+    if (result.status === 'failed') throw new Error(`Video generation failed: ${result.error}`)
+    await new Promise(r => setTimeout(r, 3000))
+  }
+  throw new Error('Video generation timed out after 2 minutes')
+}
+
+FILE: app/api/generate/ugc-video/route.ts
+
+POST body: { brandId, productDescription, imageUrl?, style, platform, aspectRatio? }
+
+Auth check. Load brand DNA.
+
+Use Claude to generate the Higgsfield prompt from brand context:
+  System: "You are a UGC video creative director. Write prompts for AI video generation."
+  User: "Write a Higgsfield AI video generation prompt for this brand and product.
+         Brand: [name]. Style: [style]. Product: [productDescription].
+         The video should feel authentic and native to [platform].
+         Keep the prompt under 200 words. Be specific about visual style, setting, and mood.
+         Return only the prompt text — no explanation."
+
+Take the Claude-generated prompt and call generateUGCVideo().
+Use waitForVideo() to poll for completion.
+Save the video URL to generated_designs table with design_type='ugc_video'.
+Return { videoUrl, designId }.
+
+FILE: app/api/generate/ugc-video/status/[jobId]/route.ts
+GET endpoint. Takes jobId. Calls pollVideoStatus(). Returns current status.
+Frontend polls this every 3 seconds while showing the loading state.
+
+ADD UGC VIDEO TO CREATIVE STUDIO:
+In app/(dashboard)/generate/creative-studio/page.tsx, add a new card:
+  Icon: Video from lucide-react
+  Title: "UGC Video"
+  Description: "Realistic influencer-style video from your product description or image"
+  Badge: "Powered by Higgsfield AI"
+  Navigates to: /generate/creative-studio/ugc-video
+
+FILE: app/(dashboard)/generate/creative-studio/ugc-video/page.tsx
+
+Left panel form:
+  "Describe your product or service" — large textarea
+  "Upload a product image (optional)" — file upload, single image
+  Style selector (4 large clickable cards):
+    [UGC — authentic, hand-held feel]
+    [Cinematic — premium, polished]
+    [Product demo — clear, informative]
+    [Testimonial — person-facing camera, trust-building]
+  Platform selector: Instagram Reel · TikTok · YouTube Short
+  Aspect ratio: auto-selected based on platform (9:16 for all short-form)
+  "Generate UGC video →" button — amber, full width
+
+Right panel output:
+  During generation (takes 30-90 seconds):
+    Animated progress card: "Zuri AI is creating your video..."
+    Progress stages with timers:
+      "Writing your video concept..." (5s)
+      "Generating video with Higgsfield AI..." (up to 90s)
+      "Finalising your video..." (5s)
+    Note: "UGC videos take 1-2 minutes to generate. We will notify you when ready."
+
+  After generation:
+    Video player (autoplay muted)
+    Download button (MP4)
+    "Generate caption for this video →" button — links to Quick Create with video context pre-filled
+    "Regenerate" button
+
+PLAN GATING:
+Check user's plan before allowing generation:
+  Solo plan: show card with "UGC Video is available on Growth plan and above"
+  Click shows upgrade modal with Growth plan pricing.
+  Growth plan: 5 UGC videos per month (track in profiles.credits_used)
+  Studio plan: 20 UGC videos per month
+  Enterprise: unlimited
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — CANVA CONNECT API
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOTE: Canva Connect API is in active development. Some endpoints may be in beta.
+Build this with a graceful fallback — if Canva API is unavailable, fall back to
+the HTML-to-image approach already in the codebase.
+
+FILE: lib/canva.ts
+
+const CANVA_BASE = 'https://api.canva.com/rest/v1'
+
+async function getCanvaToken(): Promise<string> {
+  const res = await fetch(`${CANVA_BASE}/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: process.env.CANVA_CLIENT_ID!,
+      client_secret: process.env.CANVA_CLIENT_SECRET!,
+      scope: 'design:content:write design:content:read asset:read asset:write'
+    })
+  })
+  if (!res.ok) throw new Error(`Canva auth failed: ${res.status}`)
+  const data = await res.json()
+  return data.access_token
+}
+
+export async function createCanvaDesign(input: {
+  title: string
+  assetType: 'instagram_post' | 'instagram_story' | 'tiktok_video' | 'linkedin_post' | 'facebook_post'
+}): Promise<{ designId: string, editUrl: string } | null> {
+  if (!process.env.CANVA_CLIENT_ID || !process.env.CANVA_CLIENT_SECRET) {
+    console.warn('Canva API not configured — using HTML fallback')
+    return null
+  }
+  try {
+    const token = await getCanvaToken()
+    const res = await fetch(`${CANVA_BASE}/designs`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        asset_type: input.assetType,
+        title: input.title
+      })
+    })
+    if (!res.ok) {
+      console.warn('Canva design creation failed:', res.status)
+      return null
+    }
+    const data = await res.json()
+    return {
+      designId: data.design?.id,
+      editUrl: data.design?.urls?.edit_url
+    }
+  } catch (e) {
+    console.warn('Canva API error — using HTML fallback:', e)
+    return null
+  }
+}
+
+export function getCanvaAssetType(platform: string, format: string): string {
+  const map: Record<string, string> = {
+    'instagram_feed': 'instagram_post',
+    'instagram_reel': 'instagram_reel',
+    'instagram_story': 'instagram_story',
+    'tiktok_video': 'tiktok_video',
+    'linkedin_post': 'linkedin_post',
+    'facebook_post': 'facebook_post',
+    'youtube_short': 'youtube_short',
+  }
+  return map[`${platform}_${format}`] || 'instagram_post'
+}
+
+ADD "OPEN IN CANVA" BUTTON to the Creative Studio output:
+In the carousel and quote card output panels, add a button:
+  "Edit in Canva →" (opens the Canva edit URL in a new tab)
+  If Canva API is not configured: hide this button entirely.
+  If Canva API returns a design: show the button with the editUrl.
+
+This gives users who want more design control the ability to jump into Canva
+and refine the output, while users who just want to download and post can do that directly.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — VERIFY EVERYTHING WORKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After building, test in this order:
+
+1. Test Firecrawl fix:
+   Create a new brand with website URL https://example.com
+   Trigger DNA build — confirm it completes without error
+   Check Supabase brand_dna table — confirm build_status = 'complete'
+
+2. Test Quick Create (Prompt 17):
+   Go to /quick-create
+   Select Instagram Reel, type a topic, click Generate
+   Confirm 3 variations return with hook, caption, and hashtags
+   Confirm character counts are shown
+   Confirm platform rules notice appears
+
+3. Test Media Post (Prompt 18):
+   Go to /post
+   Upload one image
+   Add a label: "3-bedroom apartment in Victoria Island"
+   Select Property category
+   Add context with price and features
+   Select Instagram + Facebook
+   Click Generate
+   Confirm two platform tabs appear with different captions
+
+4. Test Higgsfield (Prompt 19):
+   Only test if HIGGSFIELD_API_KEY is set in Replit Secrets
+   Go to Creative Studio → UGC Video
+   Enter a product description
+   Click Generate
+   Confirm loading state shows correctly
+   Confirm video appears after generation completes
+
+5. Test Canva (Prompt 19):
+   Only test if CANVA_CLIENT_ID and CANVA_CLIENT_SECRET are set
+   Go to Creative Studio → Carousel
+   Generate a carousel
+   Confirm "Edit in Canva" button appears in the output
+
+Tell me the result of each test and any errors that appear.
