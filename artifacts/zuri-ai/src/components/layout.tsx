@@ -1,13 +1,16 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays, Zap } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { BrandProvider } from "@/context/brand-context";
 import { Topbar } from "@/components/topbar";
 import { MobileNav } from "@/components/mobile-nav";
+import { useListBrands } from "@workspace/api-client-react";
+import { QuickSetup } from "@/components/brands/QuickSetup";
 
 const navItems = [
+  { href: "/quick-create", label: "Quick Create", icon: Zap, highlight: true },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/brands", label: "Brands", icon: Layers },
   { href: "/generate", label: "Generate", icon: Sparkles },
@@ -44,7 +47,7 @@ function Sidebar({ className, onClose }: { className?: string; onClose?: () => v
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5" data-testid="sidebar-nav">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon, highlight }) => {
           const isActive = location === href || (href !== "/" && location.startsWith(href));
           return (
             <Link
@@ -56,6 +59,8 @@ function Sidebar({ className, onClose }: { className?: string; onClose?: () => v
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative",
                 isActive
                   ? "bg-primary/8 text-primary before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:bg-primary before:rounded-r-full"
+                  : highlight
+                  ? "text-primary bg-primary/5 hover:bg-primary/10"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
@@ -117,6 +122,23 @@ function SidebarSheet({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
+function QuickSetupGate({ children }: { children: React.ReactNode }) {
+  const { data: brands, isLoading } = useListBrands();
+  const [dismissed, setDismissed] = useState(false);
+  const [location] = useLocation();
+
+  const noBrands = !isLoading && Array.isArray(brands) && brands.length === 0;
+  const isOnboarding = location === "/brands/new";
+  const showSetup = noBrands && !dismissed && !isOnboarding;
+
+  return (
+    <>
+      {children}
+      {showSetup && <QuickSetup onClose={() => setDismissed(true)} />}
+    </>
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -130,7 +152,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Topbar />
           <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 bg-[#FAFAF9]" data-testid="main-content">
             <div className="max-w-screen-xl mx-auto">
-              {children}
+              <QuickSetupGate>{children}</QuickSetupGate>
             </div>
           </main>
         </div>

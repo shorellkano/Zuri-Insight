@@ -38,6 +38,7 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 - `GET/PUT/DELETE /api/brands/:brandId` — brand CRUD
 - `GET/POST /api/brands/:brandId/dna` — get/build Brand DNA
 - `GET /api/brands/:brandId/content` — list brand content
+- `POST /api/generate/quick-create` — Quick Create: platform+format+topic → 1 AI variation (hook/caption/hashtags/keywords), saved to content table with type "quick-create"
 - `POST /api/generate/ad-copy|social-posts|email|whatsapp|video-scripts` — content generation
 - `GET /api/content` — content library with type/brand filters
 - `DELETE /api/content/:contentId` — delete content
@@ -47,6 +48,7 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 ## Frontend Pages (artifacts/zuri-ai/src/pages/)
 
 - `/` — Marketing landing page (home.tsx)
+- `/quick-create` — **Primary interface**: platform grid + format pills + topic + tone + AI generation, output with hook/caption/hashtags, copy/download/schedule actions. QuickSetup onboarding modal shown to users with 0 brands.
 - `/dashboard` — Stats, quick-generate, recent activity, brands overview
 - `/brands` — Brand grid with DNA status
 - `/brands/new` — 4-step brand setup wizard (basics → market/culture → social handles → DNA build animation)

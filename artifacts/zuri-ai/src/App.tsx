@@ -34,6 +34,7 @@ import ContentCalendar from "@/pages/content-calendar";
 import BulkPlan from "@/pages/bulk-plan";
 import BrandCalendarPage from "@/pages/brand-calendar-page";
 import BrandSettings from "@/pages/brand-settings";
+import QuickCreate from "@/pages/quick-create";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -85,6 +86,7 @@ function Router() {
       <Route path="/generate/email"><Wrap><GenerateEmail /></Wrap></Route>
       <Route path="/generate/whatsapp"><Wrap><GenerateWhatsapp /></Wrap></Route>
       <Route path="/generate/video-scripts"><Wrap><GenerateVideoScripts /></Wrap></Route>
+      <Route path="/quick-create"><Wrap><QuickCreate /></Wrap></Route>
       <Route path="/calendar"><Wrap><ContentCalendar /></Wrap></Route>
       <Route path="/content"><Wrap><ContentLibrary /></Wrap></Route>
       <Route path="/settings"><Wrap><Settings /></Wrap></Route>

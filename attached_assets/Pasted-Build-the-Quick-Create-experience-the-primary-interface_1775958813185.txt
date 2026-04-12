@@ -1,0 +1,244 @@
+Build the Quick Create experience — the primary interface for solo business owners.
+
+This is the most important page in Zuri AI. A solo fashion brand owner, a food business, a beauty entrepreneur — someone with no marketing team — should be able to come here, type a few words about what they want, pick their platform and format, and receive complete, publish-ready content in under 60 seconds.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 1 — SOLO ONBOARDING (replaces the full wizard for new users)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When a brand-new user logs in for the first time, instead of the full 4-step brand wizard, show a simplified Quick Setup modal that takes 3 minutes.
+
+FILE: components/brands/QuickSetup.tsx
+Show this as a full-screen modal with a progress indicator.
+
+SCREEN 1 — "Tell us about your business" (30 seconds):
+  Large friendly heading: "Welcome to Zuri AI. Let's learn about your brand."
+  Three inputs on one screen (no separate steps — all visible at once):
+    1. "What is your business called?" — text input, large
+    2. "What do you sell or do?" — textarea, 2 lines, placeholder: "e.g. I sell handmade skincare products for African women"
+    3. "Which country are you based in?" — searchable dropdown (all countries, Africa pre-sorted at top)
+  "Continue" button (amber, full width)
+
+SCREEN 2 — "Where are you online?" (60 seconds):
+  Heading: "Add your social handles — even one is enough"
+  Subtext: "Zuri reads your public profile to understand your brand voice. You do not need to connect your account — just type your handle."
+  Show 4 platforms as large input rows (most important for African market):
+    Instagram  @handle input
+    TikTok     @handle input
+    Facebook   page name or URL input
+    X/Twitter  @handle input
+  Below those 4, a collapsible "More platforms" section for LinkedIn, YouTube, Snapchat.
+  Optional: "Do you have a website?" — URL input
+  Subtext at bottom: "No handles yet? No problem — Zuri will use what you told us."
+  "Continue" button
+
+SCREEN 3 — "Almost ready" (30 seconds — DNA building):
+  Show the animated DNA-building sequence (same as main wizard Step 4).
+  On completion, instead of redirecting to /brands/[id]/dna, redirect to /quick-create.
+  Show a success message: "Zuri has learned your brand. Time to create."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 2 — QUICK CREATE PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: app/(dashboard)/quick-create/page.tsx
+
+This is the default home screen for solo users. For users with multiple brands, the main dashboard remains /dashboard. For users with only one brand, redirect from /dashboard to /quick-create automatically.
+
+Add "Quick Create" to the sidebar at the very top of navigation, above "My Brands", with a Zap icon.
+
+PAGE LAYOUT:
+No sidebar-style sub-navigation. Clean, open, single-column layout centred on page. Maximum width 680px, centred. Generous padding.
+
+TOP SECTION — Brand context bar:
+Small pill showing: [Brand name] · [Country flag] · [Industry]
+"Edit brand" link (small, right aligned)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MAIN CREATION FORM — This is the heart of the page
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SECTION 1 — Platform and format selector
+Label: "Where is this going?"
+Show platform cards in a responsive grid (2 columns mobile, 4 desktop).
+Each card is a large clickable tile. Only one can be selected at a time. Selected = amber border, amber icon, amber text.
+
+Platform cards:
+  Instagram   (Instagram icon)
+  TikTok      (TikTok icon — use a simple play-square icon from lucide)
+  Facebook    (Facebook icon)
+  LinkedIn    (Linkedin icon)
+  YouTube     (Youtube icon)
+  Snapchat    (Ghost icon — closest available in lucide)
+
+After selecting a platform, show a FORMAT row below it:
+  Instagram formats:  [Reel]  [Story]  [Feed Post]  [Carousel]
+  TikTok formats:     [Video] [Story]
+  Facebook formats:   [Post]  [Reel]   [Story]
+  LinkedIn formats:   [Post]  [Article intro]
+  YouTube formats:    [Short] [Video description]
+  Snapchat formats:   [Snap]  [Story]
+
+Format tiles are smaller — pill-shaped, single row. Selected format gets amber fill.
+
+SECTION 2 — What is it about?
+Label: "What do you want to post about?"
+Large textarea (minimum 120px tall).
+Placeholder text (rotate through these on focus):
+  "New collection dropping this Friday — bold colours, African print..."
+  "Behind the scenes of how I make my products..."
+  "Customer shoutout — they loved their order..."
+  "Flash sale this weekend only — 30% off everything..."
+  "Tips for my audience — 3 things to know about natural hair care..."
+
+Below the textarea, show QUICK TOPIC CHIPS — small clickable pills that auto-fill the textarea with a starter prompt:
+  New product    Sale / Promo    Customer story
+  Behind scenes  Educational tip  Announcement
+  Celebration    Quote / Inspire
+
+SECTION 3 — Tone (optional, collapsed by default)
+Small "Adjust tone ▾" toggle below the textarea.
+When expanded, show 5 tone options as small pill selectors (one selectable):
+  Professional (default)   Friendly   Bold & Direct   Inspirational   Playful
+Note: Professional is always the default. Cultural dialect only activates if brand DNA shows it.
+
+SECTION 4 — Additional context (optional, collapsed)
+"Add more context ▾" toggle.
+When expanded:
+  "Mention a specific product, price, or offer?" — short text input
+  "Tag anyone or any account?" — short text input
+  "Is this for a specific date or event?" — date picker with a calendar icon
+
+GENERATE BUTTON:
+Large amber button, full width: "Generate content  →"
+Shows a loading state with the text cycling through:
+  "Reading your brand voice..."
+  "Crafting your hook..."
+  "Writing your caption..."
+  "Selecting hashtags..."
+(Each message shows for 1.5 seconds)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 3 — OUTPUT DISPLAY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After generation, show the output BELOW the form on the same page.
+Do not navigate away. The form stays visible above so the user can regenerate.
+
+OUTPUT HEADER:
+"Here is your content" with a small platform badge (Instagram Reel, TikTok Video, etc.)
+Show 3 variations (tabs: Variation 1, Variation 2, Variation 3)
+
+EACH VARIATION CARD shows these sections clearly separated with labels:
+
+HOOK SECTION — labelled "Hook" with a small amber tag:
+  The hook text displayed large and bold.
+  A "What is a hook?" tooltip: "The first line — it is what stops someone from scrolling."
+  Character count displayed.
+  Copy button.
+
+CAPTION SECTION — labelled "Caption":
+  The full caption text.
+  Character count. Platform limit shown in small muted text: "(Instagram max: 2,200 chars)"
+  Copy button.
+
+HASHTAGS SECTION — labelled "Hashtags":
+  Hashtags displayed as individual clickable pills.
+  Clicking a pill removes it. "+" button to add a custom one.
+  Count shown: "24 hashtags · Instagram allows up to 30"
+  Platform-specific note: for TikTok "3-5 hashtags perform best · Keep them broad"
+  Copy all button.
+
+KEYWORDS SECTION — labelled "Keywords / SEO terms" (for YouTube and LinkedIn only):
+  List of 5-8 keywords relevant to the content.
+  Copy button.
+  Note: "Use these in your video description, alt text, and spoken in the first 30 seconds."
+
+PLATFORM RULES NOTICE — small callout below the content:
+  Show platform-specific guidance:
+  Instagram Reel: "Hook must land in first 3 seconds. Caption can be long but the hook does the work."
+  TikTok: "First 2-3 words are critical. Post between 6pm-10pm WAT for Nigerian audiences."
+  Instagram Story: "Text overlay should be readable in 3 seconds. Use the poll or question sticker to drive engagement."
+  Facebook: "Facebook rewards longer posts with stories. Add your location tag for local discovery."
+  LinkedIn: "First 2 lines show before 'see more'. Make them count. No more than 5 hashtags."
+  YouTube Short: "First frame must be compelling. Speak the keyword in the first 10 seconds."
+
+ACTION BUTTONS (below the variation card):
+  [Copy all]  [Download as text file]  [Schedule this post]  [Save to library]
+  Small secondary row: [Regenerate] [Give Zuri feedback]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PART 4 — THE API ROUTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: app/api/generate/quick-create/route.ts
+
+POST body: { brandId, platform, format, topic, tone, additionalContext? }
+
+The system prompt must include:
+  Brand DNA (formality, energy, themes, power words)
+  Cultural context (country, trust signals)
+  Voice file examples if available
+  Active lessons if any
+  These absolute rules:
+    1. Never fabricate stats, testimonials, or story details.
+    2. Professional English by default. Dialect only if brand DNA shows it.
+    3. Be concise — every word earns its place.
+
+The user prompt:
+
+"Generate 3 variations of social media content for [platform] [format].
+
+Topic: [topic]
+Tone requested: [tone]
+Additional context: [additionalContext or 'none']
+
+PLATFORM RULES TO FOLLOW:
+[insert platform-specific rules below — these are hard constraints not suggestions]
+
+Instagram Reel rules:
+  Hook: maximum 8 words. Must be a complete thought. Must create curiosity or make a bold claim.
+  Caption: 150-300 words performs best for Reels. Start with the hook. Tell a story or give value.
+  Hashtags: 20-30 hashtags. Mix: 5 large (1M+ posts), 10 medium (100k-1M), 10 niche (under 100k).
+  Do NOT start the caption with a hashtag. Hashtags go at the end.
+
+TikTok rules:
+  Hook: first 3 words determine if they keep watching. Make it a pattern interrupt.
+  Caption: 150 characters maximum. Punchy. Can be the hook repeated with a twist.
+  Hashtags: 3-5 only. #fyp always included. 2-3 niche hashtags relevant to content.
+  Keywords: 5 keywords that match what people search on TikTok.
+
+Instagram Story rules:
+  Hook: 5 words maximum. Must be readable as text overlay on an image.
+  Caption: Not displayed on Stories — write it as a script for what the user should say or show.
+  Hashtags: 1-3 only (Stories hashtags are less important). Or 0 if using a location tag.
+
+Facebook Post rules:
+  Hook: first 2 lines show before 'see more'. These must do the work.
+  Caption: 100-250 words. Stories and questions drive comments. End with a question.
+  Hashtags: 2-5 maximum. Facebook hashtags are less effective than other platforms.
+
+LinkedIn Post rules:
+  Hook: first 2 lines (before 'see more'). Bold professional observation or personal story opening.
+  Caption: 150-300 words. Use line breaks every 1-2 sentences. No walls of text.
+  Hashtags: 3-5 only. Industry-relevant. Never generic like #motivation.
+
+YouTube Short rules:
+  Hook: spoken in first 3 seconds. Write it as dialogue, not a title.
+  Description: 100-200 words. Put keywords in first 2 sentences. Include call to action.
+  Tags/Keywords: 10-15 keywords. Mix broad and specific.
+
+Return JSON array of 3 variation objects, each with:
+{
+  variation_number: 1,
+  hook: string,
+  caption: string,
+  hashtags: string[],
+  keywords: string[] (YouTube and LinkedIn only, else empty array),
+  hook_char_count: number,
+  caption_char_count: number,
+  platform_note: string (one sentence of contextual advice for this specific variation)
+}"
+
+Save all 3 variations to generated_content table.
+Return { variations, content_id }.
