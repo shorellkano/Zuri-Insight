@@ -12,7 +12,11 @@ export async function crawlWebsite(url: string): Promise<string> {
       onlyMainContent: true,
       excludeTags: ["nav", "footer", "header", "script", "style", "iframe"],
     });
-    let content = homeResult?.markdown ?? homeResult?.data?.markdown ?? "";
+    // v4 SDK may return markdown directly OR wrapped in a data object
+    let content: string =
+      homeResult?.markdown ??
+      homeResult?.data?.markdown ??
+      "";
 
     // If homepage is short, also try crawling a few more pages
     if (content.length < 500) {
@@ -24,10 +28,12 @@ export async function crawlWebsite(url: string): Promise<string> {
           excludeTags: ["nav", "footer", "header", "script", "style", "iframe"],
         },
       });
-      if (crawlResult?.success && crawlResult?.data?.length > 0) {
-        const extra = crawlResult.data
-          .filter((p: any) => p.markdown)
-          .map((p: any) => p.markdown)
+      // crawlUrl result: data array of pages
+      const pages: any[] = crawlResult?.data ?? crawlResult?.pages ?? [];
+      if (pages.length > 0) {
+        const extra = pages
+          .map((p: any) => p.markdown ?? p.data?.markdown ?? "")
+          .filter(Boolean)
           .join("\n\n");
         content = content ? `${content}\n\n${extra}` : extra;
       }
