@@ -134,7 +134,7 @@ export default function BrandCalendarPage() {
       const r = await fetch(API(`/brands/${brandId}/people-assets`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: personName, role: personRole || undefined, photoUrl: "/placeholder-person.png" }),
+        body: JSON.stringify({ name: personName, role: personRole || undefined, photoUrl: "/placeholder-person.svg" }),
       });
       if (!r.ok) throw new Error("Failed to save");
       toast({ title: "Person added" });
