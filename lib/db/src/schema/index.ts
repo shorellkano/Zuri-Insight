@@ -9,3 +9,4 @@ export * from "./people_assets";
 export * from "./scheduled_posts";
 export * from "./content_plans";
 export * from "./calendar_events";
+export * from "./media_posts";

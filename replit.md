@@ -31,6 +31,7 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 - **brands** — brand profiles (name, website, industry, target market, continent, country, city, language, social handles × 7, dnaBuilt flag)
 - **brand_dna** — Brand DNA intelligence profile (tone of voice, core values, target audience, cultural context, etc.)
 - **content** — saved generated content (type, brand, prompt, content, platform, tone)
+- **media_posts** — uploaded media content for Post Content feature (mediaUrls, mediaType, context, category, callToAction, generatedCaptions jsonb, platforms, postStatus)
 
 ## API Endpoints (artifacts/api-server/src/routes/)
 
@@ -39,6 +40,9 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 - `GET/POST /api/brands/:brandId/dna` — get/build Brand DNA
 - `GET /api/brands/:brandId/content` — list brand content
 - `POST /api/generate/quick-create` — Quick Create: platform+format+topic → 1 AI variation (hook/caption/hashtags/keywords), saved to content table with type "quick-create"
+- `POST /api/generate/media-post` — Post Content: mediaUrls/context/platforms → per-platform captions saved to media_posts table
+- `POST /api/storage/uploads/request-url` — Request a presigned GCS URL for direct file upload (returns uploadURL + objectPath)
+- `GET /api/storage/objects/:path` — Serve private uploaded files from object storage
 - `POST /api/generate/ad-copy|social-posts|email|whatsapp|video-scripts` — content generation
 - `GET /api/content` — content library with type/brand filters
 - `DELETE /api/content/:contentId` — delete content
@@ -49,6 +53,7 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 
 - `/` — Marketing landing page (home.tsx)
 - `/quick-create` — **Primary interface**: platform grid + format pills + topic + tone + AI generation, output with hook/caption/hashtags, copy/download/schedule actions. QuickSetup onboarding modal shown to users with 0 brands.
+- `/post` — **Post Content (Media First Creation)**: 4-step wizard (Upload media → Context/describe → Select platforms → AI-generated per-platform captions). Files uploaded to Replit Object Storage via presigned URLs. Captions shown in collapsible cards with copy functionality.
 - `/dashboard` — Stats, quick-generate, recent activity, brands overview
 - `/brands` — Brand grid with DNA status
 - `/brands/new` — 4-step brand setup wizard (basics → market/culture → social handles → DNA build animation)

@@ -1,0 +1,254 @@
+Build the Media-First Creation feature. This is for users who have their own images or videos and need Zuri to generate captions, format for each platform, and post or schedule everywhere at once.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NEW PAGE: app/(dashboard)/post/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add "Post Content" to the sidebar navigation with an Upload icon, positioned directly below "Quick Create".
+
+PAGE HEADING: "Post your content"
+Subtext: "Upload your images or videos. Tell Zuri what they show. We handle the rest."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — MEDIA UPLOAD ZONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Large drag-and-drop upload zone. Click to browse or drag files in.
+Accept: images (JPG, PNG, WEBP) and videos (MP4, MOV, AVI).
+Maximum file size: 500MB per video, 20MB per image.
+Maximum files per post: 10 images (for carousels) or 1 video.
+Store uploaded files in Supabase Storage under: brand-media/[brandId]/[timestamp]/
+
+Show uploaded files as a preview grid:
+  Images: thumbnail grid, click to reorder (drag to change carousel order).
+  Video: single video preview with play button, duration shown.
+
+For each uploaded file, show a small input field below the thumbnail:
+  Label: "Who or what is in this?" (optional)
+  Placeholder examples that rotate based on file number:
+    "e.g. The bride and groom, Amara and David"
+    "e.g. 3-bedroom duplex in Lekki Phase 1"
+    "e.g. Jollof rice with fried plantain and grilled chicken"
+    "e.g. 2023 Toyota Camry, red, V6, 45,000km"
+    "e.g. Our CEO, Mr Adebayo, at the Lagos Tech Summit"
+  This label field is the key to personalised, accurate captions.
+
+CONTENT TYPE SELECTOR (below upload zone):
+Small pill selectors — only one active at a time. Auto-detected from file type but user can override:
+  Photos   Video   Carousel (multiple images)   Mixed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — CONTEXT INPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SECTION: "Tell Zuri about this post"
+
+MAIN CONTEXT FIELD:
+Large textarea. Label: "What is this about?"
+Placeholder: "Describe what you want people to know. The more you tell us, the better the caption."
+Examples shown below as faded hint text (not in the input):
+  Realtors: "3-bedroom terrace for sale in Ikeja GRA. ₦85 million. Fully detached, BQ included, 24hr light."
+  Wedding: "Amara and David's wedding at Eko Hotel. Traditional and white wedding. June 2026."
+  Food: "My signature smoky jollof rice. Made with tomatoes, scotch bonnet, and bay leaves. Serves 4."
+  Car dealer: "2021 Honda Accord, black, leather interior, Bluetooth, reversing camera. ₦12.5m. Negotiable."
+  Event: "Annual dinner for Zenith Bank top performers. CEO Mr Adeyemi presenting awards. 5-star event."
+
+CAPTION ENHANCEMENT TOGGLE:
+If the user already has a caption or description, show a toggle:
+"I already have a caption — just improve it"
+When toggled on: shows a second textarea "Paste your existing caption here"
+Zuri will enhance this rather than write from scratch. This is perfect for realtors, car dealers, and anyone with existing listing descriptions.
+
+CATEGORY SELECTOR (helps Zuri pick the right tone and structure):
+Small pill selectors:
+  Property / Real estate    Food & Catering    Wedding & Events
+  Automotive               Fashion & Style     Beauty & Skincare
+  Business & Corporate     Travel & Lifestyle  General
+
+CALL TO ACTION (optional):
+Text input: "What do you want people to do after seeing this?"
+Placeholder: "e.g. Call us, DM for price, Book a viewing, Link in bio, Save this recipe"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — PLATFORM AND SCHEDULE SELECTOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SECTION: "Where do you want to post this?"
+
+Show all platforms as large checkbox tiles (multiple can be selected):
+  Instagram    TikTok    Facebook    LinkedIn    YouTube    Snapchat
+
+When a platform is selected, show the FORMAT sub-selector for that platform:
+  Instagram:  Feed Post · Reel · Story (select one)
+  TikTok:     Video · Story
+  Facebook:   Post · Reel · Story
+  LinkedIn:   Post
+  YouTube:    Short · Video
+
+Show a notice if the selected format has requirements the upload does not meet:
+  "TikTok videos must be vertical (9:16). Your video appears to be horizontal — it will be cropped."
+  "Instagram Reels work best under 90 seconds. Your video is 3 minutes — consider trimming."
+
+POSTING TIME SELECTOR:
+Three options shown as radio tiles:
+  [Post now]   [Schedule for later]   [Add to queue — let Zuri pick the best time]
+
+"Schedule for later" shows: date picker + time picker + timezone selector (default Africa/Lagos)
+"Let Zuri pick" shows: "Zuri will schedule based on peak engagement times for your audience in [country]"
+  Show the suggested times as a preview: "Instagram: 7pm WAT · TikTok: 8pm WAT · Facebook: 6pm WAT"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — GENERATE BUTTON AND OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Large amber button: "Generate captions and post →"
+If only one platform selected: "Generate caption and post to [platform] →"
+If multiple: "Generate captions for [X] platforms and post →"
+
+LOADING STATE — show a card for each selected platform being processed:
+  [Instagram Feed] Generating caption... ⟳
+  [TikTok Video]   Generating caption... ⟳
+  [Facebook Post]  Generating caption... ⟳
+Each card turns green with a tick as it completes.
+
+OUTPUT — shown below as a tabbed interface, one tab per platform:
+Tab labels: [Instagram] [TikTok] [Facebook]
+
+Each tab shows:
+  MEDIA PREVIEW: thumbnail of uploaded image or video player (small, on the right)
+  
+  HOOK (for video formats only):
+    Label: "Opening hook — first 3 seconds"
+    The hook text, bold and large
+    Copy button
+  
+  CAPTION:
+    Label: "Caption"
+    Full caption text, editable inline (user can click and edit directly)
+    Character count + platform limit
+    Copy button
+  
+  HASHTAGS:
+    Pills (removable by clicking ×)
+    Count and platform guidance
+    "Add hashtag" input
+    Copy all button
+  
+  KEYWORDS (YouTube only):
+    List of 8-10 SEO keywords
+    Copy button
+  
+  PLATFORM NOTE (small amber callout):
+    Instagram Feed: "Tag your location for 30% more reach on property and food content."
+    TikTok: "Add trending audio in the TikTok app after posting — Zuri cannot add this for you."
+    Facebook: "Share to relevant Facebook Groups after posting to multiply reach."
+    LinkedIn: "Tag companies or people mentioned in the post for significantly more impressions."
+
+  EDIT AND APPROVE BAR below each tab:
+    [Edit caption] [Regenerate this platform] [Approve]
+    A green "Approved" badge appears when the user approves a tab.
+
+BOTTOM ACTION BAR (appears when at least one tab is approved):
+  Shows: "X of Y platforms approved"
+  [Post approved platforms now] or [Schedule approved platforms]
+  If "Post now" is selected, Zuri attempts to publish to all approved platforms simultaneously.
+  Show a live publishing status card: each platform shows publishing → success/failed.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THE API ROUTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: app/api/generate/media-post/route.ts
+
+POST body: {
+  brandId,
+  mediaUrls: string[],          -- Supabase Storage URLs of uploaded files
+  mediaLabels: string[],        -- per-file "who or what is in this" labels
+  mediaType: 'image'|'video'|'carousel',
+  context: string,              -- main "what is this about" text
+  existingCaption?: string,     -- if enhancement mode
+  category: string,             -- realtor, food, wedding, automotive etc
+  callToAction?: string,
+  platforms: { platform: string, format: string }[],
+}
+
+For each platform in the platforms array, make a separate Claude call with:
+
+SYSTEM PROMPT: (standard buildSystemPrompt with DNA + culture + voice + lessons)
+Plus these additions based on category:
+
+Property/Real estate category additions:
+  "This is a property listing. Structure the caption as: compelling opening line about the property,
+   key features as a scannable list, price and key practical details, strong call to action.
+   Never fabricate room counts, prices, or features not mentioned in the context.
+   Be aspirational but factual."
+
+Food/Catering category additions:
+  "This is food content. Make the caption sensory — describe how it smells, tastes, and looks.
+   Use appetite-triggering language. If a recipe context is given, structure as: dish name,
+   one-line description, key ingredients, call to action. Never invent ingredients not mentioned."
+
+Wedding/Events category additions:
+  "This is event content. If people's names are provided in the media labels, use them naturally
+   in the caption — this personalisation is what the user wants. Structure as: warm opening
+   referencing the people or event, description of the moment, emotional close, hashtags.
+   Keep it celebratory and warm. Professional English — not overly casual."
+
+Automotive category additions:
+  "This is a vehicle listing. Structure: attention-grabbing opening (make/model/year),
+   key features as bullets (engine, mileage, condition, colour, interior), price with
+   negotiability note, call to action. Never invent specs not provided. Be factual and direct."
+
+USER PROMPT for each platform:
+"Generate a [platform] [format] caption for this content.
+
+MEDIA DESCRIPTION:
+[mediaLabels joined with context — e.g. 'Photo 1: The bride and groom, Amara and David. Photo 2: The wedding cake. Context: White wedding at Eko Hotel, Lagos, June 2026.']
+
+[If existingCaption exists: 'The user has provided this existing description — enhance it, do not replace it entirely:\n[existingCaption]']
+
+CALL TO ACTION: [callToAction or 'Engage with the post']
+
+Platform requirements for [platform] [format]:
+[insert exact platform rules from the quick-create route — same rules, reuse the same object]
+
+Return JSON:
+{
+  hook: string (video formats only, else null),
+  caption: string,
+  hashtags: string[],
+  keywords: string[] (YouTube only, else []),
+  caption_char_count: number,
+  platform_note: string
+}"
+
+Save all generated captions to generated_content table with content_type='media_post'.
+Save media URLs and labels to the post record.
+Return all platform captions as { platforms: { [platform]: GeneratedCaption } }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATABASE ADDITION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run this SQL in Supabase:
+
+CREATE TABLE public.media_posts (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id      UUID REFERENCES public.brands(id) ON DELETE CASCADE NOT NULL,
+  user_id       UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  media_urls    TEXT[] DEFAULT '{}',
+  media_labels  TEXT[] DEFAULT '{}',
+  media_type    TEXT CHECK (media_type IN ('image','video','carousel','mixed')),
+  category      TEXT,
+  context       TEXT,
+  existing_caption TEXT,
+  call_to_action TEXT,
+  generated_captions JSONB DEFAULT '{}'::jsonb,
+  platforms_posted   TEXT[] DEFAULT '{}',
+  post_status   TEXT DEFAULT 'draft',
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.media_posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "media_posts_own" ON public.media_posts
+  FOR ALL USING (auth.uid() = user_id);

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays, Zap } from "lucide-react";
+import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays, Zap, Camera } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -11,6 +11,7 @@ import { QuickSetup } from "@/components/brands/QuickSetup";
 
 const navItems = [
   { href: "/quick-create", label: "Quick Create", icon: Zap, highlight: true },
+  { href: "/post", label: "Post Content", icon: Camera },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/brands", label: "Brands", icon: Layers },
   { href: "/generate", label: "Generate", icon: Sparkles },

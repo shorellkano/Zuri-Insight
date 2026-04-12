@@ -10,6 +10,8 @@ import creativeStudioRouter from "./creative-studio";
 import calendarRouter from "./calendar";
 import bulkPlanRouter from "./bulk-plan";
 import brandCalendarRouter from "./brand-calendar";
+import storageRouter from "./storage";
+import mediaPostRouter from "./media-post";
 
 const router: IRouter = Router();
 
@@ -24,5 +26,7 @@ router.use(creativeStudioRouter);
 router.use(calendarRouter);
 router.use(bulkPlanRouter);
 router.use(brandCalendarRouter);
+router.use(storageRouter);
+router.use(mediaPostRouter);
 
 export default router;
