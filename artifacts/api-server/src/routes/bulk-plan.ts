@@ -96,7 +96,7 @@ Return JSON:
   ]
 }`;
 
-    const suggestion = await aiJSON<{ period: any; platforms: string[]; calendar_events_included: any[]; slots: any[] }>(system, user, 1200);
+    const suggestion = await aiJSON<{ period: any; platforms: string[]; calendar_events_included: any[]; slots: any[] }>(system, user, 700);
 
     const userId = (req as any).user?.id ?? brandId;
     const [plan] = await db.insert(contentPlansTable).values({

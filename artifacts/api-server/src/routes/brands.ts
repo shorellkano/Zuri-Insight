@@ -134,7 +134,7 @@ Please extract and write a Brand Brief that covers:
 
 Write this as 3-5 sentences in plain English that a marketing team could use to brief a content writer. Only include what you can actually see - do not guess or infer beyond what is visible.`;
 
-    const brief = await aiVision(system, prompt, validImages, 800);
+    const brief = await aiVision(system, prompt, validImages, 700);
     res.json({ brief: brief.trim() });
   } catch (err: any) {
     console.error("Screenshot analysis error:", err);
@@ -264,7 +264,7 @@ Return ONLY this JSON (no markdown fences, no explanation):
   "brand_summary": "<honest 2-3 sentence summary of what you could actually determine from the content. If content was limited, say so and describe what the brand appears to be based on available evidence only.>"
 }`;
 
-      dnaResult = await aiJSON(system, user, 1200);
+      dnaResult = await aiJSON(system, user, 700);
     } else {
       // Fallback DNA when no AI key is configured
       dnaResult = {
