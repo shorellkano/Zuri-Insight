@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
-import { Loader2, Download, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Download, Calendar, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 
@@ -21,10 +21,21 @@ export default function CreativeStudioCarousel() {
   const [loading, setLoading] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [canvaConfigured, setCanvaConfigured] = useState(false);
+  const [canvaEditUrl, setCanvaEditUrl] = useState<string | null>(null);
+  const [canvaLoading, setCanvaLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(API("/canva/status"))
+      .then((r) => r.json())
+      .then((d) => setCanvaConfigured(d.configured ?? false))
+      .catch(() => {});
+  }, []);
 
   async function generate() {
     if (!activeBrandId || !topic.trim()) return;
     setLoading(true);
+    setCanvaEditUrl(null);
     try {
       const r = await fetch(API("/generate/carousel"), {
         method: "POST",
@@ -35,6 +46,19 @@ export default function CreativeStudioCarousel() {
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
       setSlides(data.slides);
       setActiveSlide(0);
+
+      if (canvaConfigured) {
+        setCanvaLoading(true);
+        fetch(API("/canva/create-design"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: `Carousel: ${topic.slice(0, 40)}`, platform, format: "feed" }),
+        })
+          .then((r) => r.json())
+          .then((d) => d.editUrl && setCanvaEditUrl(d.editUrl))
+          .catch(() => {})
+          .finally(() => setCanvaLoading(false));
+      }
     } catch (err: any) {
       toast({ title: "Generation failed", description: err.message, variant: "destructive" });
     } finally {
@@ -167,7 +191,7 @@ export default function CreativeStudioCarousel() {
                 )}
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 flex-wrap">
                 <button className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">
                   <Download className="h-4 w-4" />
                   Download Slides
@@ -179,6 +203,20 @@ export default function CreativeStudioCarousel() {
                   </button>
                 </Link>
               </div>
+              {(canvaEditUrl || canvaLoading) && (
+                <a
+                  href={canvaEditUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-[#8B3DFF]/30 bg-[#8B3DFF]/8 text-[#8B3DFF] rounded-lg text-sm font-medium hover:bg-[#8B3DFF]/15 transition-colors"
+                >
+                  {canvaLoading ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Opening in Canva...</>
+                  ) : (
+                    <><ExternalLink className="h-4 w-4" /> Edit in Canva</>
+                  )}
+                </a>
+              )}
             </>
           )}
         </div>

@@ -12,6 +12,8 @@ import bulkPlanRouter from "./bulk-plan";
 import brandCalendarRouter from "./brand-calendar";
 import storageRouter from "./storage";
 import mediaPostRouter from "./media-post";
+import ugcVideoRouter from "./ugc-video";
+import canvaApiRouter from "./canva-api";
 
 const router: IRouter = Router();
 
@@ -28,5 +30,7 @@ router.use(bulkPlanRouter);
 router.use(brandCalendarRouter);
 router.use(storageRouter);
 router.use(mediaPostRouter);
+router.use(ugcVideoRouter);
+router.use(canvaApiRouter);
 
 export default router;

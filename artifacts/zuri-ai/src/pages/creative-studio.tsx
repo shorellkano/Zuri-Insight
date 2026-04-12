@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { LayoutGrid, Quote, Megaphone, ShoppingBag, Smartphone, Cake, ArrowRight, Palette, Settings2 } from "lucide-react";
+import { LayoutGrid, Quote, Megaphone, ShoppingBag, Smartphone, Cake, ArrowRight, Palette, Settings2, Video } from "lucide-react";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
 import { VisualPrefsSheet } from "@/components/visual-prefs-sheet";
@@ -56,6 +56,15 @@ const designTypes = [
     desc: "Personalised posts for staff or CEO birthdays",
     color: "text-pink-700 bg-pink-100",
     platforms: ["All platforms"],
+  },
+  {
+    href: "/generate/creative-studio/ugc-video",
+    icon: Video,
+    label: "UGC Video",
+    desc: "Realistic influencer-style video from your product description or image",
+    color: "text-amber-700 bg-amber-100",
+    platforms: ["Instagram", "TikTok", "YouTube"],
+    badge: "Higgsfield AI",
   },
 ];
 
@@ -141,7 +150,7 @@ export default function CreativeStudio() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {designTypes.map(({ href, icon: Icon, label, desc, color, platforms }) => (
+        {(designTypes as any[]).map(({ href, icon: Icon, label, desc, color, platforms, badge }) => (
           <Link key={href} href={href}>
             <div className="bg-card border border-border rounded-2xl p-6 hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer group flex flex-col gap-4 h-full">
               <div className="flex items-start justify-between">
@@ -151,11 +160,18 @@ export default function CreativeStudio() {
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all mt-1" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-1">{label}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-foreground">{label}</h3>
+                  {badge && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                      {badge}
+                    </span>
+                  )}
+                </div>
                 <p className="text-muted-foreground text-sm leading-relaxed">{desc}</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {platforms.map(p => (
+                {platforms.map((p: string) => (
                   <span key={p} className="px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground">{p}</span>
                 ))}
               </div>
