@@ -1,0 +1,358 @@
+CRITICAL FIX: Replace the Anthropic SDK with Open Router API throughout the project.
+We are using Open Router instead of a direct Anthropic API key.
+Open Router uses the OpenAI-compatible API format.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — REMOVE ANTHROPIC SDK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run in Replit shell:
+  npm uninstall @anthropic-ai/sdk
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — ADD OPEN ROUTER KEYS TO REPLIT SECRETS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Go to Replit sidebar → Tools → Secrets.
+Add these two keys:
+  OPENROUTER_API_KEY     your key from openrouter.ai/keys
+  OPENROUTER_BASE_URL    https://openrouter.ai/api/v1
+
+Also update .env.local:
+  OPENROUTER_API_KEY=
+  OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+Remove from .env.local:
+  ANTHROPIC_API_KEY=
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — REPLACE lib/claude.ts COMPLETELY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Delete the existing lib/claude.ts and replace with this exact file:
+
+FILE: lib/claude.ts
+---
+// Zuri AI — LLM client using Open Router
+// Open Router uses the OpenAI-compatible API format
+// Docs: https://openrouter.ai/docs
+
+const OPENROUTER_BASE = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
+
+// The model we use through Open Router.
+// anthropic/claude-sonnet-4-5 is the best balance of quality and cost.
+// To switch models, change this one constant — nothing else needs to change.
+const DEFAULT_MODEL = 'anthropic/claude-sonnet-4-5'
+
+// Fallback model if primary fails or is unavailable
+const FALLBACK_MODEL = 'openai/gpt-4o'
+
+interface Message {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+interface OpenRouterResponse {
+  id: string
+  choices: Array<{
+    message: {
+      role: string
+      content: string
+    }
+    finish_reason: string
+  }>
+  usage: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
+  error?: {
+    message: string
+    code: number
+  }
+}
+
+// Core function — used by everything in Zuri
+export async function callLLM(
+  systemPrompt: string,
+  userPrompt: string,
+  options: {
+    maxTokens?: number
+    model?: string
+    temperature?: number
+  } = {}
+): Promise<string> {
+  if (!process.env.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not set in Replit Secrets')
+  }
+
+  const model = options.model || DEFAULT_MODEL
+  const maxTokens = options.maxTokens || 2000
+  const temperature = options.temperature ?? 0.7
+
+  const messages: Message[] = [
+    { role: 'user', content: userPrompt }
+  ]
+
+  const body = {
+    model,
+    max_tokens: maxTokens,
+    temperature,
+    messages,
+    // System prompt goes here for Open Router
+    // Some models use it in messages array, Open Router accepts both formats
+    system: systemPrompt,
+    // Open Router specific headers — helps with rate limiting and tracking
+    route: 'fallback',
+  }
+
+  try {
+    const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://zuriai.co',
+        'X-Title': 'Zuri AI',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000) // 60 second timeout
+    })
+
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error(`Open Router error ${res.status}:`, errorText)
+      
+      // If rate limited or model unavailable, try fallback model
+      if (res.status === 429 || res.status === 503) {
+        return callWithFallback(systemPrompt, userPrompt, maxTokens, temperature)
+      }
+      
+      throw new Error(`Open Router API error ${res.status}: ${errorText}`)
+    }
+
+    const data: OpenRouterResponse = await res.json()
+
+    // Check for API-level errors in response body
+    if (data.error) {
+      throw new Error(`Open Router error: ${data.error.message}`)
+    }
+
+    const content = data.choices?.[0]?.message?.content
+    if (!content) {
+      throw new Error('Open Router returned empty content')
+    }
+
+    return content
+
+  } catch (e: any) {
+    // Network errors, timeouts
+    if (e.name === 'AbortError') {
+      throw new Error('LLM request timed out after 60 seconds')
+    }
+    throw e
+  }
+}
+
+// Fallback to GPT-4o if Claude is unavailable
+async function callWithFallback(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number,
+  temperature: number
+): Promise<string> {
+  console.warn(`Primary model unavailable — falling back to ${FALLBACK_MODEL}`)
+  const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://zuriai.co',
+      'X-Title': 'Zuri AI',
+    },
+    body: JSON.stringify({
+      model: FALLBACK_MODEL,
+      max_tokens: maxTokens,
+      temperature,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    })
+  })
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content || ''
+}
+
+// Text completion — simple string in, string out
+export async function claudeComplete(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens = 2000
+): Promise<string> {
+  return callLLM(systemPrompt, userPrompt, { maxTokens })
+}
+
+// JSON completion — strips markdown fences and parses
+export async function claudeJSON<T = any>(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens = 2000
+): Promise<T> {
+  const raw = await callLLM(systemPrompt, userPrompt, { maxTokens })
+  
+  // Strip markdown code fences if present
+  const cleaned = raw
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim()
+
+  // Find the first { or [ and parse from there
+  // This handles cases where the model adds text before the JSON
+  const jsonStart = cleaned.search(/[{[]/)
+  if (jsonStart === -1) {
+    console.error('No JSON found in response:', cleaned)
+    throw new Error('LLM did not return valid JSON')
+  }
+  
+  const jsonString = cleaned.slice(jsonStart)
+  
+  try {
+    return JSON.parse(jsonString) as T
+  } catch (e) {
+    console.error('JSON parse failed. Raw response:', raw)
+    console.error('Cleaned string:', jsonString)
+    throw new Error(`Failed to parse LLM JSON response: ${e}`)
+  }
+}
+
+// Streaming completion — for future use when we add streaming UI
+export async function claudeStream(
+  systemPrompt: string,
+  userPrompt: string,
+  onChunk: (chunk: string) => void
+): Promise<void> {
+  const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://zuriai.co',
+      'X-Title': 'Zuri AI',
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODEL,
+      max_tokens: 2000,
+      stream: true,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    })
+  })
+
+  if (!res.ok || !res.body) throw new Error('Streaming request failed')
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    
+    const chunk = decoder.decode(value)
+    const lines = chunk.split('\n').filter(l => l.startsWith('data: '))
+    
+    for (const line of lines) {
+      const data = line.slice(6)
+      if (data === '[DONE]') return
+      try {
+        const parsed = JSON.parse(data)
+        const content = parsed.choices?.[0]?.delta?.content
+        if (content) onChunk(content)
+      } catch {
+        // Skip malformed chunks
+      }
+    }
+  }
+}
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — UPDATE THE DNA BUILDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In lib/brand-dna/builder.ts, find any import of Anthropic or anthropic
+and replace with:
+
+  import { claudeJSON } from '@/lib/claude'
+
+The claudeJSON function signature is identical — no other changes needed in that file.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — UPDATE ALL GENERATOR ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In every file under app/api/generate/, find:
+  import Anthropic from '@anthropic-ai/sdk'
+  const anthropic = new Anthropic(...)
+  anthropic.messages.create(...)
+
+Replace the entire pattern with:
+  import { claudeJSON } from '@/lib/claude'
+  const result = await claudeJSON(systemPrompt, userPrompt, maxTokens)
+
+The claudeJSON and claudeComplete functions are drop-in replacements.
+No other changes needed in the generator routes.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 6 — UPDATE THE LESSON PARSER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In app/api/brands/[brandId]/lessons/route.ts, find any direct Anthropic call
+and replace with:
+  const parsed = await claudeJSON(parseSystemPrompt, parseUserPrompt, 400)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 7 — TEST THE CONNECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a test API route to verify Open Router is working:
+
+FILE: app/api/test-llm/route.ts
+---
+import { claudeComplete } from '@/lib/claude'
+
+export async function GET() {
+  try {
+    const result = await claudeComplete(
+      'You are a helpful assistant.',
+      'Say exactly this and nothing else: Open Router is connected and working for Zuri AI.',
+      100
+    )
+    return Response.json({ success: true, response: result })
+  } catch (e: any) {
+    return Response.json({ success: false, error: e.message }, { status: 500 })
+  }
+}
+---
+
+After deploying, visit: your-replit-url/api/test-llm
+You should see: { "success": true, "response": "Open Router is connected and working for Zuri AI." }
+
+If you see an error instead, check:
+  1. OPENROUTER_API_KEY is in Replit Secrets (not just .env.local)
+  2. The key starts with sk-or- (Open Router keys always start with this)
+  3. Your Open Router account has credits — check openrouter.ai/account
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 8 — VERIFY BRAND DNA WORKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After the LLM test passes:
+  1. Go to /brands/new or trigger Quick Setup
+  2. Enter a business name and description
+  3. Add one Instagram handle
+  4. Trigger DNA build
+  5. Check Supabase → Table Editor → brand_dna table
+  6. Confirm build_status = 'complete' and formality/energy scores are populated
+
+If DNA build still fails, check the Replit console logs for the specific error message
+and report it — the error message will tell us exactly which step is failing.
