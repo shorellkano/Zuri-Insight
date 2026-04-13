@@ -382,11 +382,17 @@ export default function Home() {
         }}
       >
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <img
-            src="/zuri-logo-head.png"
-            alt="Zuri AI"
+          <div
             data-testid="home-logo"
-            style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", objectPosition: "52% 48%", transform: "scale(1.35)", transformOrigin: "center", overflow: "hidden" }}
+            style={{
+              width: 36, height: 36,
+              borderRadius: "50%",
+              backgroundImage: "url('/zuri-logo-head.png')",
+              backgroundSize: "126px 84px",
+              backgroundPosition: "-47px -18px",
+              backgroundRepeat: "no-repeat",
+              flexShrink: 0,
+            }}
           />
           <span style={{ fontSize: 18, fontWeight: 700, color: Z_TEXT }}>
             Zuri <span style={{ color: Z_ORANGE }}>AI</span>
@@ -978,10 +984,16 @@ export default function Home() {
         }}
       >
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-          <img
-            src="/zuri-logo-head.png"
-            alt="Zuri AI"
-            style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", objectPosition: "52% 48%", transform: "scale(1.35)", transformOrigin: "center", overflow: "hidden" }}
+          <div
+            style={{
+              width: 32, height: 32,
+              borderRadius: "50%",
+              backgroundImage: "url('/zuri-logo-head.png')",
+              backgroundSize: "112px 75px",
+              backgroundPosition: "-42px -16px",
+              backgroundRepeat: "no-repeat",
+              flexShrink: 0,
+            }}
           />
           <span style={{ fontSize: 16, fontWeight: 700, color: Z_TEXT }}>
             Zuri <span style={{ color: Z_ORANGE }}>AI</span>
