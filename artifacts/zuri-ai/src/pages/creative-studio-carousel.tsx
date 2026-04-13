@@ -19,6 +19,7 @@ export default function CreativeStudioCarousel() {
   const [topic, setTopic] = useState("");
   const [slideCount, setSlideCount] = useState(5);
   const [platform, setPlatform] = useState("instagram");
+  const [showBrandName, setShowBrandName] = useState(true);
   const [loading, setLoading] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -35,14 +36,14 @@ export default function CreativeStudioCarousel() {
   }, []);
 
   async function generate() {
-    if (!activeBrandId || !topic.trim()) return;
+    if (!activeBrandId) return;
     setLoading(true);
     setCanvaEditUrl(null);
     try {
       const r = await fetch(API("/generate/carousel"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, topic, slideCount, platform }),
+        body: JSON.stringify({ brandId: activeBrandId, topic, slideCount, platform, showBrandName }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
@@ -111,11 +112,13 @@ export default function CreativeStudioCarousel() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Topic or Theme</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Topic or Theme <span className="text-muted-foreground font-normal normal-case">(optional)</span>
+            </label>
             <textarea
               value={topic}
               onChange={e => setTopic(e.target.value)}
-              placeholder="e.g. 5 ways to grow your business on social media"
+              placeholder="Leave blank and AI will pick the best topic for your brand..."
               rows={3}
               className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             />
@@ -151,9 +154,27 @@ export default function CreativeStudioCarousel() {
             </div>
           </div>
 
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Show brand name on slides</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Displays your brand name on each slide</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowBrandName(v => !v)}
+              className="relative rounded-full transition-colors shrink-0"
+              style={{ width: "40px", height: "22px", background: showBrandName ? "var(--primary)" : "rgba(100,100,100,0.3)" }}
+            >
+              <span
+                className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                style={{ transform: showBrandName ? "translateX(20px)" : "translateX(2px)" }}
+              />
+            </button>
+          </div>
+
           <button
             onClick={generate}
-            disabled={loading || !topic.trim() || !activeBrandId}
+            disabled={loading || !activeBrandId}
             className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Generating...</> : "Generate Carousel"}

@@ -106,7 +106,7 @@ function AdCopyForm({ onGenerate, isPending, culturalCtx }: { onGenerate: (v: Ge
 
 const socialSchema = z.object({
   platform: z.string().min(1, "Select a platform"),
-  topic: z.string().min(3, "Enter a topic"),
+  topic: z.string().optional().default(""),
   pillar: z.string().min(1, "Select a content pillar"),
   hashtags: z.boolean(),
 });
@@ -117,9 +117,12 @@ function SocialForm({ onGenerate, isPending, culturalCtx }: { onGenerate: (v: Ge
   const form = useForm<SocialFields>({ resolver: zodResolver(socialSchema), defaultValues: { platform: "Instagram", topic: "", pillar: "promotion", hashtags: true } });
 
   function submit(d: SocialFields) {
+    const topicPart = d.topic?.trim()
+      ? `Topic: ${d.topic.trim()}.`
+      : "No topic given - suggest a relevant, timely topic that fits this brand and content pillar, then write the post.";
     onGenerate({
       brandId: activeBrandId!,
-      prompt: `Topic: ${d.topic}. Content pillar: ${d.pillar}. ${d.hashtags ? "Include relevant hashtags." : "No hashtags."}`,
+      prompt: `${topicPart} Content pillar: ${d.pillar}. ${d.hashtags ? "Include relevant hashtags." : "No hashtags."}`,
       platform: d.platform,
       language: culturalCtx.language,
       culturalContext: `${culturalCtx.country} - ${culturalCtx.language}`,
@@ -146,8 +149,8 @@ function SocialForm({ onGenerate, isPending, culturalCtx }: { onGenerate: (v: Ge
         )} />
         <FormField control={form.control} name="topic" render={({ field }) => (
           <FormItem>
-            <FormLabel>Post Topic</FormLabel>
-            <FormControl><Input placeholder="e.g. New product launch, customer milestone..." data-testid="input-prompt" {...field} /></FormControl>
+            <FormLabel>Post Topic <span className="text-muted-foreground font-normal text-xs">(optional)</span></FormLabel>
+            <FormControl><Input placeholder="Leave blank and AI will suggest a topic for you..." data-testid="input-prompt" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
         )} />

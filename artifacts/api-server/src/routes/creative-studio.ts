@@ -33,8 +33,8 @@ router.post("/brands/:brandId/visual-prefs", async (req, res): Promise<void> => 
 // ─── Carousel Generation ──────────────────────────────────────────────────────
 
 router.post("/generate/carousel", async (req, res): Promise<void> => {
-  const { brandId, topic, slideCount = 5, platform = "instagram", includeLogo } = req.body;
-  if (!brandId || !topic) { res.status(400).json({ error: "brandId and topic required" }); return; }
+  const { brandId, topic, slideCount = 5, platform = "instagram", showBrandName = true } = req.body;
+  if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
 
   const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
@@ -48,9 +48,15 @@ router.post("/generate/carousel", async (req, res): Promise<void> => {
 
     const system = `You are a social media content strategist for African businesses.
 Design high-quality carousel post copy for ${platform}.
+NEVER use em dashes (--). Use hyphens (-) or rewrite sentences instead.
 Return ONLY valid JSON. No explanation, no markdown.`;
 
-    const user = `Create a ${slideCount}-slide carousel for ${brand.name} about: "${topic}"
+    const topicLine = topic?.trim()
+      ? `Topic: "${topic.trim()}"`
+      : `No topic specified. Choose a highly relevant topic for ${brand.name} (${brand.industry ?? "General"}) that would perform well on ${platform} right now.`;
+
+    const user = `Create a ${slideCount}-slide carousel for ${brand.name}.
+${topicLine}
 Brand: ${brand.name} | Industry: ${brand.industry ?? "General"} | Style: ${style}
 Platform: ${platform}
 
@@ -67,13 +73,13 @@ Return JSON:
   ]
 }
 
-Rules: First slide is the hook - make it impossible to scroll past. Last slide has a clear CTA. Keep brand: ${brand.name}.`;
+Rules: First slide is the hook - make it impossible to scroll past. Last slide has a clear CTA. Never use em dashes (--).`;
 
     const result = await aiJSON<{ title: string; slides: Array<{ slide_number: number; headline: string; body: string; cta?: string }> }>(system, user, 500);
 
     const slides = result.slides.map((slide, i) => ({
       ...slide,
-      html: buildSlideHtml({ ...slide, brandName: brand.name, colors, style, slideNumber: i + 1, total: result.slides.length }),
+      html: buildSlideHtml({ ...slide, brandName: brand.name, colors, style, slideNumber: i + 1, total: result.slides.length, showBrandName }),
     }));
 
     const [saved] = await db.insert(generatedDesignsTable).values({
@@ -126,19 +132,23 @@ router.post("/generate/quote-card", async (req, res): Promise<void> => {
 
 // ─── HTML builders ────────────────────────────────────────────────────────────
 
-function buildSlideHtml({ headline, body, cta, brandName, colors, style, slideNumber, total }: {
+function buildSlideHtml({ headline, body, cta, brandName, colors, style, slideNumber, total, showBrandName = true }: {
   headline: string; body: string; cta?: string; brandName: string;
-  colors: string[]; style: string; slideNumber: number; total: number;
+  colors: string[]; style: string; slideNumber: number; total: number; showBrandName?: boolean;
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const isDark = style === "dark" || style === "premium";
   const bgColor = isDark ? "#0F0F0F" : bg;
   const textColor = isDark ? "#FFFFFF" : text;
 
+  const brandTag = showBrandName
+    ? `<span style="color:${primary};font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`
+    : `<span></span>`;
+
   return `<div style="width:1080px;height:1080px;background:${bgColor};display:flex;flex-direction:column;justify-content:space-between;padding:80px;font-family:'Inter',sans-serif;box-sizing:border-box;position:relative;overflow:hidden;">
   <div style="position:absolute;top:0;left:0;width:12px;height:100%;background:${primary};"></div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-left:20px;">
-    <span style="color:${primary};font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>
+    ${brandTag}
     <span style="color:${textColor}80;font-size:16px;">${slideNumber} / ${total}</span>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;margin:40px 20px;">

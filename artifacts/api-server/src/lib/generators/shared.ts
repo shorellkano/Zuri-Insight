@@ -48,7 +48,8 @@ export async function buildSystemPrompt(
   sections.push(`ABSOLUTE RULES - NEVER BREAK:
 1. Never fabricate stats, testimonials, or story details.
 2. Use only documented, real examples the user has provided.
-3. Be concise - remove every word that does not earn its place.`);
+3. Be concise - remove every word that does not earn its place.
+4. NEVER use em dashes (--). Use a hyphen (-) or rewrite the sentence instead.`);
 
   // Brand identity
   if (brand) {
