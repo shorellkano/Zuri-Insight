@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { ChevronLeft, ChevronRight, Plus, CalendarDays, Instagram, Linkedin, Facebook, Youtube, Clock, CheckCircle2, AlertCircle, Circle, X } from "lucide-react";
+import { usePlan } from "@/hooks/use-plan";
+import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
@@ -62,10 +64,24 @@ interface CalendarStats {
 }
 
 export default function ContentCalendar() {
+  const { hasFeature, loading: planLoading } = usePlan();
   const { activeBrandId } = useBrand();
   const { data: brands } = useListBrands();
   const activeBrand = brands?.find(b => b.id === activeBrandId);
   const qc = useQueryClient();
+
+  if (!planLoading && !hasFeature('content_calendar')) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <UpgradePrompt
+          feature="Content Calendar"
+          requiredPlan="solo"
+          description="View and manage all your scheduled posts in a calendar view. Available on Solo plan and above."
+          variant="page"
+        />
+      </div>
+    );
+  }
 
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());

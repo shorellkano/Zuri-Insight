@@ -5,6 +5,8 @@ import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
 import { VisualPrefsSheet } from "@/components/visual-prefs-sheet";
 import { useQuery } from "@tanstack/react-query";
+import { usePlan } from "@/hooks/use-plan";
+import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
 
 const API = (path: string) => `/api${path}`;
 
@@ -85,10 +87,24 @@ const styleLabels: Record<string, string> = {
 };
 
 export default function CreativeStudio() {
+  const { hasFeature, loading: planLoading } = usePlan();
   const { activeBrandId } = useBrand();
   const { data: brands } = useListBrands();
   const activeBrand = brands?.find(b => b.id === activeBrandId);
   const [showPrefsSheet, setShowPrefsSheet] = useState(false);
+
+  if (!planLoading && !hasFeature('creative_studio')) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <UpgradePrompt
+          feature="Creative Studio"
+          requiredPlan="growth"
+          description="Design carousels, quote cards, announcements, and branded visuals. Available on Growth plan and above."
+          variant="page"
+        />
+      </div>
+    );
+  }
 
   const { data: prefs, refetch: refetchPrefs } = useQuery<{ designStyle?: string; includeLogo?: string; brandColors?: string[] } | null>({
     queryKey: ["visual-prefs", activeBrandId],

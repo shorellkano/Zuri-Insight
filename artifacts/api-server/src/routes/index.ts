@@ -14,6 +14,7 @@ import storageRouter from "./storage";
 import mediaPostRouter from "./media-post";
 import ugcVideoRouter from "./ugc-video";
 import canvaApiRouter from "./canva-api";
+import billingRouter from "./billing";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(storageRouter);
 router.use(mediaPostRouter);
 router.use(ugcVideoRouter);
 router.use(canvaApiRouter);
+router.use(billingRouter);
 
 export default router;

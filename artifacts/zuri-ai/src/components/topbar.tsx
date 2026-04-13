@@ -1,23 +1,23 @@
 import { Link } from "wouter";
-import { ChevronDown, Plus, Zap } from "lucide-react";
+import { ChevronDown, Plus, Zap, AlertTriangle } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { useListBrands, useGetDashboardStats } from "@workspace/api-client-react";
+import { useListBrands } from "@workspace/api-client-react";
 import { useBrand } from "@/context/brand-context";
-import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
+import { usePlan } from "@/hooks/use-plan";
 
 export function Topbar() {
   const { activeBrandId, setActiveBrandId } = useBrand();
   const { data: brands } = useListBrands();
-  const { data: stats } = useGetDashboardStats();
-  const { user } = useAuth();
+  const { planId, plan, usage } = usePlan();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const activeBrand = brands?.find((b) => b.id === activeBrandId);
-  const creditsUsed = stats?.totalContentGenerated ?? 0;
-  const creditsLimit = 50;
-  const pct = Math.min((creditsUsed / creditsLimit) * 100, 100);
+  const isUnlimited = plan.limits.media_posts_monthly === -1;
+  const pct = usage.mediaPostsPct;
+  const isHigh = pct >= 80;
+  const isMax = pct >= 100;
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -77,14 +77,34 @@ export function Topbar() {
         )}
       </div>
 
-      <Link href="/settings" className="flex items-center gap-2.5 group" data-testid="credits-display">
-        <Zap className="h-3.5 w-3.5 text-amber-500" />
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">{creditsUsed} / {creditsLimit} credits</span>
-          <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+      <Link href="/settings/billing" data-testid="credits-display">
+        {isUnlimited ? (
+          <div className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer",
+            "bg-amber-100 text-amber-800 hover:bg-amber-200"
+          )}>
+            <Zap className="h-3 w-3" />
+            {plan.name}
           </div>
-        </div>
+        ) : (
+          <div className={cn(
+            "flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer",
+            isMax ? "bg-red-100 text-red-700" : isHigh ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground hover:text-foreground"
+          )}>
+            {isMax ? <AlertTriangle className="h-3 w-3 shrink-0" /> : <Zap className="h-3 w-3 shrink-0 text-amber-500" />}
+            <span className="whitespace-nowrap">
+              {isMax ? "Limit reached" : `${usage.mediaPostsUsed} / ${usage.mediaPostsLimit} posts`}
+            </span>
+            {!isMax && (
+              <div className="w-12 h-1.5 bg-background/60 rounded-full overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full transition-all", isHigh ? "bg-amber-500" : "bg-primary")}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </Link>
     </header>
   );

@@ -25,6 +25,8 @@ import GenerateWhatsapp from "@/pages/generate-whatsapp";
 import GenerateVideoScripts from "@/pages/generate-video-scripts";
 import ContentLibrary from "@/pages/content-library";
 import Settings from "@/pages/settings";
+import SettingsBilling from "@/pages/settings-billing";
+import Pricing from "@/pages/pricing";
 import BrandVoice from "@/pages/brand-voice";
 import BrandLessons from "@/pages/brand-lessons";
 import CreativeStudio from "@/pages/creative-studio";
@@ -103,7 +105,9 @@ function Router() {
       <Route path="/post"><Wrap><PostPage /></Wrap></Route>
       <Route path="/calendar"><Wrap><ContentCalendar /></Wrap></Route>
       <Route path="/content"><Wrap><ContentLibrary /></Wrap></Route>
+      <Route path="/settings/billing"><Wrap><SettingsBilling /></Wrap></Route>
       <Route path="/settings"><Wrap><Settings /></Wrap></Route>
+      <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
   );

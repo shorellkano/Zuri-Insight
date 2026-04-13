@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
+import { usePlan } from "@/hooks/use-plan";
+import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
 import { Loader2, CalendarDays, Check, Trash2, Copy, CheckCircle2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -41,10 +43,24 @@ interface Plan {
 const mix_defaults = { promotional: 30, educational: 30, engagement: 25, brand_story: 15 };
 
 export default function BulkPlan() {
+  const { hasFeature, loading: planLoading } = usePlan();
   const { activeBrandId } = useBrand();
   const { data: brands } = useListBrands();
   const activeBrand = brands?.find(b => b.id === activeBrandId);
   const { toast } = useToast();
+
+  if (!planLoading && !hasFeature('bulk_planning')) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <UpgradePrompt
+          feature="Bulk Content Planning"
+          requiredPlan="solo"
+          description="Plan a full week or month of content in one go. Available on Solo plan and above."
+          variant="page"
+        />
+      </div>
+    );
+  }
 
   const [step, setStep] = useState<"setup" | "suggestion" | "generating" | "results">("setup");
   const [period, setPeriod] = useState<"week" | "month" | "custom">("week");

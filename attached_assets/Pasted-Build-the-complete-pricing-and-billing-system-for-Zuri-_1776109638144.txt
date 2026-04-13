@@ -1,0 +1,1176 @@
+Build the complete pricing and billing system for Zuri AI.
+Four plans: Solo, Growth, Studio, Enterprise.
+Two payment providers: Paystack for Africa, Stripe for global.
+Plan gating on all premium features.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — DATABASE UPDATES
+Run these in Supabase SQL Editor first
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+-- Update profiles table to support new plan names and usage tracking
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_plan_check;
+
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_plan_check
+  CHECK (plan IN ('free','solo','growth','studio','enterprise'));
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS billing_cycle TEXT DEFAULT 'monthly'
+    CHECK (billing_cycle IN ('monthly','annual')),
+  ADD COLUMN IF NOT EXISTS current_period_start TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS current_period_end   TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS media_posts_used     INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS ugc_videos_used      INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS brands_count         INTEGER DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS subscription_id      TEXT,
+  ADD COLUMN IF NOT EXISTS cancel_at_period_end BOOLEAN DEFAULT false;
+
+-- Subscription events log
+CREATE TABLE IF NOT EXISTS public.subscription_events (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  event_type   TEXT NOT NULL,
+  plan         TEXT,
+  amount       NUMERIC(10,2),
+  currency     TEXT,
+  provider     TEXT CHECK (provider IN ('paystack','stripe')),
+  provider_ref TEXT,
+  metadata     JSONB DEFAULT '{}'::jsonb,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.subscription_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "sub_events_own" ON public.subscription_events
+  FOR ALL USING (auth.uid() = user_id);
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — PLAN DEFINITIONS
+FILE: lib/plans.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create this file. It is the single source of truth for all plan limits
+and pricing. Every feature gate in the app imports from here.
+
+FILE: lib/plans.ts
+---
+export type PlanId = 'free' | 'solo' | 'growth' | 'studio' | 'enterprise'
+
+export interface PlanDefinition {
+  id: PlanId
+  name: string
+  tagline: string
+  target: string
+  price: {
+    africa: { monthly: number; annual: number; currency: 'NGN' }
+    global:  { monthly: number; annual: number; currency: 'USD' }
+  }
+  limits: {
+    brands:              number   // -1 = unlimited
+    media_posts_monthly: number   // -1 = unlimited
+    ugc_videos_monthly:  number
+    platforms_connected: number
+    team_members:        number   // -1 = unlimited
+    voice_examples:      number   // -1 = unlimited
+    bulk_plan_days:      number   // max days in a bulk plan
+    scheduled_posts:     number   // max scheduled at once, -1 = unlimited
+  }
+  features: {
+    quick_create:          boolean
+    media_first_creation:  boolean
+    multi_platform_post:   boolean
+    bulk_planning:         boolean
+    content_calendar:      boolean
+    brand_calendar:        boolean
+    creative_studio:       boolean
+    carousel_builder:      boolean
+    ugc_video:             boolean
+    voice_file:            boolean
+    lessons_bank:          boolean
+    client_approvals:      boolean
+    team_workspace:        boolean
+    white_label:           boolean
+    analytics:             boolean
+    priority_support:      boolean
+    api_access:            boolean
+    caption_enhancement:   boolean
+    scheduling:            boolean
+  }
+  popular: boolean
+  cta: string
+}
+
+export const PLANS: Record<PlanId, PlanDefinition> = {
+  free: {
+    id: 'free',
+    name: 'Free',
+    tagline: 'Try Zuri AI',
+    target: 'New users exploring the platform',
+    price: {
+      africa: { monthly: 0,     annual: 0,     currency: 'NGN' },
+      global:  { monthly: 0,     annual: 0,     currency: 'USD' },
+    },
+    limits: {
+      brands:              1,
+      media_posts_monthly: 5,
+      ugc_videos_monthly:  0,
+      platforms_connected: 1,
+      team_members:        1,
+      voice_examples:      5,
+      bulk_plan_days:      0,
+      scheduled_posts:     3,
+    },
+    features: {
+      quick_create:          true,
+      media_first_creation:  true,
+      multi_platform_post:   false,
+      bulk_planning:         false,
+      content_calendar:      false,
+      brand_calendar:        false,
+      creative_studio:       false,
+      carousel_builder:      false,
+      ugc_video:             false,
+      voice_file:            true,
+      lessons_bank:          false,
+      client_approvals:      false,
+      team_workspace:        false,
+      white_label:           false,
+      analytics:             false,
+      priority_support:      false,
+      api_access:            false,
+      caption_enhancement:   true,
+      scheduling:            false,
+    },
+    popular: false,
+    cta: 'Start free',
+  },
+
+  solo: {
+    id: 'solo',
+    name: 'Solo',
+    tagline: 'For one-person businesses',
+    target: 'Solo founders, freelancers, small creators',
+    price: {
+      africa: { monthly: 9500,  annual: 7917,  currency: 'NGN' },
+      global:  { monthly: 6,     annual: 5,     currency: 'USD' },
+    },
+    limits: {
+      brands:              1,
+      media_posts_monthly: 30,
+      ugc_videos_monthly:  2,
+      platforms_connected: 2,
+      team_members:        1,
+      voice_examples:      -1,
+      bulk_plan_days:      7,
+      scheduled_posts:     20,
+    },
+    features: {
+      quick_create:          true,
+      media_first_creation:  true,
+      multi_platform_post:   false,
+      bulk_planning:         true,
+      content_calendar:      true,
+      brand_calendar:        true,
+      creative_studio:       false,
+      carousel_builder:      false,
+      ugc_video:             false,
+      voice_file:            true,
+      lessons_bank:          true,
+      client_approvals:      false,
+      team_workspace:        false,
+      white_label:           false,
+      analytics:             false,
+      priority_support:      false,
+      api_access:            false,
+      caption_enhancement:   true,
+      scheduling:            true,
+    },
+    popular: false,
+    cta: 'Start with Solo',
+  },
+
+  growth: {
+    id: 'growth',
+    name: 'Growth',
+    tagline: 'For serious brands and creators',
+    target: 'Small brands, active creators, small teams',
+    price: {
+      africa: { monthly: 24000, annual: 20000, currency: 'NGN' },
+      global:  { monthly: 15,    annual: 12,    currency: 'USD' },
+    },
+    limits: {
+      brands:              3,
+      media_posts_monthly: -1,
+      ugc_videos_monthly:  5,
+      platforms_connected: 6,
+      team_members:        2,
+      voice_examples:      -1,
+      bulk_plan_days:      31,
+      scheduled_posts:     -1,
+    },
+    features: {
+      quick_create:          true,
+      media_first_creation:  true,
+      multi_platform_post:   true,
+      bulk_planning:         true,
+      content_calendar:      true,
+      brand_calendar:        true,
+      creative_studio:       true,
+      carousel_builder:      true,
+      ugc_video:             true,
+      voice_file:            true,
+      lessons_bank:          true,
+      client_approvals:      false,
+      team_workspace:        false,
+      white_label:           false,
+      analytics:             true,
+      priority_support:      false,
+      api_access:            false,
+      caption_enhancement:   true,
+      scheduling:            true,
+    },
+    popular: true,
+    cta: 'Start with Growth',
+  },
+
+  studio: {
+    id: 'studio',
+    name: 'Studio',
+    tagline: 'For agencies and power users',
+    target: 'Agencies, marketers managing multiple brands',
+    price: {
+      africa: { monthly: 55000, annual: 45833, currency: 'NGN' },
+      global:  { monthly: 35,    annual: 29,    currency: 'USD' },
+    },
+    limits: {
+      brands:              10,
+      media_posts_monthly: -1,
+      ugc_videos_monthly:  20,
+      platforms_connected: 6,
+      team_members:        5,
+      voice_examples:      -1,
+      bulk_plan_days:      31,
+      scheduled_posts:     -1,
+    },
+    features: {
+      quick_create:          true,
+      media_first_creation:  true,
+      multi_platform_post:   true,
+      bulk_planning:         true,
+      content_calendar:      true,
+      brand_calendar:        true,
+      creative_studio:       true,
+      carousel_builder:      true,
+      ugc_video:             true,
+      voice_file:            true,
+      lessons_bank:          true,
+      client_approvals:      true,
+      team_workspace:        true,
+      white_label:           false,
+      analytics:             true,
+      priority_support:      true,
+      api_access:            false,
+      caption_enhancement:   true,
+      scheduling:            true,
+    },
+    popular: false,
+    cta: 'Start with Studio',
+  },
+
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise',
+    tagline: 'For large organisations',
+    target: 'Large brands, enterprise teams, corporations',
+    price: {
+      africa: { monthly: 0, annual: 0, currency: 'NGN' },
+      global:  { monthly: 0, annual: 0, currency: 'USD' },
+    },
+    limits: {
+      brands:              -1,
+      media_posts_monthly: -1,
+      ugc_videos_monthly:  -1,
+      platforms_connected: 6,
+      team_members:        -1,
+      voice_examples:      -1,
+      bulk_plan_days:      31,
+      scheduled_posts:     -1,
+    },
+    features: {
+      quick_create:          true,
+      media_first_creation:  true,
+      multi_platform_post:   true,
+      bulk_planning:         true,
+      content_calendar:      true,
+      brand_calendar:        true,
+      creative_studio:       true,
+      carousel_builder:      true,
+      ugc_video:             true,
+      voice_file:            true,
+      lessons_bank:          true,
+      client_approvals:      true,
+      team_workspace:        true,
+      white_label:           true,
+      analytics:             true,
+      priority_support:      true,
+      api_access:            true,
+      caption_enhancement:   true,
+      scheduling:            true,
+    },
+    popular: false,
+    cta: 'Contact us',
+  },
+}
+
+// Helper: get user's plan definition
+export function getPlan(planId: PlanId): PlanDefinition {
+  return PLANS[planId] || PLANS.free
+}
+
+// Helper: check if a feature is available on a plan
+export function canAccess(
+  planId: PlanId,
+  feature: keyof PlanDefinition['features']
+): boolean {
+  return PLANS[planId]?.features[feature] ?? false
+}
+
+// Helper: check if user is within a usage limit
+export function withinLimit(
+  planId: PlanId,
+  limitKey: keyof PlanDefinition['limits'],
+  currentUsage: number
+): boolean {
+  const limit = PLANS[planId]?.limits[limitKey]
+  if (limit === undefined) return false
+  if (limit === -1) return true // unlimited
+  return currentUsage < limit
+}
+
+// Helper: format price for display
+export function formatPrice(
+  planId: PlanId,
+  isAfrica: boolean,
+  isAnnual: boolean
+): string {
+  const plan = PLANS[planId]
+  if (planId === 'enterprise') return 'Custom'
+  if (planId === 'free') return 'Free'
+  const pricing = isAfrica ? plan.price.africa : plan.price.global
+  const amount = isAnnual ? pricing.annual : pricing.monthly
+  if (isAfrica) {
+    return `₦${amount.toLocaleString()}`
+  }
+  return `$${amount}`
+}
+
+// Annual savings percentage
+export const ANNUAL_DISCOUNT_PERCENT = 17 // ~2 months free
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — PLAN GATE HOOK
+FILE: hooks/usePlan.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: hooks/usePlan.ts
+---
+'use client'
+import { useUser } from '@/hooks/useUser'
+import { getPlan, canAccess, withinLimit, PlanId } from '@/lib/plans'
+import type { PlanDefinition } from '@/lib/plans'
+
+export function usePlan() {
+  const { profile } = useUser()
+  const planId = (profile?.plan || 'free') as PlanId
+  const plan = getPlan(planId)
+  const isAfrica = profile?.is_africa_pricing ?? false
+
+  function hasFeature(feature: keyof PlanDefinition['features']): boolean {
+    return canAccess(planId, feature)
+  }
+
+  function checkLimit(
+    limitKey: keyof PlanDefinition['limits'],
+    currentUsage: number
+  ): boolean {
+    return withinLimit(planId, limitKey, currentUsage)
+  }
+
+  function requiresPlan(minimumPlan: PlanId): boolean {
+    const order: PlanId[] = ['free','solo','growth','studio','enterprise']
+    return order.indexOf(planId) >= order.indexOf(minimumPlan)
+  }
+
+  return {
+    planId,
+    plan,
+    isAfrica,
+    hasFeature,
+    checkLimit,
+    requiresPlan,
+    profile,
+  }
+}
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — UPGRADE PROMPT COMPONENT
+FILE: components/shared/UpgradePrompt.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: components/shared/UpgradePrompt.tsx
+---
+'use client'
+import { useRouter } from 'next/navigation'
+import { Lock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import type { PlanId } from '@/lib/plans'
+
+interface UpgradePromptProps {
+  feature: string
+  requiredPlan: PlanId
+  description?: string
+  variant?: 'inline' | 'overlay' | 'card'
+}
+
+const PLAN_LABELS: Record<PlanId, string> = {
+  free:       'Free',
+  solo:       'Solo',
+  growth:     'Growth',
+  studio:     'Studio',
+  enterprise: 'Enterprise',
+}
+
+export function UpgradePrompt({
+  feature,
+  requiredPlan,
+  description,
+  variant = 'card',
+}: UpgradePromptProps) {
+  const router = useRouter()
+
+  if (variant === 'inline') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-xs text-amber-600
+                   bg-amber-50 border border-amber-200 px-2 py-1 rounded-full
+                   cursor-pointer hover:bg-amber-100 transition-colors"
+        onClick={() => router.push('/settings/billing')}
+      >
+        <Lock size={10} />
+        {PLAN_LABELS[requiredPlan]}+
+      </span>
+    )
+  }
+
+  if (variant === 'overlay') {
+    return (
+      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg
+                      flex flex-col items-center justify-center z-10 p-6 text-center">
+        <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center
+                        justify-center mb-3">
+          <Lock size={18} className="text-amber-600" />
+        </div>
+        <p className="font-medium text-sm text-gray-900 mb-1">{feature}</p>
+        <p className="text-xs text-gray-500 mb-4">
+          {description || `Available on ${PLAN_LABELS[requiredPlan]} plan and above`}
+        </p>
+        <Button
+          size="sm"
+          className="bg-amber-600 hover:bg-amber-700 text-white"
+          onClick={() => router.push('/settings/billing')}
+        >
+          Upgrade to {PLAN_LABELS[requiredPlan]}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border border-amber-200 bg-amber-50 rounded-lg p-4
+                    flex items-start gap-3">
+      <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center
+                      justify-center flex-shrink-0 mt-0.5">
+        <Lock size={14} className="text-amber-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm text-gray-900">{feature}</p>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {description || `Available on ${PLAN_LABELS[requiredPlan]} plan and above`}
+        </p>
+      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        className="border-amber-400 text-amber-700 hover:bg-amber-100
+                   flex-shrink-0 text-xs"
+        onClick={() => router.push('/settings/billing')}
+      >
+        Upgrade
+      </Button>
+    </div>
+  )
+}
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — PRICING PAGE
+FILE: app/(dashboard)/settings/billing/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Build the billing settings page. This is where users see their current plan,
+upgrade, and manage their subscription.
+
+FILE: app/(dashboard)/settings/billing/page.tsx
+---
+Build this page with these sections in order:
+
+SECTION 1 — CURRENT PLAN CARD:
+  Amber-bordered card at the top.
+  Left side:
+    "Your current plan" label (muted, small)
+    Plan name badge in amber (e.g. "Growth")
+    Billing cycle: "Billed monthly" or "Billed annually"
+    Renewal date: "Renews on 12 May 2026"
+  Right side:
+    Current price in user's currency
+    "Manage subscription" button → opens Stripe Customer Portal or Paystack portal
+  Below, show usage bars for this billing period:
+    Media posts:   [████████░░] 23 of 30 used
+    UGC videos:    [██░░░░░░░░] 1 of 2 used
+    Brands:        [█░░░░░░░░░] 1 of 1 used
+  If plan is free: show "You are on the free plan — upgrade to unlock everything"
+
+SECTION 2 — BILLING CYCLE TOGGLE:
+  Centred toggle: [Monthly]  [Annual — save 17%]
+  When Annual is selected, show updated prices on all plan cards below.
+  When Annual selected, show a green badge: "2 months free"
+
+SECTION 3 — AFRICA PRICING TOGGLE:
+  Small checkbox: "I am based in Africa (NGN pricing)"
+  When checked: show Naira prices. When unchecked: show USD prices.
+  Pre-filled from profile.is_africa_pricing.
+
+SECTION 4 — PLAN CARDS GRID:
+  Four cards in a 2x2 grid on desktop, single column on mobile.
+  Card order: Solo, Growth (featured), Studio, Enterprise.
+
+  EACH PLAN CARD shows:
+    "Most popular" badge on Growth card only
+      (amber background, amber-dark text, positioned top-right)
+    Plan name (large, bold)
+    Tagline (muted, small)
+    Price (large) in selected currency and cycle
+      Annual: show monthly equivalent "₦20,000 / month, billed annually"
+    "What this replaces" in small italic muted text:
+      Solo:   "Replaces a part-time social media helper"
+      Growth: "Replaces a full social media manager (₦80k–150k/mo)"
+      Studio: "Replaces an agency retainer (₦200k–500k/mo)"
+    Feature list — 8 most important features with tick/cross icons:
+      Show tick in green for included, cross in muted gray for not included.
+      Features to show on every card:
+        Quick Create & caption generation
+        Media upload and posting         
+        Multi-platform simultaneous post 
+        Content calendar and scheduling  
+        Bulk week and month planning     
+        Creative Studio and carousel     
+        UGC video generation             
+        Team workspace                   
+    "Brands: X" and "Media posts: X/month" shown as small pills below features.
+    CTA button:
+      Current plan: "Your current plan" (disabled, outline style)
+      Higher plan:  "Upgrade to [Plan]" (amber filled)
+      Lower plan:   "Downgrade" (ghost, muted)
+      Enterprise:   "Contact us" → mailto:hello@zuriai.co
+
+  Enterprise card:
+    Full-width card below the grid.
+    "Custom pricing" instead of a price.
+    Shows: unlimited everything, API access, white-label, dedicated support, SSO.
+    "Contact us to discuss" button → mailto:hello@zuriai.co
+
+SECTION 5 — BILLING HISTORY:
+  Simple table showing past payments.
+  Columns: Date, Plan, Amount, Currency, Status (Paid/Failed), Receipt link.
+  Pulled from subscription_events table.
+  "No payment history yet" empty state for new users.
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 6 — PUBLIC PRICING PAGE
+FILE: app/pricing/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a public-facing pricing page at /pricing (no auth required).
+Add "Pricing" to the landing page navbar.
+
+This page is almost identical to the billing settings page but:
+  - No current plan comparison
+  - No usage bars
+  - Full-width layout with more breathing room
+  - Add a FAQ section at the bottom
+
+PAGE STRUCTURE:
+
+HERO:
+  Heading: "Simple, honest pricing"
+  Subheading: "Built for African businesses. Priced for African businesses."
+  Africa pricing toggle at the top (default: on)
+  Monthly / Annual toggle
+
+PLAN CARDS:
+  Same 4 cards as billing page but with more padding and larger typography.
+  CTA buttons all link to /signup?plan=[planId]
+
+COMPARISON TABLE (below cards):
+  Full feature comparison table.
+  Rows: every feature and limit.
+  Columns: Free | Solo | Growth | Studio | Enterprise
+  Use tick, cross, or specific values (e.g. "3 brands", "5 videos/mo").
+  Sticky header row so column labels stay visible while scrolling.
+
+  Feature rows to include:
+    Brands                         1    1    3     10    Unlimited
+    Media posts per month          5    30   Unlimited Unlimited Unlimited
+    Platforms connected            1    2    6     6     6
+    Quick Create                   ✓    ✓    ✓     ✓     ✓
+    Media upload and posting       ✓    ✓    ✓     ✓     ✓
+    Caption enhancement            ✓    ✓    ✓     ✓     ✓
+    Multi-platform posting         ✗    ✗    ✓     ✓     ✓
+    Post scheduling                ✗    ✓    ✓     ✓     ✓
+    Content calendar               ✗    ✓    ✓     ✓     ✓
+    Bulk week and month planner    ✗    7 days 31 days 31 days 31 days
+    Brand calendar with events     ✗    ✓    ✓     ✓     ✓
+    Voice File                     5 ex ✓    ✓     ✓     ✓
+    Lessons Bank                   ✗    ✓    ✓     ✓     ✓
+    Creative Studio                ✗    ✗    ✓     ✓     ✓
+    Carousel builder               ✗    ✗    ✓     ✓     ✓
+    UGC video generation           ✗    2/mo 5/mo  20/mo Unlimited
+    Team members                   1    1    2     5     Unlimited
+    Client approval workflows      ✗    ✗    ✗     ✓     ✓
+    Analytics dashboard            ✗    ✗    ✓     ✓     ✓
+    Priority support               ✗    ✗    ✗     ✓     ✓
+    API access                     ✗    ✗    ✗     ✗     ✓
+    White label                    ✗    ✗    ✗     ✗     ✓
+
+FAQ SECTION (collapsible accordion, shadcn/ui Accordion component):
+  Q: Can I change my plan at any time?
+  A: Yes. You can upgrade immediately and your new features activate straight away.
+     Downgrading takes effect at the end of your current billing period.
+
+  Q: What is Africa pricing?
+  A: We price specifically for African markets because we know the economic reality.
+     If your billing address is in Nigeria, Kenya, Ghana, South Africa, Egypt,
+     Senegal, Ethiopia, Tanzania, Uganda, Rwanda, Cameroon, or Côte d'Ivoire,
+     you qualify for Africa pricing — verified automatically at checkout.
+
+  Q: Do you offer annual billing?
+  A: Yes. Annual plans save you 17% — equivalent to getting 2 months free.
+     You can switch between monthly and annual at any time.
+
+  Q: What happens when I hit my media post limit?
+  A: You will see a notification when you reach 80% of your limit.
+     At 100% you can purchase a top-up (30 posts for ₦2,500 or $2),
+     or upgrade your plan for unlimited posts.
+
+  Q: Do you offer refunds?
+  A: We offer a 7-day money-back guarantee on your first payment.
+     After that, payments are non-refundable but you keep access
+     until the end of your billing period.
+
+  Q: Which payment methods do you accept?
+  A: For Africa: Paystack (card, bank transfer, USSD, mobile money).
+     For global: Stripe (all major credit and debit cards).
+
+  Q: Is my content data private?
+  A: Completely. Your Brand DNA, voice files, uploaded media, and generated
+     content are private to your account. We never use your data to train
+     AI models or share it with third parties.
+
+  Q: Can I use Zuri AI for multiple businesses?
+  A: Yes. Growth plan supports 3 brands, Studio supports 10, Enterprise
+     supports unlimited. Each brand has its own Brand DNA and content library.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 7 — PAYSTACK INTEGRATION (Africa)
+FILE: lib/paystack.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add to Replit Secrets:
+  PAYSTACK_SECRET_KEY         from dashboard.paystack.com → Settings → API
+  NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY  from same page
+
+FILE: lib/paystack.ts
+---
+// Paystack plan codes — create these in your Paystack dashboard first
+// Dashboard → Subscriptions → Plans → Create Plan
+// Create one plan per tier per billing cycle
+// Name them exactly as shown so the webhook can identify them
+
+export const PAYSTACK_PLAN_CODES: Record<string, string> = {
+  // Monthly Africa plans (amounts in kobo — multiply NGN by 100)
+  solo_monthly_africa:    'PLN_xxxx', // ₦9,500/mo  — replace with real code
+  growth_monthly_africa:  'PLN_xxxx', // ₦24,000/mo — replace with real code
+  studio_monthly_africa:  'PLN_xxxx', // ₦55,000/mo — replace with real code
+  // Annual Africa plans
+  solo_annual_africa:     'PLN_xxxx', // ₦95,000/yr (₦7,917/mo equivalent)
+  growth_annual_africa:   'PLN_xxxx', // ₦240,000/yr
+  studio_annual_africa:   'PLN_xxxx', // ₦550,000/yr
+}
+
+export async function createPaystackSubscription(
+  email: string,
+  planCode: string,
+  userId: string,
+  metadata: Record<string, string> = {}
+): Promise<{ authorizationUrl: string; reference: string }> {
+  const reference = `zuri_${userId}_${Date.now()}`
+
+  const res = await fetch('https://api.paystack.co/transaction/initialize', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email,
+      plan: planCode,
+      reference,
+      metadata: { userId, ...metadata },
+      callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/billing/paystack/callback`,
+    }),
+  })
+
+  const data = await res.json()
+  if (!data.status) throw new Error(data.message || 'Paystack init failed')
+  return {
+    authorizationUrl: data.data.authorization_url,
+    reference: data.data.reference,
+  }
+}
+
+export async function verifyPaystackTransaction(reference: string) {
+  const res = await fetch(
+    `https://api.paystack.co/transaction/verify/${reference}`,
+    {
+      headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+    }
+  )
+  return res.json()
+}
+
+export function verifyPaystackWebhook(
+  payload: string,
+  signature: string
+): boolean {
+  const crypto = require('crypto')
+  const hash = crypto
+    .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY!)
+    .update(payload)
+    .digest('hex')
+  return hash === signature
+}
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 8 — STRIPE INTEGRATION (Global)
+FILE: lib/stripe.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add to Replit Secrets:
+  STRIPE_SECRET_KEY           from dashboard.stripe.com → Developers → API keys
+  NEXT_PUBLIC_STRIPE_KEY      the publishable key from same page
+  STRIPE_WEBHOOK_SECRET       from Stripe → Webhooks → your endpoint → signing secret
+
+Create Stripe products and prices in Stripe Dashboard first.
+Products: Solo, Growth, Studio (one product each)
+Prices: monthly and annual for each (6 prices total)
+
+FILE: lib/stripe.ts
+---
+import Stripe from 'stripe'
+
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
+})
+
+// Stripe price IDs — create these in Stripe Dashboard → Products
+// Replace the placeholder IDs with your real ones after creating products
+export const STRIPE_PRICE_IDS: Record<string, string> = {
+  solo_monthly_global:   'price_xxxx', // $6/month
+  solo_annual_global:    'price_xxxx', // $60/year ($5/mo equivalent)
+  growth_monthly_global: 'price_xxxx', // $15/month
+  growth_annual_global:  'price_xxxx', // $144/year ($12/mo equivalent)
+  studio_monthly_global: 'price_xxxx', // $35/month
+  studio_annual_global:  'price_xxxx', // $348/year ($29/mo equivalent)
+}
+
+export async function createStripeCheckout(
+  email: string,
+  priceId: string,
+  userId: string
+): Promise<string> {
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    customer_email: email,
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=true`,
+    cancel_url:  `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?cancelled=true`,
+    metadata: { userId },
+    subscription_data: { metadata: { userId } },
+  })
+  return session.url!
+}
+
+export async function createStripePortal(customerId: string): Promise<string> {
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
+  })
+  return session.url
+}
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 9 — CHECKOUT API ROUTE
+FILE: app/api/billing/create-checkout/route.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: app/api/billing/create-checkout/route.ts
+---
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createPaystackSubscription, PAYSTACK_PLAN_CODES } from '@/lib/paystack'
+import { createStripeCheckout, STRIPE_PRICE_IDS } from '@/lib/stripe'
+
+export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { planId, billingCycle } = await req.json()
+  // planId: 'solo' | 'growth' | 'studio'
+  // billingCycle: 'monthly' | 'annual'
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('email, is_africa_pricing')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+
+  const key = `${planId}_${billingCycle}_${profile.is_africa_pricing ? 'africa' : 'global'}`
+
+  if (profile.is_africa_pricing) {
+    // Paystack checkout for Africa
+    const planCode = PAYSTACK_PLAN_CODES[key]
+    if (!planCode || planCode === 'PLN_xxxx') {
+      return NextResponse.json(
+        { error: 'Paystack plan not configured yet. Contact support.' },
+        { status: 400 }
+      )
+    }
+    const { authorizationUrl, reference } = await createPaystackSubscription(
+      profile.email,
+      planCode,
+      user.id,
+      { planId, billingCycle }
+    )
+    return NextResponse.json({ url: authorizationUrl, provider: 'paystack', reference })
+
+  } else {
+    // Stripe checkout for global
+    const priceId = STRIPE_PRICE_IDS[key]
+    if (!priceId || priceId === 'price_xxxx') {
+      return NextResponse.json(
+        { error: 'Stripe price not configured yet. Contact support.' },
+        { status: 400 }
+      )
+    }
+    const url = await createStripeCheckout(profile.email, priceId, user.id)
+    return NextResponse.json({ url, provider: 'stripe' })
+  }
+}
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 10 — PAYSTACK WEBHOOK
+FILE: app/api/webhooks/paystack/route.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: app/api/webhooks/paystack/route.ts
+---
+import { NextResponse } from 'next/server'
+import { verifyPaystackWebhook } from '@/lib/paystack'
+import { supabaseAdmin } from '@/lib/supabase/admin'
+
+const PLAN_FROM_CODE: Record<string, string> = {
+  PLN_xxxx: 'solo',   // replace with real codes
+  PLN_xxxx: 'growth',
+  PLN_xxxx: 'studio',
+}
+
+export async function POST(req: Request) {
+  const payload = await req.text()
+  const signature = req.headers.get('x-paystack-signature') || ''
+
+  if (!verifyPaystackWebhook(payload, signature)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  }
+
+  const event = JSON.parse(payload)
+
+  if (event.event === 'subscription.create' || event.event === 'charge.success') {
+    const data = event.data
+    const userId = data.metadata?.userId
+    const planCode = data.plan?.plan_code
+    const planId = PLAN_FROM_CODE[planCode]
+
+    if (userId && planId) {
+      await supabaseAdmin.from('profiles').update({
+        plan: planId,
+        paystack_customer_id: data.customer?.customer_code,
+        subscription_id: data.subscription_code,
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      }).eq('id', userId)
+
+      await supabaseAdmin.from('subscription_events').insert({
+        user_id: userId,
+        event_type: event.event,
+        plan: planId,
+        amount: data.amount / 100,
+        currency: 'NGN',
+        provider: 'paystack',
+        provider_ref: data.reference,
+        metadata: data,
+      })
+    }
+  }
+
+  if (event.event === 'subscription.disable') {
+    const userId = event.data.metadata?.userId
+    if (userId) {
+      await supabaseAdmin.from('profiles')
+        .update({ plan: 'free', subscription_id: null })
+        .eq('id', userId)
+    }
+  }
+
+  return NextResponse.json({ received: true })
+}
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 11 — STRIPE WEBHOOK
+FILE: app/api/webhooks/stripe/route.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: app/api/webhooks/stripe/route.ts
+---
+import { NextResponse } from 'next/server'
+import { stripe } from '@/lib/stripe'
+import { supabaseAdmin } from '@/lib/supabase/admin'
+
+const PLAN_FROM_PRICE: Record<string, string> = {
+  price_xxxx: 'solo',    // replace with real Stripe price IDs
+  price_xxxx: 'growth',
+  price_xxxx: 'studio',
+}
+
+export async function POST(req: Request) {
+  const payload = await req.text()
+  const sig = req.headers.get('stripe-signature')!
+
+  let event
+  try {
+    event = stripe.webhooks.constructEvent(
+      payload, sig, process.env.STRIPE_WEBHOOK_SECRET!
+    )
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 400 })
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as any
+    const userId = session.metadata?.userId
+    const priceId = session.line_items?.data?.[0]?.price?.id
+    const planId = PLAN_FROM_PRICE[priceId]
+
+    if (userId && planId) {
+      await supabaseAdmin.from('profiles').update({
+        plan: planId,
+        stripe_customer_id: session.customer,
+        subscription_id: session.subscription,
+        current_period_start: new Date().toISOString(),
+        current_period_end: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      }).eq('id', userId)
+
+      await supabaseAdmin.from('subscription_events').insert({
+        user_id: userId,
+        event_type: 'subscription.create',
+        plan: planId,
+        amount: session.amount_total / 100,
+        currency: session.currency?.toUpperCase(),
+        provider: 'stripe',
+        provider_ref: session.id,
+      })
+    }
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object as any
+    const userId = sub.metadata?.userId
+    if (userId) {
+      await supabaseAdmin.from('profiles')
+        .update({ plan: 'free', subscription_id: null })
+        .eq('id', userId)
+    }
+  }
+
+  return NextResponse.json({ received: true })
+}
+---
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 12 — APPLY PLAN GATES TO FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Apply the usePlan hook and UpgradePrompt component to gate features.
+Do this in each relevant page:
+
+IN app/(dashboard)/generate/creative-studio/page.tsx:
+  import { usePlan } from '@/hooks/usePlan'
+  import { UpgradePrompt } from '@/components/shared/UpgradePrompt'
+  const { hasFeature } = usePlan()
+  if (!hasFeature('creative_studio')) {
+    return <UpgradePrompt feature="Creative Studio" requiredPlan="growth"
+      description="Design carousels, quote cards, and branded visuals on Growth plan and above" />
+  }
+
+IN app/(dashboard)/generate/creative-studio/ugc-video/page.tsx:
+  if (!hasFeature('ugc_video')) {
+    return <UpgradePrompt feature="UGC Video Generation" requiredPlan="growth"
+      description="Create realistic influencer-style videos on Growth plan and above" />
+  }
+
+IN app/(dashboard)/generate/bulk-plan/page.tsx:
+  if (!hasFeature('bulk_planning')) {
+    return <UpgradePrompt feature="Bulk Content Planning" requiredPlan="solo"
+      description="Plan a full week or month of content on Solo plan and above" />
+  }
+
+IN the multi-platform selector in app/(dashboard)/post/page.tsx:
+  When more than one platform is selected:
+    if (!hasFeature('multi_platform_post')) {
+      show UpgradePrompt inline below the platform selector with variant="inline"
+      disable the Generate button
+    }
+
+IN app/(dashboard)/calendar/page.tsx:
+  if (!hasFeature('content_calendar')) {
+    return <UpgradePrompt feature="Content Calendar" requiredPlan="solo"
+      description="View and manage all scheduled posts on Solo plan and above" />
+  }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 13 — USAGE TRACKING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After every media post generation in app/api/generate/media-post/route.ts,
+add this usage increment:
+
+  await supabase.from('profiles')
+    .update({ media_posts_used: supabase.rpc('increment', { x: 1 }) })
+    .eq('id', user.id)
+
+Create this Postgres function in Supabase SQL Editor:
+  CREATE OR REPLACE FUNCTION increment(x integer)
+  RETURNS integer AS $$
+    SELECT x + 1
+  $$ LANGUAGE SQL IMMUTABLE;
+
+Before generating, check the limit:
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan, media_posts_used, is_africa_pricing')
+    .eq('id', user.id)
+    .single()
+
+  const { checkLimit } = getPlan logic:
+  const plan = getPlan(profile.plan as PlanId)
+  const limit = plan.limits.media_posts_monthly
+  if (limit !== -1 && profile.media_posts_used >= limit) {
+    return NextResponse.json({
+      error: 'LIMIT_REACHED',
+      message: `You have used all ${limit} media posts this month.
+                Upgrade your plan or purchase a top-up to continue.`,
+      upgrade_url: '/settings/billing'
+    }, { status: 403 })
+  }
+
+Reset usage on the first of each month using a Supabase cron job:
+  In Supabase → Database → Extensions → enable pg_cron
+  Then run in SQL Editor:
+    SELECT cron.schedule(
+      'reset-monthly-usage',
+      '0 0 1 * *',
+      $$UPDATE public.profiles SET media_posts_used = 0, ugc_videos_used = 0$$
+    );
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 14 — CREDITS INDICATOR IN TOPBAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Update components/layout/Topbar.tsx to show a usage indicator.
+
+Show a small pill in the topbar:
+  For limited plans (solo): "23 / 30 posts"
+    Amber progress bar inside the pill.
+    Clicking it goes to /settings/billing.
+    When over 80% used: pill turns amber with a warning icon.
+    When at 100%: pill turns red with "Limit reached" text.
+
+  For unlimited plans (growth and above): just show the plan badge.
+    "Growth" in an amber pill. Clicking goes to /settings/billing.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER BUILDING — MANUAL STEPS NEEDED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+These steps must be done manually — Replit cannot do them:
+
+1. PAYSTACK SETUP:
+   Log in to dashboard.paystack.com
+   Go to Subscriptions → Plans
+   Create 6 plans (Solo monthly, Solo annual, Growth monthly,
+   Growth annual, Studio monthly, Studio annual)
+   Copy each plan code (PLN_xxxx) into lib/paystack.ts
+   Go to Settings → Webhooks
+   Add webhook URL: https://your-replit-url/api/webhooks/paystack
+   Select events: charge.success, subscription.create, subscription.disable
+
+2. STRIPE SETUP:
+   Log in to dashboard.stripe.com
+   Go to Products → Create 3 products (Solo, Growth, Studio)
+   For each product, add 2 prices (monthly and annual)
+   Copy each price ID (price_xxxx) into lib/stripe.ts
+   Go to Developers → Webhooks → Add endpoint
+   URL: https://your-replit-url/api/webhooks/stripe
+   Select events: checkout.session.completed, customer.subscription.deleted
+   Copy the signing secret into Replit Secrets as STRIPE_WEBHOOK_SECRET
+
+3. TEST PAYMENT FLOW:
+   Paystack test cards: 4084 0840 8408 4081 (any future date, any CVV)
+   Stripe test cards: 4242 4242 4242 4242 (any future date, any CVV)
+   After a test purchase, check Supabase profiles table
+   Confirm plan column updated from 'free' to the purchased plan
+   Confirm subscription_events table has the new event logged

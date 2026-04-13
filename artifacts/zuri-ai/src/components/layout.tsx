@@ -8,6 +8,7 @@ import { Topbar } from "@/components/topbar";
 import { MobileNav } from "@/components/mobile-nav";
 import { useListBrands } from "@workspace/api-client-react";
 import { QuickSetup } from "@/components/brands/QuickSetup";
+import { usePlan } from "@/hooks/use-plan";
 
 const navItems = [
   { href: "/quick-create", label: "Quick Create", icon: Zap, highlight: true },
@@ -22,16 +23,16 @@ const navItems = [
 
 const planColors: Record<string, string> = {
   free: "bg-gray-100 text-gray-600",
-  starter: "bg-blue-100 text-blue-700",
+  solo: "bg-blue-100 text-blue-700",
   growth: "bg-teal-100 text-teal-700",
-  pro: "bg-amber-100 text-amber-700",
-  agency: "bg-purple-100 text-purple-700",
+  studio: "bg-amber-100 text-amber-700",
+  enterprise: "bg-purple-100 text-purple-700",
 };
 
 function Sidebar({ className, onClose }: { className?: string; onClose?: () => void }) {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
-  const plan = "free";
+  const { planId, plan } = usePlan();
 
   return (
     <aside className={cn("flex flex-col h-full bg-card border-r border-border", className)}>
@@ -92,9 +93,11 @@ function Sidebar({ className, onClose }: { className?: string; onClose?: () => v
               <p className="text-xs font-semibold text-foreground truncate leading-tight">
                 {user.user_metadata?.full_name || user.email?.split("@")[0]}
               </p>
-              <span className={cn("inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5", planColors[plan] ?? planColors.free)}>
-                {plan}
-              </span>
+              <Link href="/settings/billing" onClick={onClose}>
+                <span className={cn("inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-full mt-0.5 cursor-pointer hover:opacity-80", planColors[planId] ?? planColors.free)}>
+                  {plan.name}
+                </span>
+              </Link>
             </div>
             <button
               onClick={() => signOut()}
