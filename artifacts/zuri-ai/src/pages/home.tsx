@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 
 const Z_ORANGE = "#E05C2A";
@@ -357,6 +357,388 @@ const PRICING_PLANS = [
   },
 ];
 
+const PLATFORM_COLORS: Record<string, string> = {
+  Instagram: "#E1306C",
+  Facebook: "#1877F2",
+  TikTok: "#010101",
+  LinkedIn: "#0A66C2",
+  Twitter: "#1DA1F2",
+  YouTube: "#FF0000",
+};
+
+const PLATFORM_ICONS: Record<string, string> = {
+  Instagram: "IG",
+  Facebook: "FB",
+  TikTok: "TK",
+  LinkedIn: "LI",
+  Twitter: "TW",
+  YouTube: "YT",
+};
+
+type PlanPost = {
+  id: string;
+  day: number;
+  platform: string;
+  contentType: string;
+  topic: string;
+  angle: string;
+  caption: string;
+};
+
+type QuickPlanResult = {
+  brandName: string;
+  brandSummary: string;
+  plan: PlanPost[];
+};
+
+function TryZuriSection() {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<QuickPlanResult | null>(null);
+  const [error, setError] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
+  const [btnHovered, setBtnHovered] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const run = useCallback(async (rawUrl: string) => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return;
+    let finalUrl = trimmed;
+    if (!/^https?:\/\//i.test(finalUrl)) finalUrl = "https://" + finalUrl;
+
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const resp = await fetch("/api/generate/quick-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteUrl: finalUrl, duration: "1week" }),
+      });
+      if (!resp.ok) throw new Error("Could not read your website. Try a different URL.");
+      const data: QuickPlanResult = await resp.json();
+      setResult(data);
+    } catch (e: any) {
+      setError(e.message ?? "Something went wrong. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleSubmit = () => run(url);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") run(url);
+  };
+
+  const previewPosts = result?.plan?.slice(0, 3) ?? [];
+
+  return (
+    <section
+      data-testid="try-zuri-section"
+      style={{
+        padding: "80px 24px 96px",
+        background: "linear-gradient(180deg, rgba(224,92,42,0.04) 0%, transparent 100%)",
+        borderBottom: `1px solid ${Z_BORDER}`,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 700px 400px at 50% 0%, rgba(224,92,42,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+      <div style={{ maxWidth: 780, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <span style={{
+            display: "inline-block",
+            background: "rgba(224,92,42,0.12)",
+            border: `1px solid rgba(224,92,42,0.3)`,
+            color: Z_ORANGE,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            padding: "5px 16px",
+            borderRadius: 100,
+            marginBottom: 20,
+            textTransform: "uppercase",
+          }}>
+            Live Demo - No Signup Needed
+          </span>
+          <h2 style={{
+            fontSize: "clamp(26px, 4vw, 44px)",
+            fontWeight: 900,
+            letterSpacing: "-1.5px",
+            lineHeight: 1.1,
+            marginBottom: 14,
+            color: Z_TEXT,
+          }}>
+            See Zuri work on <em style={{ fontStyle: "italic", color: Z_ORANGE }}>your</em> brand.
+          </h2>
+          <p style={{ fontSize: 16, color: Z_MUTED, lineHeight: 1.65, maxWidth: 520, margin: "0 auto" }}>
+            Paste your website URL below. Zuri reads your brand in seconds and generates real content ideas for you - free, right now.
+          </p>
+        </div>
+
+        {/* URL Input */}
+        <div style={{
+          display: "flex",
+          gap: 10,
+          background: Z_SURFACE,
+          border: `1.5px solid ${inputFocused ? Z_ORANGE : Z_BORDER_STRONG}`,
+          borderRadius: 14,
+          padding: "6px 6px 6px 18px",
+          alignItems: "center",
+          transition: "border-color 0.2s, box-shadow 0.2s",
+          boxShadow: inputFocused ? `0 0 0 3px rgba(224,92,42,0.15)` : "none",
+          marginBottom: 14,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={Z_MUTED} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            ref={inputRef}
+            type="url"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            placeholder="yourwebsite.com or paste full URL..."
+            disabled={loading}
+            style={{
+              flex: 1,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: Z_TEXT,
+              fontSize: 15,
+              fontFamily: "inherit",
+              padding: "8px 0",
+            }}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !url.trim()}
+            onMouseEnter={() => setBtnHovered(true)}
+            onMouseLeave={() => setBtnHovered(false)}
+            style={{
+              background: loading || !url.trim() ? "rgba(224,92,42,0.4)" : btnHovered ? Z_ORANGE_DARK : Z_ORANGE,
+              border: "none",
+              color: "#fff",
+              padding: "10px 22px",
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: loading || !url.trim() ? "not-allowed" : "pointer",
+              transition: "background 0.2s",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {loading ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 0.8s linear infinite" }}>
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+                Reading brand...
+              </>
+            ) : "Generate Content"}
+          </button>
+        </div>
+
+        <p style={{ fontSize: 12, color: Z_FAINT, textAlign: "center", marginBottom: 40 }}>
+          Works best with any Nigerian, Kenyan, or African business website
+        </p>
+
+        {/* Loading State */}
+        {loading && (
+          <div style={{ textAlign: "center", padding: "48px 0" }}>
+            <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: "50%",
+                border: `2px solid ${Z_BORDER_STRONG}`,
+                borderTop: `2px solid ${Z_ORANGE}`,
+                animation: "spin 0.8s linear infinite",
+              }} />
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: Z_TEXT, marginBottom: 4 }}>Reading your brand...</div>
+                <div style={{ fontSize: 13, color: Z_MUTED }}>Scanning your website and building content ideas</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && !loading && (
+          <div style={{
+            background: "rgba(239,68,68,0.08)",
+            border: "1px solid rgba(239,68,68,0.2)",
+            borderRadius: 12,
+            padding: "14px 18px",
+            fontSize: 14,
+            color: "#F87171",
+            textAlign: "center",
+            marginBottom: 24,
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Results */}
+        {result && !loading && (
+          <div>
+            {/* Brand summary */}
+            <div style={{
+              background: "rgba(255,255,255,0.03)",
+              border: `1px solid ${Z_BORDER_STRONG}`,
+              borderRadius: 12,
+              padding: "16px 20px",
+              marginBottom: 20,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 14,
+            }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: "50%",
+                background: `rgba(224,92,42,0.15)`,
+                border: `1px solid rgba(224,92,42,0.3)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+                fontSize: 16,
+              }}>
+                🧬
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: Z_ORANGE, marginBottom: 4 }}>{result.brandName} - Brand Intelligence Ready</div>
+                <div style={{ fontSize: 13, color: Z_MUTED, lineHeight: 1.55 }}>{result.brandSummary}</div>
+              </div>
+            </div>
+
+            {/* Post preview cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+              {previewPosts.map((post, i) => {
+                const pColor = PLATFORM_COLORS[post.platform] ?? Z_ORANGE;
+                const pIcon = PLATFORM_ICONS[post.platform] ?? "?";
+                return (
+                  <div
+                    key={post.id || i}
+                    style={{
+                      background: Z_SURFACE,
+                      border: `1px solid ${Z_BORDER_STRONG}`,
+                      borderRadius: 12,
+                      padding: "16px 18px",
+                      display: "flex",
+                      gap: 14,
+                      alignItems: "flex-start",
+                      position: "relative",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: pColor, borderRadius: "3px 0 0 3px" }} />
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8,
+                      background: pColor,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 10, fontWeight: 800, color: "#fff",
+                      flexShrink: 0,
+                    }}>
+                      {pIcon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: Z_TEXT }}>{post.platform}</span>
+                        <span style={{ fontSize: 10, color: Z_MUTED, background: "rgba(255,255,255,0.05)", padding: "2px 7px", borderRadius: 100 }}>{post.contentType}</span>
+                        <span style={{ fontSize: 10, color: Z_MUTED, background: "rgba(255,255,255,0.05)", padding: "2px 7px", borderRadius: 100 }}>{post.angle}</span>
+                        <span style={{ fontSize: 10, color: Z_FAINT, marginLeft: "auto" }}>Day {post.day}</span>
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: Z_TEXT, marginBottom: 4 }}>{post.topic}</div>
+                      <div style={{ fontSize: 12, color: Z_MUTED, lineHeight: 1.55 }}>{post.caption}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Blur teaser for remaining posts */}
+            <div style={{
+              position: "relative",
+              height: 90,
+              marginBottom: 28,
+              borderRadius: 12,
+              overflow: "hidden",
+              pointerEvents: "none",
+            }}>
+              <div style={{ filter: "blur(4px)", opacity: 0.45 }}>
+                {[4, 5].map(day => (
+                  <div key={day} style={{
+                    background: Z_SURFACE,
+                    border: `1px solid ${Z_BORDER}`,
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                    marginBottom: 8,
+                    height: 40,
+                  }} />
+                ))}
+              </div>
+              <div style={{
+                position: "absolute", inset: 0,
+                background: `linear-gradient(to bottom, transparent 0%, ${Z_BG} 100%)`,
+              }} />
+            </div>
+
+            {/* CTA */}
+            <div style={{
+              textAlign: "center",
+              background: "rgba(224,92,42,0.06)",
+              border: `1px solid rgba(224,92,42,0.18)`,
+              borderRadius: 16,
+              padding: "28px 24px",
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: Z_TEXT, marginBottom: 6 }}>
+                Your full {result?.plan?.length ?? 7}-post plan is ready
+              </div>
+              <div style={{ fontSize: 14, color: Z_MUTED, marginBottom: 20 }}>
+                Sign up free to unlock the full calendar, one-click scheduling, and Brand DNA for {result.brandName}
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                <Link href={`/signup?url=${encodeURIComponent(url)}`}>
+                  <button style={{
+                    background: "linear-gradient(135deg, #E05C2A, #C4391A)",
+                    border: "none", color: "#fff",
+                    padding: "12px 28px", borderRadius: 10,
+                    fontSize: 14, fontWeight: 700, cursor: "pointer",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(224,92,42,0.45)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}>
+                    Get Full Plan - Free
+                  </button>
+                </Link>
+                <button
+                  onClick={() => { setResult(null); setUrl(""); setError(""); }}
+                  style={{
+                    background: "transparent", border: `1px solid ${Z_BORDER_STRONG}`,
+                    color: Z_MUTED, padding: "12px 20px", borderRadius: 10,
+                    fontSize: 14, cursor: "pointer",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = Z_TEXT)}
+                  onMouseLeave={e => (e.currentTarget.style.color = Z_MUTED)}
+                >
+                  Try another URL
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hoveredCta, setHoveredCta] = useState(false);
@@ -613,6 +995,9 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      {/* TRY ZURI LIVE */}
+      <TryZuriSection />
 
       {/* HOW IT WORKS */}
       <section
