@@ -412,7 +412,8 @@ Return ONLY valid JSON. No markdown, no explanation.`;
       ? `WEBSITE CONTENT (from ${urlToCrawl}):\n${websiteContent.slice(0, 3000)}`
       : brandInfo || `Business: ${brandName}`;
 
-    const postCount = Math.min(Math.ceil(days / 3), 30);
+    const postCounts: Record<string, number> = { "1week": 7, "1month": 14, "3months": 24 };
+    const postCount = postCounts[duration] ?? 7;
 
     const user = `Create a ${label} content plan with ${postCount} posts for: ${brandName || "this business"}.
 
@@ -441,7 +442,7 @@ Rules:
 - Captions must be punchy, brand-specific, never generic
 - No em dashes (--) in any caption`;
 
-    const result = await aiJSON<{ brandSummary: string; plan: Array<{ id: string; day: number; platform: string; contentType: string; topic: string; angle: string; caption: string }> }>(system, user, 500);
+    const result = await aiJSON<{ brandSummary: string; plan: Array<{ id: string; day: number; platform: string; contentType: string; topic: string; angle: string; caption: string }> }>(system, user, 3000);
 
     res.json({
       brandName: brandName || "Your Brand",

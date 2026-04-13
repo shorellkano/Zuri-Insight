@@ -63,13 +63,17 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  async function generatePlan() {
-    if (!url.trim() && !brandId) return;
+  async function generatePlan(overrideUrl?: string) {
+    const effectiveUrl = overrideUrl ?? url;
+    if (!effectiveUrl.trim() && !brandId) return;
     setLoading(true);
     setPlan(null);
     try {
       const body: any = { duration };
-      if (url.trim()) body.websiteUrl = url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`;
+      if (effectiveUrl.trim()) {
+        const full = effectiveUrl.trim().startsWith("http") ? effectiveUrl.trim() : `https://${effectiveUrl.trim()}`;
+        body.websiteUrl = full;
+      }
       if (brandId) body.brandId = brandId;
       const r = await fetch(API("/generate/quick-plan"), {
         method: "POST",
@@ -131,21 +135,30 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
           <div className="space-y-3">
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Your website URL</p>
-              <div className="flex gap-2">
-                <div className="flex-1 flex items-center border border-border bg-background rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
-                  <span className="px-3 text-muted-foreground text-sm shrink-0">https://</span>
-                  <input
-                    value={url.replace(/^https?:\/\//, "")}
-                    onChange={e => setUrl(e.target.value)}
-                    placeholder="yourbrand.com"
-                    className="flex-1 py-2.5 pr-3 bg-transparent text-sm focus:outline-none"
-                    onKeyDown={e => e.key === "Enter" && generatePlan()}
-                  />
-                </div>
+              <div className="flex items-center border border-border bg-background rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
+                <span className="px-3 text-muted-foreground text-sm shrink-0">https://</span>
+                <input
+                  value={url.replace(/^https?:\/\//, "")}
+                  onChange={e => setUrl(e.target.value)}
+                  placeholder="yourbrand.com"
+                  className="flex-1 py-2.5 pr-3 bg-transparent text-sm focus:outline-none"
+                  onKeyDown={e => e.key === "Enter" && generatePlan()}
+                  onPaste={e => {
+                    const pasted = e.clipboardData.getData("text").trim();
+                    if (pasted.includes(".")) {
+                      const clean = pasted.replace(/^https?:\/\//, "");
+                      setUrl(clean);
+                      e.preventDefault();
+                      setTimeout(() => generatePlan(clean), 50);
+                    }
+                  }}
+                />
+                {loading && <Loader2 className="h-4 w-4 animate-spin text-primary mx-3 shrink-0" />}
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Paste your URL and scanning starts instantly</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Content plan duration</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Plan duration</p>
               <div className="flex gap-2">
                 {(["1week", "1month", "3months"] as const).map(d => (
                   <button
@@ -163,7 +176,7 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
               disabled={loading || (!url.trim() && !brandId)}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Reading your brand...</> : <><Sparkles className="h-4 w-4" />Generate My Content Plan</>}
+              {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Scanning your brand...</> : <><Sparkles className="h-4 w-4" />Generate Content Plan</>}
             </button>
           </div>
         ) : (
