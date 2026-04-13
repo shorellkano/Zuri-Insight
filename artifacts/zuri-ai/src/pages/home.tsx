@@ -1,263 +1,891 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { Sparkles, Zap, Globe, Shield, ArrowRight, CheckCircle2, Star } from "lucide-react";
-import { useState, useEffect } from "react";
 
-const features = [
-  {
-    icon: Sparkles,
-    title: "Brand DNA Intelligence",
-    desc: "Zuri reads your website and social profiles to build a deep understanding of your brand's voice, values, and cultural context."
-  },
-  {
-    icon: Globe,
-    title: "African Market Expertise",
-    desc: "Every piece of content is crafted with cultural awareness for West, East, Southern, and Pan-African markets."
-  },
-  {
-    icon: Zap,
-    title: "Instant Multi-Format Content",
-    desc: "Generate ad copy, social posts, email campaigns, WhatsApp messages, and video scripts in seconds."
-  },
-  {
-    icon: Shield,
-    title: "On-Brand Every Time",
-    desc: "Your Brand DNA profile ensures every output stays true to your voice, never generic or off-message."
-  },
-];
+const Z_ORANGE = "#E05C2A";
+const Z_ORANGE_DARK = "#C4391A";
+const Z_TEAL = "#2A9D8A";
+const Z_GOLD = "#D4A017";
+const Z_BG = "#0C0A08";
+const Z_SURFACE = "#141210";
+const Z_TEXT = "#F5F0EB";
+const Z_MUTED = "rgba(245,240,235,0.5)";
+const Z_FAINT = "rgba(245,240,235,0.3)";
+const Z_BORDER = "rgba(255,255,255,0.06)";
+const Z_BORDER_STRONG = "rgba(255,255,255,0.12)";
 
-const formats = [
-  { label: "Ad Copy", color: "bg-primary/10 text-primary border border-primary/20" },
-  { label: "Instagram Posts", color: "bg-secondary/10 text-secondary border border-secondary/20" },
-  { label: "Email Campaigns", color: "bg-accent/20 text-foreground border border-accent/30" },
-  { label: "WhatsApp Messages", color: "bg-green-100 text-green-700 border border-green-200" },
-  { label: "Video Scripts", color: "bg-purple-100 text-purple-700 border border-purple-200" },
-  { label: "LinkedIn Content", color: "bg-blue-100 text-blue-700 border border-blue-200" },
-  { label: "Twitter/X Posts", color: "bg-sky-100 text-sky-700 border border-sky-200" },
-  { label: "TikTok Scripts", color: "bg-pink-100 text-pink-700 border border-pink-200" },
-];
-
-const testimonials = [
-  { quote: "Zuri AI understands our market in a way no other tool does. Our engagement rates doubled.", name: "Amara Diallo", company: "Lagos Fashion Week" },
-  { quote: "Finally, AI that gets African business culture. The content feels authentic, not copy-paste.", name: "Kwame Asante", company: "Savanna Tech, Nairobi" },
-  { quote: "We cut our content creation time by 80% while maintaining our brand voice perfectly.", name: "Lerato Molefe", company: "Ubuntu Foods, Johannesburg" },
-];
-
-const BADGE_LINES = [
-  { flag: "🇳🇬", text: "Nigeria-First Brand Intelligence" },
-  { flag: "⚡", text: "Your design agency - open 24/7" },
-  { flag: "🧬", text: "Built on real Brand DNA, not guesswork" },
-  { flag: "🌍", text: "Cultural AI that speaks your market" },
-  { flag: "🚀", text: "Beta - Now powering African brands" },
-];
-
-function LiveBadge() {
-  const [idx, setIdx] = useState(0);
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setIdx((i) => (i + 1) % BADGE_LINES.length);
-        setVisible(true);
-      }, 300);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const { flag, text } = BADGE_LINES[idx];
-
+function ZuriLogoSVG({ size = 32 }: { size?: number }) {
   return (
-    <div className="inline-flex items-center gap-3 px-4 py-2 bg-background border border-primary/30 rounded-full text-sm font-medium shadow-sm shadow-primary/10 mb-6 select-none">
-      <span className="relative flex h-2.5 w-2.5 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
-      </span>
-      <span
-        className="transition-all duration-300 text-foreground"
-        style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(-6px)" }}
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 24 C6 13 10 7 16 6 C12 7 9 12 9 20 Z" fill={Z_GOLD} opacity="0.9" />
+      <ellipse cx="17" cy="18" rx="9" ry="11" fill={Z_ORANGE} />
+      <ellipse cx="17" cy="11" rx="9" ry="5" fill={Z_TEAL} />
+      <rect x="8" y="8" width="18" height="4" rx="1" fill={Z_TEAL} />
+      <rect x="9" y="10.5" width="16" height="2.5" rx="0.5" fill={Z_ORANGE} />
+      <path d="M23 7 L24 5.2 L25 7 L26.8 8 L25 9 L24 10.8 L23 9 L21.2 8 Z" fill={Z_GOLD} />
+    </svg>
+  );
+}
+
+function HeroLogoRings() {
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: 280, height: 280 }}>
+      <div
+        className="zuri-spin absolute"
+        style={{
+          width: 280, height: 280,
+          borderRadius: "50%",
+          border: `1.5px dashed ${Z_ORANGE}`,
+          opacity: 0.4,
+        }}
       >
-        <span className="mr-1">{flag}</span>
-        {text}
-      </span>
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
+          const rad = (angle * Math.PI) / 180;
+          const x = 140 + 138 * Math.cos(rad) - 4;
+          const y = 140 + 138 * Math.sin(rad) - 4;
+          return (
+            <div
+              key={angle}
+              style={{
+                position: "absolute",
+                left: x,
+                top: y,
+                width: 6,
+                height: 6,
+                background: Z_ORANGE,
+                opacity: 0.7,
+                clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
+                transform: `rotate(${angle}deg)`,
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <div
+        className="zuri-ring-pulse absolute"
+        style={{
+          width: 220, height: 220,
+          borderRadius: "50%",
+          border: `1.5px solid rgba(224,92,42,0.2)`,
+        }}
+      />
+
+      <div
+        style={{
+          width: 180, height: 180,
+          borderRadius: "50%",
+          background: Z_SURFACE,
+          border: `1px solid ${Z_BORDER_STRONG}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          filter: "drop-shadow(0 0 40px rgba(224,92,42,0.35))",
+          position: "relative",
+          zIndex: 2,
+        }}
+      >
+        <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22 90 C22 48 38 26 60 22 C44 26 33 46 33 76 Z" fill={Z_GOLD} opacity="0.9" />
+          <ellipse cx="65" cy="68" rx="34" ry="42" fill={Z_ORANGE} />
+          <ellipse cx="65" cy="44" rx="34" ry="22" fill={Z_TEAL} />
+          <rect x="31" y="30" width="68" height="16" rx="4" fill={Z_TEAL} />
+          <rect x="33" y="40" width="64" height="10" rx="2" fill={Z_ORANGE} />
+          <rect x="35" y="47" width="60" height="7" rx="2" fill={Z_TEAL} />
+          <circle cx="43" cy="51" r="2" fill="white" opacity="0.5" />
+          <circle cx="52" cy="51" r="2" fill="white" opacity="0.5" />
+          <circle cx="61" cy="51" r="2" fill="white" opacity="0.5" />
+          <circle cx="70" cy="51" r="2" fill="white" opacity="0.5" />
+          <circle cx="79" cy="51" r="2" fill="white" opacity="0.5" />
+          <path d="M86 27 L88.5 21 L91 27 L97 30 L91 33 L88.5 39 L86 33 L80 30 Z" fill="#F5D97A" />
+        </svg>
+      </div>
     </div>
   );
 }
 
-export default function Home() {
+const MARQUEE_ITEMS = [
+  "Brand DNA from your social handles",
+  "Instagram Reels and TikTok videos",
+  "Multi-platform scheduling",
+  "Week and month content plans",
+  "Caption enhancement for realtors, caterers, car dealers",
+  "UGC video generation",
+  "WhatsApp marketing",
+  "Carousel and quote cards",
+  "Calendar intelligence - Eid, Christmas, Detty December",
+];
+
+function MarqueeItem({ text }: { text: string }) {
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="fixed top-0 inset-x-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border" data-testid="nav-home">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <img src="/zuri-ai-logo.png" alt="Zuri AI" className="h-9 w-9 rounded-full object-cover" data-testid="home-logo" />
-            <span className="text-xl font-bold">Zuri <span className="text-primary">AI</span></span>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, paddingRight: 40, whiteSpace: "nowrap" }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: Z_ORANGE, flexShrink: 0 }} />
+      <span style={{ color: Z_MUTED, fontSize: 13, fontWeight: 500 }}>{text}</span>
+    </span>
+  );
+}
+
+const AVATAR_COLORS = [Z_ORANGE, Z_TEAL, Z_GOLD, "#8B5CF6", "#6B7280"];
+const AVATAR_INITIALS = ["A", "K", "L", "T", "O"];
+
+const STEP_CARDS = [
+  {
+    num: "01",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Z_ORANGE} strokeWidth="2" strokeLinecap="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </svg>
+    ),
+    title: "Drop your handle or URL",
+    desc: "Paste your Instagram, TikTok, website, or just describe what you do. Zuri reads everything.",
+  },
+  {
+    num: "02",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Z_ORANGE} strokeWidth="2" strokeLinecap="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
+      </svg>
+    ),
+    title: "Zuri builds your Brand DNA",
+    desc: "Your voice, your audience, your cultural context, your visual identity - extracted in minutes.",
+  },
+  {
+    num: "03",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={Z_ORANGE} strokeWidth="2" strokeLinecap="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    ),
+    title: "Generate, schedule, publish",
+    desc: "Create a week of content or a single post. Approve and publish to all platforms at once.",
+  },
+];
+
+const FEATURE_CARDS = [
+  {
+    emoji: "📸",
+    title: "Media-First Creation",
+    desc: "Upload your own images and videos. Zuri generates captions, hashtags, and hooks - then posts to every platform simultaneously. Perfect for realtors, car dealers, caterers, and event planners.",
+    tag: "Realtors - Car dealers - Caterers - Event planners",
+    tagColor: "rgba(212,160,23,0.15)",
+    tagTextColor: Z_GOLD,
+  },
+  {
+    emoji: "📅",
+    title: "Calendar Intelligence",
+    desc: "Zuri knows Eid, Christmas, Detty December, Independence Day, and your company birthdays. Every important date becomes a content opportunity - built into your monthly plan automatically.",
+    tag: "Never miss a moment",
+    tagColor: `rgba(42,157,138,0.15)`,
+    tagTextColor: Z_TEAL,
+  },
+  {
+    emoji: "🎬",
+    title: "UGC Video Generation",
+    desc: "Realistic influencer-style video ads from a single product description or image. Powered by Higgsfield AI. Available on Growth plan and above.",
+    tag: null,
+    tagColor: "",
+    tagTextColor: "",
+  },
+  {
+    emoji: "🗓️",
+    title: "Bulk Content Planning",
+    desc: "Tell Zuri you want a week or month of content. It builds the plan, shows every slot for your approval, then generates and schedules everything in one go.",
+    tag: null,
+    tagColor: "",
+    tagTextColor: "",
+  },
+];
+
+const PRICING_PLANS = [
+  {
+    name: "Solo",
+    price: "9,500",
+    currency: "NGN",
+    period: "/mo",
+    highlight: false,
+    badge: null,
+    brands: "1 brand",
+    features: ["Quick Create", "30 media posts", "2 platforms", "Scheduling", "Voice File and Lessons"],
+    cta: "Start with Solo",
+    plan: "solo",
+  },
+  {
+    name: "Growth",
+    price: "24,000",
+    currency: "NGN",
+    period: "/mo",
+    highlight: true,
+    badge: "Most popular",
+    brands: "3 brands",
+    features: ["Everything in Solo", "Unlimited media posts", "All 6 platforms", "Bulk plans", "Creative Studio + UGC video"],
+    cta: "Start with Growth",
+    plan: "growth",
+  },
+  {
+    name: "Studio",
+    price: "55,000",
+    currency: "NGN",
+    period: "/mo",
+    highlight: false,
+    badge: null,
+    brands: "10 brands",
+    features: ["Everything in Growth", "Team workspace", "Client approvals", "20 UGC videos", "Priority support"],
+    cta: "Start with Studio",
+    plan: "studio",
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    currency: "",
+    period: "",
+    highlight: false,
+    badge: null,
+    brands: "Unlimited",
+    features: ["Unlimited brands and team", "White label", "API access", "Custom DNA training", "Dedicated support"],
+    cta: "Contact us",
+    plan: "enterprise",
+  },
+];
+
+export default function Home() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hoveredCta, setHoveredCta] = useState(false);
+
+  return (
+    <div style={{ background: Z_BG, color: Z_TEXT, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100vh", overflowX: "hidden" }}>
+
+      {/* NAV */}
+      <nav
+        data-testid="nav-home"
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          background: "rgba(12,10,8,0.92)",
+          backdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${Z_BORDER}`,
+          padding: "0 48px",
+          height: 64,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+          <ZuriLogoSVG size={32} />
+          <span style={{ fontSize: 18, fontWeight: 700, color: Z_TEXT }} data-testid="home-logo">
+            Zuri <span style={{ color: Z_ORANGE }}>AI</span>
+          </span>
+        </Link>
+
+        <div className="hidden md:flex" style={{ gap: 32 }}>
+          {["Features", "Pricing", "For Africa", "Blog"].map(link => (
+            <a key={link} href="#" style={{ fontSize: 14, color: Z_MUTED, textDecoration: "none", transition: "color 0.2s" }}
+              onMouseEnter={e => (e.currentTarget.style.color = Z_TEXT)}
+              onMouseLeave={e => (e.currentTarget.style.color = Z_MUTED)}>
+              {link}
+            </a>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/login" data-testid="nav-signin-link">
+            <button style={{
+              background: "transparent",
+              border: `1px solid ${Z_BORDER_STRONG}`,
+              color: Z_TEXT,
+              padding: "8px 18px",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "border-color 0.2s",
+            }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = Z_BORDER_STRONG)}>
+              Sign in
+            </button>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" data-testid="nav-dashboard-link">
-              <button className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5">
-                Sign In
-              </button>
-            </Link>
-            <Link href="/dashboard" data-testid="nav-get-started-btn">
-              <button className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                Get Started <ArrowRight className="h-4 w-4" />
-              </button>
-            </Link>
-          </div>
+          <Link href="/signup" data-testid="nav-get-started-btn">
+            <button style={{
+              background: Z_ORANGE,
+              border: "none",
+              color: "#fff",
+              padding: "8px 18px",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "background 0.2s",
+            }}
+              onMouseEnter={e => (e.currentTarget.style.background = Z_ORANGE_DARK)}
+              onMouseLeave={e => (e.currentTarget.style.background = Z_ORANGE)}>
+              Get started
+            </button>
+          </Link>
+          <button
+            className="flex md:hidden"
+            onClick={() => setMobileMenuOpen(o => !o)}
+            style={{ background: "transparent", border: "none", color: Z_TEXT, cursor: "pointer", padding: 4 }}
+            aria-label="Toggle menu"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {mobileMenuOpen
+                ? <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
+                : <><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></>}
+            </svg>
+          </button>
         </div>
       </nav>
 
-      <section className="pt-32 pb-20 px-4 text-center relative overflow-hidden" data-testid="hero-section">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 pointer-events-none" />
-        <div className="relative max-w-4xl mx-auto">
-          <LiveBadge />
-          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-foreground leading-tight mb-6">
-            Your AI design agency,
-            <br />
-            running <span className="text-primary">24 hours</span> a day.
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Zuri AI learns your Brand DNA, understands African markets, and delivers on-brand campaigns, visuals, and copy the moment you need them - no briefs, no waiting.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/brands/new" data-testid="hero-cta-primary">
-              <button className="flex items-center gap-2 px-7 py-3.5 bg-primary text-primary-foreground rounded-xl text-base font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/25">
-                <Sparkles className="h-5 w-5" />
-                Build Your Brand DNA
-              </button>
-            </Link>
-            <Link href="/dashboard" data-testid="hero-cta-secondary">
-              <button className="flex items-center gap-2 px-7 py-3.5 bg-card text-foreground border border-border rounded-xl text-base font-semibold hover:bg-muted transition-colors">
-                View Dashboard
-              </button>
-            </Link>
-          </div>
+      {mobileMenuOpen && (
+        <div style={{
+          position: "fixed", inset: 0, top: 64, zIndex: 99,
+          background: "rgba(12,10,8,0.98)", display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 32,
+        }}>
+          {["Features", "Pricing", "For Africa", "Blog"].map(link => (
+            <a key={link} href="#" onClick={() => setMobileMenuOpen(false)}
+              style={{ fontSize: 22, color: Z_TEXT, textDecoration: "none", fontWeight: 600 }}>
+              {link}
+            </a>
+          ))}
+          <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
+            <button style={{ background: Z_ORANGE, color: "#fff", border: "none", padding: "12px 32px", borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: "pointer" }}>
+              Get started
+            </button>
+          </Link>
         </div>
-      </section>
+      )}
 
-      <section className="py-12 px-4 bg-muted/50 border-y border-border" data-testid="formats-section">
-        <div className="max-w-5xl mx-auto text-center">
-          <p className="text-sm font-medium text-muted-foreground mb-6 uppercase tracking-wider">Generate content for every platform</p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            {formats.map(({ label, color }) => (
-              <span key={label} className={`px-4 py-2 rounded-full text-sm font-medium ${color}`} data-testid={`format-badge-${label}`}>
-                {label}
-              </span>
+      {/* HERO */}
+      <section
+        data-testid="hero-section"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "80px 20px",
+          textAlign: "center",
+          position: "relative",
+          background: "radial-gradient(ellipse 800px 600px at 50% 60%, rgba(224,92,42,0.07) 0%, transparent 70%)",
+        }}
+      >
+        <div className="zuri-fade-up-1" style={{ marginBottom: 32 }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: "rgba(224,92,42,0.12)", border: `1px solid rgba(224,92,42,0.25)`,
+            padding: "6px 16px", borderRadius: 100, fontSize: 13, fontWeight: 500, color: Z_TEXT,
+          }}>
+            <span className="zuri-badge-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: Z_ORANGE, flexShrink: 0 }} />
+            Cultural AI that speaks your market
+          </span>
+        </div>
+
+        <div className="zuri-fade-up-2" style={{ marginBottom: 40 }}>
+          <HeroLogoRings />
+        </div>
+
+        <h1
+          className="zuri-fade-up-3"
+          style={{
+            fontSize: "clamp(40px, 7vw, 80px)",
+            fontWeight: 900,
+            letterSpacing: "-2px",
+            lineHeight: 1.0,
+            maxWidth: 900,
+            margin: "0 auto 24px",
+          }}
+        >
+          <span style={{ display: "block", color: Z_TEXT }}>Your AI design agency,</span>
+          <span style={{ display: "block", color: Z_TEXT }}>
+            running <span style={{ color: Z_ORANGE }}>24 hours</span> a day.
+          </span>
+        </h1>
+
+        <p
+          className="zuri-fade-up-3"
+          style={{
+            fontSize: 18, color: "rgba(245,240,235,0.55)", maxWidth: 560,
+            margin: "0 auto 36px", lineHeight: 1.65,
+          }}
+        >
+          Zuri AI reads your website, your Instagram, your TikTok - and builds a Brand DNA that generates campaigns, visuals, and copy your audience actually connects with.
+        </p>
+
+        <div className="zuri-fade-up-4" style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 40 }}>
+          <Link href="/signup" data-testid="hero-cta-primary">
+            <button
+              onMouseEnter={() => setHoveredCta(true)}
+              onMouseLeave={() => setHoveredCta(false)}
+              style={{
+                background: "linear-gradient(135deg, #E05C2A, #C4391A)",
+                border: "none",
+                color: "#fff",
+                padding: "14px 32px",
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "transform 0.2s, box-shadow 0.2s",
+                transform: hoveredCta ? "translateY(-2px)" : "none",
+                boxShadow: hoveredCta ? "0 8px 30px rgba(224,92,42,0.45)" : "none",
+              }}
+            >
+              Build Your Brand DNA
+            </button>
+          </Link>
+          <Link href="/dashboard" data-testid="hero-cta-secondary">
+            <button style={{
+              background: "transparent",
+              border: `1px solid ${Z_BORDER_STRONG}`,
+              color: Z_TEXT,
+              padding: "14px 32px",
+              borderRadius: 10,
+              fontSize: 15,
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "border-color 0.2s, background 0.2s",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = Z_BORDER_STRONG; e.currentTarget.style.background = "transparent"; }}>
+              View dashboard
+            </button>
+          </Link>
+        </div>
+
+        <div className="zuri-fade-up-5" style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {AVATAR_COLORS.map((color, i) => (
+              <div key={i} style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: color,
+                border: `2px solid ${Z_BG}`,
+                marginLeft: i > 0 ? -8 : 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 700, color: "#fff",
+                zIndex: 5 - i,
+                position: "relative",
+              }}>
+                {AVATAR_INITIALS[i]}
+              </div>
             ))}
           </div>
+          <span style={{ fontSize: 13, color: Z_MUTED }}>
+            <span style={{ color: Z_TEXT, fontWeight: 600 }}>2,400+</span> brands already creating with Zuri
+          </span>
+          <div style={{ width: 1, height: 24, background: Z_BORDER_STRONG }} />
+          <span style={{ fontSize: 14 }}>🇳🇬 🇰🇪 🇬🇭 🇿🇦 🇪🇬</span>
+          <span style={{ fontSize: 12, color: Z_FAINT }}>+41 countries</span>
         </div>
       </section>
 
-      <section className="py-20 px-4" data-testid="features-section">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-foreground mb-4">A full creative team - built into one platform.</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Most AI tools ignore the nuances of African markets. Zuri AI was built from the ground up with the cultural intelligence, brand depth, and creative range of an agency - without the agency costs.
+      {/* MARQUEE */}
+      <div
+        data-testid="marquee-section"
+        style={{
+          borderTop: `1px solid ${Z_BORDER}`,
+          borderBottom: `1px solid ${Z_BORDER}`,
+          background: "rgba(255,255,255,0.02)",
+          padding: "14px 0",
+          overflow: "hidden",
+        }}
+      >
+        <div className="zuri-marquee-track">
+          {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, i) => (
+            <MarqueeItem key={i} text={item} />
+          ))}
+        </div>
+      </div>
+
+      {/* HOW IT WORKS */}
+      <section
+        data-testid="how-it-works-section"
+        style={{ padding: "100px 48px", maxWidth: 1100, margin: "0 auto" }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 56 }}>
+          <span style={{
+            display: "inline-block",
+            border: `1px solid ${Z_BORDER_STRONG}`,
+            color: Z_FAINT,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.12em",
+            padding: "5px 14px",
+            borderRadius: 100,
+            marginBottom: 20,
+            textTransform: "uppercase",
+          }}>How it works</span>
+          <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, letterSpacing: "-1px", marginBottom: 12 }}>
+            From your profile to published in{" "}
+            <em style={{ fontStyle: "italic", color: Z_ORANGE }}>minutes.</em>
+          </h2>
+          <p style={{ color: Z_MUTED, fontSize: 16 }}>No briefs. No back-and-forth. No waiting.</p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, borderRadius: 16, overflow: "hidden" }}>
+          {STEP_CARDS.map(card => (
+            <div
+              key={card.num}
+              data-testid={`step-${card.num}`}
+              style={{
+                background: "rgba(255,255,255,0.025)",
+                padding: "36px 32px",
+                transition: "background 0.2s",
+                cursor: "default",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.025)")}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: Z_ORANGE, letterSpacing: "0.05em" }}>{card.num}</span>
+                {card.icon}
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: Z_TEXT, marginBottom: 10 }}>{card.title}</h3>
+              <p style={{ fontSize: 14, color: Z_MUTED, lineHeight: 1.65 }}>{card.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FEATURE GRID */}
+      <section
+        data-testid="features-section"
+        style={{ padding: "0 48px 100px", maxWidth: 1100, margin: "0 auto" }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, letterSpacing: "-1px", marginBottom: 0 }}>
+            Everything your brand needs.{" "}
+            <em style={{ fontStyle: "italic", color: Z_ORANGE }}>Nothing it doesn&apos;t.</em>
+          </h2>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 2, borderRadius: 16, overflow: "hidden" }}>
+          {FEATURE_CARDS.map(card => (
+            <div
+              key={card.title}
+              data-testid={`feature-card-${card.title}`}
+              style={{
+                background: "rgba(255,255,255,0.025)",
+                padding: "36px 32px",
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.025)")}
+            >
+              <div style={{ fontSize: 28, marginBottom: 16 }}>{card.emoji}</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: Z_TEXT, marginBottom: 10 }}>{card.title}</h3>
+              <p style={{ fontSize: 14, color: Z_MUTED, lineHeight: 1.7, marginBottom: card.tag ? 16 : 0 }}>{card.desc}</p>
+              {card.tag && (
+                <span style={{
+                  display: "inline-block",
+                  background: card.tagColor,
+                  color: card.tagTextColor,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "4px 10px",
+                  borderRadius: 100,
+                  letterSpacing: "0.04em",
+                }}>
+                  {card.tag}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style={{
+          marginTop: 2,
+          borderRadius: 0,
+          background: "rgba(224,92,42,0.06)",
+          borderTop: `1px solid rgba(224,92,42,0.15)`,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 0,
+          padding: "40px 32px",
+        }}>
+          <div>
+            <div style={{ fontSize: 24, marginBottom: 12 }}>🧬</div>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: Z_TEXT, marginBottom: 10 }}>
+              Brand DNA - the intelligence layer
+            </h3>
+            <p style={{ fontSize: 14, color: Z_MUTED, lineHeight: 1.7 }}>
+              Zuri reads your website, Instagram bio, TikTok captions, Facebook page, and LinkedIn simultaneously - building a Brand DNA richer than any tool on the market. Your voice file, your lessons, your cultural context. It gets smarter every time you use it.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {features.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="bg-card border border-border rounded-2xl p-7 hover:border-primary/40 transition-colors" data-testid={`feature-card-${title}`}>
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5">
-                  <Icon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-3">{title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 bg-muted/30" data-testid="how-it-works-section">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-foreground mb-4">Onboard your agency in 3 steps.</h2>
-          <p className="text-lg text-muted-foreground mb-14">No lengthy briefs. No waiting. Just point Zuri at your brand and your creative team is ready to work.</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, paddingLeft: 40 }}>
             {[
-              { step: "01", title: "Add Your Brand", desc: "Enter your website URL and social media handles." },
-              { step: "02", title: "Build Brand DNA", desc: "Zuri analyzes your brand and creates your unique intelligence profile." },
-              { step: "03", title: "Generate Content", desc: "Choose a format, add a prompt, and get on-brand content instantly." },
-            ].map(({ step, title, desc }) => (
-              <div key={step} className="relative" data-testid={`step-${step}`}>
-                <div className="text-6xl font-bold text-primary/10 mb-3">{step}</div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{desc}</p>
+              { stat: "6", label: "Social platforms read" },
+              { stat: "150+", label: "Calendar events known" },
+              { stat: "41+", label: "Countries served" },
+              { stat: "24hr", label: "Your AI agency runs" },
+            ].map(({ stat, label }) => (
+              <div key={stat} style={{
+                background: Z_SURFACE,
+                border: `1px solid ${Z_BORDER}`,
+                borderRadius: 12,
+                padding: "16px 18px",
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: Z_ORANGE }}>{stat}</div>
+                <div style={{ fontSize: 12, color: Z_MUTED, marginTop: 2 }}>{label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="py-20 px-4" data-testid="testimonials-section">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-foreground text-center mb-12">Trusted by African Businesses</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map(({ quote, name, company }) => (
-              <div key={name} className="bg-card border border-border rounded-2xl p-7" data-testid={`testimonial-${name}`}>
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 text-accent fill-accent" />)}
-                </div>
-                <p className="text-foreground mb-5 leading-relaxed italic">"{quote}"</p>
-                <div>
-                  <p className="font-semibold text-foreground text-sm">{name}</p>
-                  <p className="text-muted-foreground text-xs">{company}</p>
-                </div>
-              </div>
-            ))}
+      {/* AFRICA SECTION */}
+      <section
+        data-testid="africa-section"
+        style={{
+          background: "linear-gradient(135deg, rgba(224,92,42,0.08) 0%, rgba(42,157,138,0.05) 100%)",
+          borderTop: `1px solid ${Z_BORDER}`,
+          borderBottom: `1px solid ${Z_BORDER}`,
+          padding: "80px 48px",
+        }}
+      >
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+          <div>
+            <span style={{
+              display: "inline-block",
+              background: `rgba(224,92,42,0.12)`,
+              border: `1px solid rgba(224,92,42,0.25)`,
+              color: Z_ORANGE,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              padding: "5px 14px",
+              borderRadius: 100,
+              marginBottom: 20,
+            }}>
+              Built for Africa
+            </span>
+            <h2 style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, letterSpacing: "-1px", marginBottom: 16 }}>
+              The first AI marketing platform that{" "}
+              <em style={{ fontStyle: "italic", color: Z_ORANGE }}>speaks your market.</em>
+            </h2>
+            <p style={{ fontSize: 15, color: Z_MUTED, lineHeight: 1.7, marginBottom: 24 }}>
+              Other AI tools were built for Western markets. Zuri AI was built for Lagos, Nairobi, Accra, Johannesburg - and the 40 million African businesses that deserve better tools.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
+              {["🇳🇬 Nigeria", "🇰🇪 Kenya", "🇬🇭 Ghana", "🇿🇦 South Africa", "🇪🇬 Egypt", "🇸🇳 Senegal", "+35 more"].map(flag => (
+                <span key={flag} style={{
+                  background: Z_SURFACE,
+                  border: `1px solid ${Z_BORDER}`,
+                  fontSize: 12,
+                  padding: "5px 12px",
+                  borderRadius: 100,
+                  color: Z_TEXT,
+                }}>
+                  {flag}
+                </span>
+              ))}
+            </div>
+            <div>
+              <span style={{ fontSize: 12, color: Z_MUTED }}>Africa pricing from</span>
+              <div style={{ fontSize: 28, fontWeight: 800, color: Z_ORANGE }}>9,500 / month</div>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <section className="py-20 px-4 bg-primary/5 border-y border-primary/10" data-testid="pricing-section">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-foreground mb-4">Agency output. Fraction of the cost.</h2>
-          <p className="text-lg text-muted-foreground mb-10">Start free. Scale as your brand grows.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
-              {
-                name: "Starter", price: "Free", period: "forever", highlight: false,
-                features: ["1 Brand profile", "50 content generations/month", "Ad copy, social posts", "Email support"],
-              },
-              {
-                name: "Growth", price: "$29", period: "per month", highlight: true,
-                features: ["10 Brand profiles", "Unlimited generations", "All content formats", "Priority support", "WhatsApp & Video Scripts", "Brand DNA analytics"],
-              },
-            ].map(({ name, price, period, features, highlight }) => (
-              <div key={name} className={`rounded-2xl p-8 border ${highlight ? "bg-primary text-primary-foreground border-primary shadow-xl shadow-primary/25" : "bg-card border-border"}`} data-testid={`pricing-${name.toLowerCase()}`}>
-                <h3 className={`text-xl font-bold mb-1 ${highlight ? "text-primary-foreground" : "text-foreground"}`}>{name}</h3>
-                <div className={`text-4xl font-bold mb-1 ${highlight ? "text-primary-foreground" : "text-foreground"}`}>{price}</div>
-                <p className={`text-sm mb-6 ${highlight ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{period}</p>
-                <ul className="space-y-3 mb-8">
-                  {features.map((f) => (
-                    <li key={f} className={`flex items-center gap-2.5 text-sm ${highlight ? "text-primary-foreground/90" : "text-foreground"}`}>
-                      <CheckCircle2 className={`h-4 w-4 shrink-0 ${highlight ? "text-primary-foreground" : "text-primary"}`} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/dashboard" data-testid={`pricing-cta-${name.toLowerCase()}`}>
-                  <button className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${highlight ? "bg-white text-primary hover:bg-white/90" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>
-                    Get Started
-                  </button>
-                </Link>
+              { stat: "40M+", label: "African businesses with no proper AI marketing tool" },
+              { stat: "79%", label: "Less than a social media manager costs per month" },
+              { stat: "10 min", label: "Average time from sign-up to first piece of content" },
+              { stat: "#1", label: "AI platform built specifically for African markets" },
+            ].map(({ stat, label }) => (
+              <div key={stat} style={{
+                background: Z_SURFACE,
+                border: `1px solid ${Z_BORDER}`,
+                borderRadius: 12,
+                padding: "24px 20px",
+              }}>
+                <div style={{ fontSize: 32, fontWeight: 900, color: Z_ORANGE, letterSpacing: "-1px" }}>{stat}</div>
+                <div style={{ fontSize: 12, color: Z_MUTED, marginTop: 6, lineHeight: 1.5 }}>{label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <footer className="py-12 px-4 border-t border-border" data-testid="footer">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <img src="/zuri-ai-logo.png" alt="Zuri AI" className="h-8 w-8 rounded-full object-cover" />
-            <span className="font-bold text-foreground">Zuri <span className="text-primary">AI</span></span>
-          </div>
-          <p className="text-sm text-muted-foreground">Your AI design agency for African brands.</p>
-          <p className="text-sm text-muted-foreground">© 2026 Zuri AI. All rights reserved.</p>
+      {/* PRICING */}
+      <section
+        data-testid="pricing-section"
+        style={{ padding: "100px 48px", maxWidth: 1100, margin: "0 auto" }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, letterSpacing: "-1px", marginBottom: 10 }}>
+            Honest pricing.{" "}
+            <em style={{ fontStyle: "italic", color: Z_ORANGE }}>Built for your market.</em>
+          </h2>
+          <p style={{ color: Z_MUTED, fontSize: 15 }}>Africa pricing in Naira. Global pricing in USD. Annual plans save 17%.</p>
         </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          {PRICING_PLANS.map(plan => (
+            <div
+              key={plan.name}
+              data-testid={`pricing-${plan.name.toLowerCase()}`}
+              style={{
+                background: plan.highlight ? `rgba(224,92,42,0.06)` : Z_SURFACE,
+                border: `1px solid ${plan.highlight ? Z_ORANGE : Z_BORDER}`,
+                borderRadius: 16,
+                padding: "28px 24px",
+                display: "flex",
+                flexDirection: "column",
+                position: "relative",
+                boxShadow: plan.highlight ? `0 0 0 1px ${Z_ORANGE}` : "none",
+              }}
+            >
+              {plan.badge && (
+                <span style={{
+                  position: "absolute",
+                  top: -12,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: Z_ORANGE,
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "3px 12px",
+                  borderRadius: 100,
+                  whiteSpace: "nowrap",
+                }}>
+                  {plan.badge}
+                </span>
+              )}
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: Z_MUTED, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {plan.name}
+                </span>
+              </div>
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: plan.price === "Custom" ? 28 : 24, fontWeight: 800, color: Z_TEXT }}>
+                  {plan.currency && <span style={{ fontSize: 14, fontWeight: 500, color: Z_MUTED }}></span>}
+                  {plan.price === "Custom" ? "Custom" : `${plan.price}`}
+                </span>
+                <span style={{ fontSize: 13, color: Z_MUTED }}>{plan.period}</span>
+              </div>
+              <div style={{ fontSize: 12, color: Z_ORANGE, fontWeight: 600, marginBottom: 20 }}>{plan.brands}</div>
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+                {plan.features.map(f => (
+                  <li key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: Z_MUTED, lineHeight: 1.4 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={Z_TEAL} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href={plan.plan === "enterprise" ? "/contact" : `/signup?plan=${plan.plan}`}>
+                <button style={{
+                  width: "100%",
+                  padding: "11px",
+                  borderRadius: 10,
+                  border: plan.highlight ? "none" : `1px solid ${Z_BORDER_STRONG}`,
+                  background: plan.highlight ? Z_ORANGE : "transparent",
+                  color: plan.highlight ? "#fff" : Z_TEXT,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "background 0.2s",
+                }}
+                  onMouseEnter={e => { if (plan.highlight) e.currentTarget.style.background = Z_ORANGE_DARK; else e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = plan.highlight ? Z_ORANGE : "transparent"; }}>
+                  {plan.cta}
+                </button>
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 24 }}>
+          <a href="/pricing" style={{ fontSize: 13, color: Z_MUTED, textDecoration: "none" }}
+            onMouseEnter={e => (e.currentTarget.style.color = Z_TEXT)}
+            onMouseLeave={e => (e.currentTarget.style.color = Z_MUTED)}>
+            View full pricing
+          </a>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section
+        data-testid="final-cta-section"
+        style={{
+          padding: "100px 48px",
+          textAlign: "center",
+          position: "relative",
+          background: "radial-gradient(ellipse 600px 400px at 50% 50%, rgba(224,92,42,0.06) 0%, transparent 70%)",
+        }}
+      >
+        <h2 style={{ fontSize: "clamp(28px, 5vw, 56px)", fontWeight: 900, letterSpacing: "-2px", marginBottom: 16 }}>
+          Your brand deserves{" "}
+          <em style={{ fontStyle: "italic", color: Z_ORANGE }}>better tools.</em>
+        </h2>
+        <p style={{ fontSize: 16, color: Z_MUTED, marginBottom: 36 }}>
+          Start free. No credit card required. Your Brand DNA is ready in 10 minutes.
+        </p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link href="/signup">
+            <button style={{
+              background: "linear-gradient(135deg, #E05C2A, #C4391A)",
+              border: "none", color: "#fff",
+              padding: "14px 32px", borderRadius: 10,
+              fontSize: 15, fontWeight: 700, cursor: "pointer",
+              transition: "transform 0.2s, box-shadow 0.2s",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 30px rgba(224,92,42,0.45)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}>
+              Build Your Brand DNA - Free
+            </button>
+          </Link>
+          <a href="mailto:hello@zuri.ai">
+            <button style={{
+              background: "transparent", border: `1px solid ${Z_BORDER_STRONG}`,
+              color: Z_TEXT, padding: "14px 32px", borderRadius: 10,
+              fontSize: 15, fontWeight: 500, cursor: "pointer",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = Z_BORDER_STRONG; e.currentTarget.style.background = "transparent"; }}>
+              Talk to us
+            </button>
+          </a>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer
+        data-testid="footer"
+        style={{
+          borderTop: `1px solid ${Z_BORDER}`,
+          padding: "40px 48px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 16,
+        }}
+      >
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+          <ZuriLogoSVG size={28} />
+          <span style={{ fontSize: 16, fontWeight: 700, color: Z_TEXT }}>
+            Zuri <span style={{ color: Z_ORANGE }}>AI</span>
+          </span>
+        </Link>
+        <div style={{ display: "flex", gap: 24 }}>
+          {["Privacy", "Terms", "Pricing", "Contact"].map(link => (
+            <a key={link} href="#" style={{ fontSize: 13, color: Z_FAINT, textDecoration: "none" }}
+              onMouseEnter={e => (e.currentTarget.style.color = Z_MUTED)}
+              onMouseLeave={e => (e.currentTarget.style.color = Z_FAINT)}>
+              {link}
+            </a>
+          ))}
+        </div>
+        <p style={{ fontSize: 12, color: Z_FAINT }}>© 2026 Zuri AI. Built for Africa.</p>
       </footer>
     </div>
   );

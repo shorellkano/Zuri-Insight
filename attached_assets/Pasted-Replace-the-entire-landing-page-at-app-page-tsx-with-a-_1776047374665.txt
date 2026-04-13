@@ -1,0 +1,421 @@
+Replace the entire landing page at app/page.tsx with a completely redesigned 
+dark-themed, premium landing page for Zuri AI.
+
+The design is inspired by Linear, Vercel, and Loom — dark background, bold 
+typography, warm African colour accents. The Zuri AI logo (the African woman 
+silhouette with tribal headwrap) must feature as the centrepiece hero element, 
+large and prominent in the middle of the page.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DESIGN SYSTEM — apply throughout
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Colors:
+  Background primary:   #0C0A08  (near-black, warm)
+  Background surface:   #141210  (cards, panels)
+  Background subtle:    rgba(255,255,255,0.025)
+  Brand orange:         #E05C2A  (primary CTA, accents)
+  Brand orange dark:    #C4391A  (hover states)
+  Brand teal:           #2A9D8A  (secondary accent, success)
+  Brand gold:           #D4A017  (decorative, star element)
+  Text primary:         #F5F0EB  (headings, body)
+  Text muted:           rgba(245,240,235,0.5)
+  Text faint:           rgba(245,240,235,0.3)
+  Border:               rgba(255,255,255,0.06)
+  Border strong:        rgba(255,255,255,0.12)
+
+Typography (install via Google Fonts in layout.tsx or globals.css):
+  Font: Inter (weights 400, 500, 600, 700, 800, 900)
+  Add to globals.css: @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  Apply: font-family: 'Inter', sans-serif; to html/body
+
+Spacing: generous — sections have 100px vertical padding on desktop, 60px on mobile.
+Border radius: 12px for cards, 8px for buttons, 100px for pills.
+No gradients on UI elements. Gradients only as background atmosphere (radial, very subtle).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GLOBALS UPDATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In app/globals.css, add:
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  html, body {
+    font-family: 'Inter', sans-serif;
+    background: #0C0A08;
+    color: #F5F0EB;
+    scroll-behavior: smooth;
+  }
+
+  * { box-sizing: border-box; }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LAYOUT.TSX UPDATE  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Update app/layout.tsx metadata:
+  title: 'Zuri AI — Your AI Design Agency, Running 24 Hours a Day'
+  description: 'Zuri AI learns your Brand DNA from your website and social handles, then generates on-brand campaigns, visuals, and copy for African and global markets.'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE STRUCTURE — app/page.tsx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Build this as a single-file React component using Tailwind CSS classes where 
+possible and inline styles for anything Tailwind cannot handle cleanly 
+(animations, complex gradients, exact pixel values).
+
+Import { useRouter } from 'next/navigation' and Link from 'next/link'.
+Mark as 'use client' at the top since it has interactive elements.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 1 — NAVIGATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sticky navigation bar. Background: rgba(12,10,8,0.92) with backdrop-filter: blur(12px).
+Bottom border: 1px solid rgba(255,255,255,0.06).
+Padding: 20px 48px on desktop, 16px 20px on mobile.
+
+Left: Logo — the Zuri AI logo SVG inline (see logo SVG spec below) + "Zuri AI" text.
+  "Zuri" in white bold, "AI" in #E05C2A bold.
+
+Centre: Navigation links on desktop only (hidden on mobile):
+  Features  Pricing  For Africa  Blog
+  Font: 14px, color: rgba(245,240,235,0.6), hover: rgba(245,240,235,1)
+
+Right: Two buttons:
+  "Sign in" — ghost button (border: 1px solid rgba(255,255,255,0.15), transparent bg)
+  "Get started →" — filled button (bg: #E05C2A, hover: #C4391A)
+
+Mobile: Show logo left, hamburger menu right. Menu opens a full-screen overlay with the nav links.
+
+LOGO SVG (use inline in the navbar, 32×32px):
+Create an SVG that represents the Zuri woman silhouette with:
+  - A warm orange (#E05C2A) face/head silhouette shape
+  - Teal (#2A9D8A) headwrap/crown element  
+  - Gold (#D4A017) four-pointed star to the upper right
+  - Subtle crescent arc around it in gold
+  Keep it simple and clean at 32px — it is a navbar icon.
+  The full detailed logo appears in the hero section.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 2 — HERO (the most important section)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Full viewport height section. Dark background with a radial glow:
+  background: radial-gradient(ellipse 800px 600px at 50% 60%, rgba(224,92,42,0.07) 0%, transparent 70%)
+
+Layout: everything centred, single column.
+
+THE LOGO CENTREPIECE — this is the hero visual:
+  A 280×280px circular composition containing the Zuri logo, placed ABOVE the headline text.
+  This is the "big bold logo in the middle" that was requested.
+
+  Build it as a layered SVG animation:
+
+  LAYER 1 — Outermost rotating ring:
+    280px circle. A dashed circle in #E05C2A at 40% opacity.
+    Animated: slowSpin — rotates 360deg over 30 seconds, infinite linear.
+    Small tribal triangle markers at 8 compass points on the circle edge.
+
+  LAYER 2 — Middle pulsing ring:
+    220px circle. Solid border, rgba(224,92,42,0.2).
+    Animated: gentle pulse scale 1 to 1.04 over 4 seconds, infinite.
+
+  LAYER 3 — The logo itself at 180px:
+    Recreate the Zuri logo as SVG paths:
+      a) Crescent/moon shape in #D4A017 (warm gold) — a partial circle arc on the left
+      b) The woman's face silhouette in #E05C2A — a head/face shape, facing right
+      c) Headwrap bands across the top:
+           Top band: #2A9D8A teal rectangle with small white triangle pattern (opacity 0.3)
+           Middle band: #E05C2A orange, slightly narrower
+           Lower band: #2A9D8A teal, narrowest
+           Dot pattern: 5 small white circles in a row, opacity 0.5
+      d) The four-pointed star: #F5D97A gold, positioned upper-right of the head
+    Apply a drop-shadow filter: drop-shadow(0 0 40px rgba(224,92,42,0.35))
+
+  Tailwind classes for the outer container: relative flex items-center justify-center mb-10
+
+BADGE (above logo, below nav):
+  Pill badge: rgba(224,92,42,0.12) background, border rgba(224,92,42,0.25)
+  Content: animated red dot + "Cultural AI that speaks your market"
+  Dot: 6px circle, #E05C2A, blinking animation (opacity 1 to 0.3, 2 seconds)
+
+HEADLINE:
+  font-size: clamp(48px, 7vw, 80px)
+  font-weight: 900
+  letter-spacing: -3px
+  line-height: 1.0
+  Two lines:
+    Line 1: "Your AI design agency,"  (color: #F5F0EB)
+    Line 2: "running " + "24 hours" in #E05C2A + " a day."
+  Max-width: 900px, centred.
+
+SUBHEADLINE:
+  "Zuri AI reads your website, your Instagram, your TikTok — and builds a Brand DNA that generates campaigns, visuals, and copy your audience actually connects with."
+  font-size: 18px, color: rgba(245,240,235,0.55), max-width: 560px, centred, line-height: 1.65
+
+CTA BUTTONS (two, side by side, centred):
+  Primary: "✦ Build Your Brand DNA" → links to /signup
+    Background: linear-gradient(135deg, #E05C2A, #C4391A)
+    padding: 14px 32px, border-radius: 10px, font-size: 15px, font-weight: 600
+    Hover: translateY(-2px) + box-shadow 0 8px 30px rgba(224,92,42,0.45)
+
+  Ghost: "View dashboard →" → links to /dashboard  
+    Border: 1px solid rgba(255,255,255,0.15)
+    padding: 14px 32px, border-radius: 10px
+    Hover: border rgba(255,255,255,0.3), bg rgba(255,255,255,0.04)
+
+SOCIAL PROOF STRIP (below buttons):
+  Row of elements: avatar stack + "2,400+ brands" + divider + country flags
+  Avatar stack: 5 small 32px circles, each overlapping -8px, showing initials
+    Colors: #E05C2A, #2A9D8A, #D4A017, #8B5CF6, fade
+  Text: "2,400+ brands already creating with Zuri" — "2,400+" in white, rest muted
+  Divider: 1px × 24px vertical line
+  Flags: 🇳🇬 🇰🇪 🇬🇭 🇿🇦 🇪🇬 + "+41 countries" in muted text
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 3 — SCROLLING MARQUEE STRIP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A horizontal scrolling ticker between the hero and the next section.
+Top and bottom borders: 1px solid rgba(255,255,255,0.06)
+Background: rgba(255,255,255,0.02)
+Padding: 14px 0
+
+Content items (scrolling left, infinite):
+  Each item: small orange dot + text
+  Items: "Brand DNA from your social handles" · "Instagram Reels & TikTok videos" · 
+  "Multi-platform scheduling" · "Week & month content plans" · 
+  "Caption enhancement for realtors, caterers, car dealers" · "UGC video generation" · 
+  "WhatsApp marketing" · "Carousel & quote cards" · 
+  "Calendar intelligence — Eid, Christmas, Detty December"
+
+Implement with CSS animation:
+  .marquee-track { animation: marqueeScroll 25s linear infinite; }
+  @keyframes marqueeScroll { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+  Duplicate all items so the loop is seamless.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 4 — HOW IT WORKS (3 steps)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Section label: "HOW IT WORKS" pill badge (uppercase, 12px, border, muted)
+Heading: "From your profile to published in <em>minutes.</em>" — em in #E05C2A
+Subtext: "No briefs. No back-and-forth. No waiting."
+
+3-column grid of step cards (single column on mobile).
+Cards separated by 2px gaps, all in a border-radius 16px container.
+Each card: padding 36px 32px, background rgba(255,255,255,0.025)
+Hover: background rgba(255,255,255,0.04), transition 0.2s
+
+Card 1: "01" label in #E05C2A · link icon · "Drop your handle or URL"
+  "Paste your Instagram, TikTok, website, or just describe what you do. Zuri reads everything."
+
+Card 2: "02" label · DNA icon · "Zuri builds your Brand DNA"  
+  "Your voice, your audience, your cultural context, your visual identity — extracted in minutes."
+
+Card 3: "03" label · sparkle icon · "Generate, schedule, publish"
+  "Create a week of content or a single post. Approve and publish to all platforms at once."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 5 — FEATURE GRID
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Heading: "Everything your brand needs. <em>Nothing it doesn't.</em>"
+
+2-column card grid (single column on mobile). Same gap-2px border-radius container style.
+
+Card 1: 📸 "Media-First Creation"
+  "Upload your own images and videos. Zuri generates captions, hashtags, and hooks — then 
+   posts to every platform simultaneously. Perfect for realtors, car dealers, caterers, 
+   and event planners."
+  Small amber tag: "Realtors · Car dealers · Caterers · Event planners"
+
+Card 2: 📅 "Calendar Intelligence"
+  "Zuri knows Eid, Christmas, Detty December, Independence Day, and your company birthdays. 
+   Every important date becomes a content opportunity — built into your monthly plan automatically."
+  Small teal tag: "Never miss a moment"
+
+Card 3: 🎬 "UGC Video Generation"
+  "Realistic influencer-style video ads from a single product description or image. 
+   Powered by Higgsfield AI. Available on Growth plan and above."
+
+Card 4: 🗓️ "Bulk Content Planning"
+  "Tell Zuri you want a week or month of content. It builds the plan, shows every slot 
+   for your approval, then generates and schedules everything in one go."
+
+FULL-WIDTH CARD BELOW (spans 2 columns):
+  Background: rgba(224,92,42,0.06), border-top: 1px solid rgba(224,92,42,0.15)
+  Left side: 🧬 "Brand DNA — the intelligence layer"
+    "Zuri reads your website, Instagram bio, TikTok captions, Facebook page, and LinkedIn 
+     simultaneously — building a Brand DNA richer than any tool on the market. Your voice 
+     file, your lessons, your cultural context. It gets smarter every time you use it."
+  Right side: 2×2 grid of stat cards:
+    "6" / "Social platforms read"
+    "150+" / "Calendar events known"  
+    "41+" / "Countries served"
+    "24hr" / "Your AI agency runs"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 6 — AFRICA SECTION (warm accent section)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Background: linear-gradient(135deg, rgba(224,92,42,0.08) 0%, rgba(42,157,138,0.05) 100%)
+Border top and bottom: 1px solid rgba(255,255,255,0.06)
+Padding: 80px 48px
+
+Two column layout (single column on mobile, stacked):
+
+LEFT COLUMN:
+  Label badge: "Built for Africa"
+  Heading: "The first AI marketing platform that <em>speaks your market.</em>"
+  Body: "Holo AI was built for Western markets. Zuri AI was built for Lagos, Nairobi, Accra, 
+   Johannesburg — and the 40 million African businesses that deserve better tools."
+  Flag pills (horizontal wrap): 🇳🇬 Nigeria · 🇰🇪 Kenya · 🇬🇭 Ghana · 🇿🇦 South Africa · 
+   🇪🇬 Egypt · 🇸🇳 Senegal · +35 more
+  Pricing: "Africa pricing from" (muted small) + "₦9,500 / month" (#E05C2A, 28px bold)
+
+RIGHT COLUMN — 2×2 stats grid:
+  Card 1: "40M+" / "African businesses with no proper AI marketing tool"
+  Card 2: "79%" / "Less than a social media manager costs per month"
+  Card 3: "10 min" / "Average time from sign-up to first piece of content"
+  Card 4: "#1" / "AI platform built specifically for African markets"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 7 — PRICING PREVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Centred heading: "Honest pricing. <em>Built for your market.</em>"
+Subtext: "Africa pricing in Naira. Global pricing in USD. Annual plans save 17%."
+
+4-column card grid (2 columns on tablet, 1 on mobile):
+
+Card: Solo — ₦9,500/mo — 1 brand
+  Features: Quick Create, 30 media posts, 2 platforms, scheduling, Voice File & Lessons
+
+Card: Growth (highlighted — orange border, orange bg tint) — "Most popular" badge — ₦24,000/mo — 3 brands
+  Features: Everything in Solo, Unlimited media posts, All 6 platforms, Bulk plans, Creative Studio + UGC video
+
+Card: Studio — ₦55,000/mo — 10 brands
+  Features: Everything in Growth, Team workspace, Client approvals, 20 UGC videos, Priority support
+
+Card: Enterprise — Custom — Unlimited
+  Features: Unlimited brands & team, White label, API access, Custom DNA training, Dedicated support
+
+Each card has a CTA button at bottom:
+  "Start with Solo" / "Start with Growth" / "Start with Studio" / "Contact us"
+  All link to /signup?plan=[planId] or /pricing for full pricing page.
+
+Add "View full pricing" link below the grid → /pricing
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 8 — FINAL CTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Centred section. Subtle radial glow behind.
+Heading: "Your brand deserves <em>better tools.</em>"
+Subtext: "Start free. No credit card required. Your Brand DNA is ready in 10 minutes."
+Two buttons: "✦ Build Your Brand DNA — Free" (primary) + "Talk to us" (ghost)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 9 — FOOTER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Simple footer. Border-top: 1px solid rgba(255,255,255,0.06)
+Three columns: Logo left · Links centre · Copyright right
+
+Logo: "Zuri" (white) + "AI" (#E05C2A)
+Links: Privacy · Terms · Pricing · Contact (all muted, 13px)
+Copyright: "© 2026 Zuri AI. Built for Africa." (very muted)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CSS ANIMATIONS TO ADD IN globals.css
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@keyframes slowSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes badgePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+@keyframes ringPulse {
+  0%, 100% { transform: scale(1);    opacity: 0.2; }
+  50%       { transform: scale(1.04); opacity: 0.45; }
+}
+
+@keyframes marqueeScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+Apply fadeUp to hero badge, h1, subtext, and CTA buttons with staggered delays:
+  badge: animation: fadeUp 0.6s ease 0.1s both
+  h1:    animation: fadeUp 0.6s ease 0.2s both
+  sub:   animation: fadeUp 0.6s ease 0.35s both
+  CTAs:  animation: fadeUp 0.6s ease 0.5s both
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESPONSIVENESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mobile breakpoint: 768px
+  Nav: hide centre links, show hamburger
+  Hero: reduce logo ring to 200px
+  Hero h1: reduce to 40px
+  Sections: padding 60px 20px
+  Steps grid: 1 column
+  Features grid: 1 column
+  Africa section: 1 column
+  Pricing grid: 1 column (2 on tablet 640px+)
+  Footer: stack vertically, centred
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALSO UPDATE THE DASHBOARD THEME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After building the landing page, update the dashboard to match the new brand:
+
+In components/layout/Sidebar.tsx:
+  Background: #0C0A08 (dark, matching landing page)
+  Active nav item: #E05C2A left border (3px) + rgba(224,92,42,0.08) background
+  Logo text: "Zuri" white + "AI" in #E05C2A
+  Border right: 1px solid rgba(255,255,255,0.06)
+
+In components/layout/Topbar.tsx:
+  Background: rgba(12,10,8,0.95)
+  Border bottom: 1px solid rgba(255,255,255,0.06)
+
+Update the primary button color throughout the dashboard:
+  From amber (#D97706) to brand orange (#E05C2A)
+  Update all tailwind classes: bg-amber-600 → custom CSS or inline style #E05C2A
+
+In tailwind.config.js, add these custom colors so they can be used as classes:
+  colors: {
+    zuri: {
+      orange:     '#E05C2A',
+      'orange-dark': '#C4391A',
+      teal:       '#2A9D8A',
+      gold:       '#D4A017',
+      dark:       '#0C0A08',
+      surface:    '#141210',
+    }
+  }
+
+After building, confirm:
+  1. The landing page loads at / with the dark theme
+  2. The logo centrepiece SVG is visible and the outer ring animates slowly
+  3. The marquee scrolls continuously
+  4. "Build Your Brand DNA" links to /signup
+  5. "View Dashboard" links to /dashboard
+  6. The page is responsive on mobile
+  7. The dashboard sidebar matches the dark theme
