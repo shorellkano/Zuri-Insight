@@ -107,7 +107,7 @@ Return ONLY a JSON object (no markdown, no fences):
 }`;
 
       try {
-        const result = await aiJSON<any>(system, user, 700);
+        const result = await aiJSON<any>(system, user, 500);
         generatedCaptions[platform] = {
           platform,
           caption: result.caption ?? "",

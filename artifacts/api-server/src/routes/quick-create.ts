@@ -91,7 +91,7 @@ Return ONLY a JSON object (no array, no markdown, no fences):
 
 Be specific to ${brand.name}'s voice. Never fabricate stats.`;
 
-    const rawVariation = await aiJSON<any>(system, user, 700);
+    const rawVariation = await aiJSON<any>(system, user, 500);
     const result = Array.isArray(rawVariation) ? rawVariation : [rawVariation];
 
     const varList = result.slice(0, 3).map((v: any) => ({
