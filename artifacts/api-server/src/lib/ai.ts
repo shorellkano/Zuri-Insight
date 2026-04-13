@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-const MODEL = "google/gemini-2.0-flash-exp:free";
+const MODEL = "meta-llama/llama-3.3-70b-instruct:free";
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY;
