@@ -166,4 +166,67 @@ router.delete("/bulk-plan-items/:itemId", async (req, res): Promise<void> => {
   res.status(204).end();
 });
 
+// ─── Generate Caption for a Single Plan Item ───────────────────────────────────
+
+router.post("/bulk-plan-items/:itemId/generate", async (req, res): Promise<void> => {
+  const { brandId } = req.body;
+  if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
+
+  const [item] = await db.select().from(contentPlanItemsTable).where(eq(contentPlanItemsTable.id, req.params.itemId));
+  if (!item) { res.status(404).json({ error: "Item not found" }); return; }
+
+  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
+
+  const [dna] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId));
+
+  const platformTips: Record<string, string> = {
+    instagram: "Instagram caption: engaging opener, 3-5 sentences, 3-5 relevant hashtags at end.",
+    facebook: "Facebook post: conversational, 2-4 sentences, no hashtags needed.",
+    tiktok: "TikTok caption: punchy hook, 1-2 sentences, 3 trending hashtags.",
+    linkedin: "LinkedIn post: professional insight-led, 3-5 sentences, 1-2 hashtags.",
+    youtube: "YouTube description: 2-3 sentences summarising value, include a CTA.",
+  };
+
+  const voice = dna ? `Brand voice: ${dna.brandVoice ?? "professional and engaging"}. Core values: ${(dna.coreValues ?? []).slice(0, 3).join(", ")}.` : "";
+  const tip = platformTips[item.platform] ?? "Write an engaging social media post.";
+
+  const system = `You are an expert African marketing copywriter writing for ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
+${voice}
+Write authentic, culturally relevant content for African audiences.
+Return ONLY the caption text — no labels, no explanation, no quotes wrapping it.`;
+
+  const user = `Write a ${item.platform} caption for this planned post:
+
+Platform: ${item.platform}
+Post type: ${item.postType?.replace("_", " ")}
+Content theme: ${item.contentTheme}
+Content angle: ${item.contentAngle}
+Design context: ${item.designBrief}
+${item.calendarEvent ? `Tied to: ${item.calendarEvent}` : ""}
+Scheduled: ${item.suggestedDate} at ${item.suggestedTime}
+
+${tip}`;
+
+  try {
+    if (!hasAI()) throw new Error("no-ai");
+    const { aiComplete } = await import("../lib/ai.js");
+    const caption = await aiComplete(system, user, 400);
+
+    const [updated] = await db.update(contentPlanItemsTable)
+      .set({ captionDraft: caption.trim(), status: "generated" })
+      .where(eq(contentPlanItemsTable.id, req.params.itemId))
+      .returning();
+
+    res.json(updated);
+  } catch (err: any) {
+    if (err.message === "no-ai") {
+      res.status(503).json({ error: "AI unavailable" });
+    } else {
+      console.error("Item generation error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
 export default router;
