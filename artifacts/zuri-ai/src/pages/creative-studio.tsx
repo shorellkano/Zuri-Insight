@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { LayoutGrid, Quote, Megaphone, ShoppingBag, Smartphone, Cake, ArrowRight, Palette, Settings2, Video } from "lucide-react";
+import { LayoutGrid, Quote, Megaphone, ShoppingBag, Smartphone, Cake, ArrowRight, Palette, Settings2, Video, Star } from "lucide-react";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
 import { VisualPrefsSheet } from "@/components/visual-prefs-sheet";
@@ -55,6 +55,14 @@ const designTypes = [
     label: "Birthday Post",
     desc: "Personalised posts for staff or CEO birthdays",
     color: "text-pink-700 bg-pink-100",
+    platforms: ["All platforms"],
+  },
+  {
+    href: "/generate/creative-studio/testimonial",
+    icon: Star,
+    label: "Testimonial Card",
+    desc: "Turn a customer review into a shareable branded graphic",
+    color: "text-yellow-700 bg-yellow-100",
     platforms: ["All platforms"],
   },
   {

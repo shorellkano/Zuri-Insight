@@ -31,6 +31,11 @@ import CreativeStudio from "@/pages/creative-studio";
 import CreativeStudioCarousel from "@/pages/creative-studio-carousel";
 import CreativeStudioQuoteCard from "@/pages/creative-studio-quote-card";
 import CreativeStudioUgcVideo from "@/pages/creative-studio-ugc-video";
+import CreativeStudioAnnouncement from "@/pages/creative-studio-announcement";
+import CreativeStudioProductShowcase from "@/pages/creative-studio-product-showcase";
+import CreativeStudioStoryCover from "@/pages/creative-studio-story-cover";
+import CreativeStudioBirthdayPost from "@/pages/creative-studio-birthday-post";
+import CreativeStudioTestimonial from "@/pages/creative-studio-testimonial";
 import ContentCalendar from "@/pages/content-calendar";
 import BulkPlan from "@/pages/bulk-plan";
 import BrandCalendarPage from "@/pages/brand-calendar-page";
@@ -81,6 +86,11 @@ function Router() {
       <Route path="/generate/creative-studio/carousel"><Wrap><CreativeStudioCarousel /></Wrap></Route>
       <Route path="/generate/creative-studio/quote-card"><Wrap><CreativeStudioQuoteCard /></Wrap></Route>
       <Route path="/generate/creative-studio/ugc-video"><Wrap><CreativeStudioUgcVideo /></Wrap></Route>
+      <Route path="/generate/creative-studio/announcement"><Wrap><CreativeStudioAnnouncement /></Wrap></Route>
+      <Route path="/generate/creative-studio/product-showcase"><Wrap><CreativeStudioProductShowcase /></Wrap></Route>
+      <Route path="/generate/creative-studio/story-cover"><Wrap><CreativeStudioStoryCover /></Wrap></Route>
+      <Route path="/generate/creative-studio/birthday-post"><Wrap><CreativeStudioBirthdayPost /></Wrap></Route>
+      <Route path="/generate/creative-studio/testimonial"><Wrap><CreativeStudioTestimonial /></Wrap></Route>
       <Route path="/generate/creative-studio"><Wrap><CreativeStudio /></Wrap></Route>
       <Route path="/generate/bulk-plan"><Wrap><BulkPlan /></Wrap></Route>
       <Route path="/generate"><Wrap><GenerateHub /></Wrap></Route>
