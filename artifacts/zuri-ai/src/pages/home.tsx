@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 
 const Z_ORANGE = "#E05C2A";
@@ -28,20 +28,20 @@ function ZuriLogoSVG({ size = 32 }: { size?: number }) {
 
 function HeroLogoRings() {
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 280, height: 280 }}>
+    <div className="relative flex items-center justify-center" style={{ width: 300, height: 300 }}>
       <div
         className="zuri-spin absolute"
         style={{
-          width: 280, height: 280,
+          width: 300, height: 300,
           borderRadius: "50%",
           border: `1.5px dashed ${Z_ORANGE}`,
-          opacity: 0.4,
+          opacity: 0.35,
         }}
       >
         {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
           const rad = (angle * Math.PI) / 180;
-          const x = 140 + 138 * Math.cos(rad) - 4;
-          const y = 140 + 138 * Math.sin(rad) - 4;
+          const x = 150 + 148 * Math.cos(rad) - 4;
+          const y = 150 + 148 * Math.sin(rad) - 4;
           return (
             <div
               key={angle}
@@ -49,10 +49,10 @@ function HeroLogoRings() {
                 position: "absolute",
                 left: x,
                 top: y,
-                width: 6,
-                height: 6,
+                width: 7,
+                height: 7,
                 background: Z_ORANGE,
-                opacity: 0.7,
+                opacity: 0.8,
                 clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
                 transform: `rotate(${angle}deg)`,
               }}
@@ -64,41 +64,132 @@ function HeroLogoRings() {
       <div
         className="zuri-ring-pulse absolute"
         style={{
-          width: 220, height: 220,
+          width: 236, height: 236,
           borderRadius: "50%",
-          border: `1.5px solid rgba(224,92,42,0.2)`,
+          border: `1px solid rgba(224,92,42,0.18)`,
         }}
       />
 
       <div
         style={{
-          width: 180, height: 180,
+          width: 200, height: 200,
           borderRadius: "50%",
-          background: Z_SURFACE,
-          border: `1px solid ${Z_BORDER_STRONG}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          filter: "drop-shadow(0 0 40px rgba(224,92,42,0.35))",
+          background: "#F7EFE4",
+          border: `3px solid rgba(224,92,42,0.3)`,
+          boxShadow: "0 0 80px rgba(224,92,42,0.35), 0 0 0 1px rgba(224,92,42,0.15)",
           position: "relative",
           zIndex: 2,
+          overflow: "hidden",
         }}
       >
-        <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M22 90 C22 48 38 26 60 22 C44 26 33 46 33 76 Z" fill={Z_GOLD} opacity="0.9" />
-          <ellipse cx="65" cy="68" rx="34" ry="42" fill={Z_ORANGE} />
-          <ellipse cx="65" cy="44" rx="34" ry="22" fill={Z_TEAL} />
-          <rect x="31" y="30" width="68" height="16" rx="4" fill={Z_TEAL} />
-          <rect x="33" y="40" width="64" height="10" rx="2" fill={Z_ORANGE} />
-          <rect x="35" y="47" width="60" height="7" rx="2" fill={Z_TEAL} />
-          <circle cx="43" cy="51" r="2" fill="white" opacity="0.5" />
-          <circle cx="52" cy="51" r="2" fill="white" opacity="0.5" />
-          <circle cx="61" cy="51" r="2" fill="white" opacity="0.5" />
-          <circle cx="70" cy="51" r="2" fill="white" opacity="0.5" />
-          <circle cx="79" cy="51" r="2" fill="white" opacity="0.5" />
-          <path d="M86 27 L88.5 21 L91 27 L97 30 L91 33 L88.5 39 L86 33 L80 30 Z" fill="#F5D97A" />
-        </svg>
+        <img
+          src="/zuri-logo-head.png"
+          alt="Zuri AI"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            transform: "scale(1.8)",
+            transformOrigin: "52% 48%",
+          }}
+        />
       </div>
+    </div>
+  );
+}
+
+const SCRAMBLE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*";
+
+const BADGE_PHRASES = [
+  { prefix: "AI built for", word: "Lagos" },
+  { prefix: "Speaks fluent", word: "Naija" },
+  { prefix: "Rooted in", word: "Africa" },
+  { prefix: "Made for", word: "Nairobi" },
+  { prefix: "Created for", word: "Accra" },
+  { prefix: "Designed for", word: "Jo'burg" },
+  { prefix: "Built for", word: "Abuja" },
+];
+
+function ScrambleBadge() {
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const [displayed, setDisplayed] = useState(BADGE_PHRASES[0].word);
+  const [prefixIdx, setPrefixIdx] = useState(0);
+  const frameRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const cycle = setInterval(() => {
+      const nextIdx = (phraseIdx + 1) % BADGE_PHRASES.length;
+      const target = BADGE_PHRASES[nextIdx].word;
+      const nextPrefixIdx = nextIdx;
+
+      let frame = 0;
+      const totalFrames = 18;
+
+      const animate = () => {
+        frame++;
+        const progress = frame / totalFrames;
+
+        const resolved = Math.floor(progress * target.length);
+        const scrambled = target
+          .split("")
+          .map((char, i) => {
+            if (i < resolved) return char;
+            return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+          })
+          .join("");
+
+        setDisplayed(scrambled);
+
+        if (frame < totalFrames) {
+          frameRef.current = setTimeout(animate, 45);
+        } else {
+          setDisplayed(target);
+          setPhraseIdx(nextIdx);
+          setPrefixIdx(nextPrefixIdx);
+        }
+      };
+
+      frameRef.current = setTimeout(animate, 30);
+    }, 2800);
+
+    return () => {
+      clearInterval(cycle);
+      if (frameRef.current) clearTimeout(frameRef.current);
+    };
+  }, [phraseIdx]);
+
+  const { prefix } = BADGE_PHRASES[prefixIdx];
+
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        background: "rgba(255,255,255,0.04)",
+        border: `1px solid rgba(255,255,255,0.10)`,
+        padding: "8px 18px",
+        borderRadius: 100,
+        fontSize: 13,
+        fontWeight: 500,
+        letterSpacing: "0.01em",
+        color: Z_TEXT,
+        backdropFilter: "blur(8px)",
+      }}
+    >
+      <span style={{ color: Z_MUTED, fontWeight: 400 }}>{prefix}</span>
+      <span
+        style={{
+          color: Z_ORANGE,
+          fontWeight: 700,
+          fontFamily: "monospace",
+          minWidth: 72,
+          display: "inline-block",
+          letterSpacing: "0.04em",
+        }}
+      >
+        {displayed}
+      </span>
     </div>
   );
 }
@@ -375,14 +466,7 @@ export default function Home() {
         }}
       >
         <div className="zuri-fade-up-1" style={{ marginBottom: 32 }}>
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "rgba(224,92,42,0.12)", border: `1px solid rgba(224,92,42,0.25)`,
-            padding: "6px 16px", borderRadius: 100, fontSize: 13, fontWeight: 500, color: Z_TEXT,
-          }}>
-            <span className="zuri-badge-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: Z_ORANGE, flexShrink: 0 }} />
-            Cultural AI that speaks your market
-          </span>
+          <ScrambleBadge />
         </div>
 
         <div className="zuri-fade-up-2" style={{ marginBottom: 40 }}>
