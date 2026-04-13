@@ -4,7 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { BrandSubNav } from "@/components/brand-sub-nav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, CheckCircle2, Settings, Upload, X, ImageIcon, Sparkles, Film } from "lucide-react";
+import { Loader2, CheckCircle2, Settings, Upload, X, ImageIcon, Sparkles, Film, Image } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = "/api";
 
@@ -42,6 +43,8 @@ export default function BrandSettings() {
   const updateBrand = useUpdateBrand();
   const deleteBrand = useDeleteBrand();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -51,6 +54,11 @@ export default function BrandSettings() {
   const [analysing, setAnalysing] = useState(false);
   const [analyseError, setAnalyseError] = useState("");
   const [analysed, setAnalysed] = useState(false);
+
+  const [logoUrl, setLogoUrl] = useState<string>("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoPasteMode, setLogoPasteMode] = useState(false);
+  const [logoPasteUrl, setLogoPasteUrl] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -79,6 +87,63 @@ export default function BrandSettings() {
       });
     }
   }, [brand]);
+
+  useEffect(() => {
+    if (!brandId) return;
+    fetch(`${API_BASE}/brands/${brandId}/visual-prefs`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.logoUrl) setLogoUrl(d.logoUrl); })
+      .catch(() => {});
+  }, [brandId]);
+
+  async function handleLogoUpload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please upload an image file (PNG, JPG, SVG)", variant: "destructive" });
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const presignRes = await fetch(`${API_BASE}/storage/uploads/request-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      const { uploadURL, objectPath } = await presignRes.json();
+      await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      const serveUrl = `${API_BASE}/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
+      await fetch(`${API_BASE}/brands/${brandId}/visual-prefs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logoUrl: serveUrl }),
+      });
+      setLogoUrl(serveUrl);
+      toast({ title: "Logo uploaded and saved!" });
+    } catch {
+      toast({ title: "Logo upload failed. Please try again.", variant: "destructive" });
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  async function saveLogoUrl(url: string) {
+    if (!url.trim()) return;
+    setLogoUploading(true);
+    try {
+      await fetch(`${API_BASE}/brands/${brandId}/visual-prefs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logoUrl: url.trim() }),
+      });
+      setLogoUrl(url.trim());
+      setLogoPasteMode(false);
+      setLogoPasteUrl("");
+      toast({ title: "Logo URL saved!" });
+    } catch {
+      toast({ title: "Could not save logo URL.", variant: "destructive" });
+    } finally {
+      setLogoUploading(false);
+    }
+  }
 
   function set(key: keyof typeof form, value: string) {
     setForm(f => ({ ...f, [key]: value }));
@@ -424,6 +489,94 @@ export default function BrandSettings() {
               {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
             </select>
           </Field>
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-5">
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Brand Logo</h2>
+            <p className="text-xs text-muted-foreground mt-1">Upload your logo and Zuri will use it on carousels, quote cards, and other creative assets.</p>
+          </div>
+
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); e.target.value = ""; }}
+          />
+
+          {logoUrl ? (
+            <div className="flex items-center gap-4 p-4 bg-muted/40 rounded-xl border border-border">
+              <div className="h-16 w-16 rounded-lg border border-border bg-background flex items-center justify-center overflow-hidden shrink-0">
+                <img src={logoUrl} alt="Brand logo" className="h-full w-full object-contain" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Logo saved</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">{logoUrl.length > 60 ? logoUrl.slice(0, 57) + "..." : logoUrl}</p>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => logoInputRef.current?.click()} disabled={logoUploading} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                    {logoUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                    Replace
+                  </button>
+                  <button onClick={() => saveLogoUrl("")} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs text-muted-foreground hover:bg-muted transition-colors">
+                    <X className="h-3 w-3" />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div
+                onClick={() => logoInputRef.current?.click()}
+                className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/40 hover:bg-muted/30 transition-all"
+              >
+                {logoUploading ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-7 w-7 text-primary animate-spin" />
+                    <p className="text-sm font-medium text-foreground">Uploading logo...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Image className="h-6 w-6 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">Click to upload your logo</p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG or SVG recommended. Transparent background works best.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground font-medium">or</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              {logoPasteMode ? (
+                <div className="flex gap-2">
+                  <input
+                    value={logoPasteUrl}
+                    onChange={e => setLogoPasteUrl(e.target.value)}
+                    placeholder="https://yourbrand.com/logo.png"
+                    className="flex-1 px-3 py-2.5 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                    onKeyDown={e => e.key === "Enter" && saveLogoUrl(logoPasteUrl)}
+                    autoFocus
+                  />
+                  <button onClick={() => saveLogoUrl(logoPasteUrl)} disabled={!logoPasteUrl.trim() || logoUploading} className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                    Save
+                  </button>
+                  <button onClick={() => { setLogoPasteMode(false); setLogoPasteUrl(""); }} className="px-3 py-2.5 border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted transition-colors">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setLogoPasteMode(true)} className="w-full py-2 border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                  Paste logo URL instead
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-5">

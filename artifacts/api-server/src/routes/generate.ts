@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, brandsTable, contentTable } from "@workspace/db";
+import { db, brandsTable, contentTable, brandDnaTable } from "@workspace/db";
 import {
   GenerateAdCopyBody,
   GenerateSocialPostsBody,
@@ -11,6 +11,7 @@ import {
 import { randomUUID } from "crypto";
 import { aiJSON, aiComplete, hasAI } from "../lib/ai.js";
 import { buildSystemPrompt } from "../lib/generators/shared.js";
+import { crawlWebsite } from "../lib/firecrawl.js";
 
 const router: IRouter = Router();
 
@@ -346,6 +347,112 @@ Return ONLY a JSON object (no fences):
     const fallback = [{ id: randomUUID(), content: `[VIDEO SCRIPT - ${brand.name}]\n\nHOOK (0-3s): "${prompt}"\n\nBODY (3-25s):\nVoiceover: "At ${brand.name}, we understand what you need."\n\n[Show: Product footage]\n\nCTA (25-30s): "Get yours now. Link in bio."\n\n[End card: Logo]`, platform, tone: scriptType }];
     await Promise.all(fallback.map((v) => saveContent("video-scripts", brandId, prompt, v.content, platform, scriptType)));
     res.json({ id: randomUUID(), type: "video-scripts", brandId, variations: fallback, savedAt: new Date().toISOString() });
+  }
+});
+
+// ─── Quick Plan from Website or Brand ────────────────────────────────────────
+// POST /generate/quick-plan
+// Crawls a website (if provided) and generates a ready-to-use content plan.
+// Works with or without a brand profile.
+
+router.post("/generate/quick-plan", async (req, res): Promise<void> => {
+  const { websiteUrl, brandId, duration = "1week" } = req.body;
+  if (!websiteUrl && !brandId) {
+    res.status(400).json({ error: "websiteUrl or brandId required" });
+    return;
+  }
+
+  let brandName = "";
+  let brandInfo = "";
+  let websiteContent = "";
+
+  // Load brand info if provided
+  if (brandId) {
+    const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+    const [dna] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId));
+    if (brand) {
+      brandName = brand.name;
+      brandInfo = `Brand: ${brand.name} | Industry: ${brand.industry ?? "Business"} | Country: ${brand.country ?? "Nigeria"}`;
+      if (dna?.toneOfVoice) brandInfo += ` | Tone: ${dna.toneOfVoice}`;
+      if (dna?.keyMessages?.length) brandInfo += ` | Key messages: ${dna.keyMessages.slice(0, 3).join(", ")}`;
+    }
+  }
+
+  // Crawl website if provided
+  const urlToCrawl = websiteUrl || "";
+  if (urlToCrawl) {
+    try {
+      websiteContent = await crawlWebsite(urlToCrawl);
+    } catch {
+      websiteContent = "";
+    }
+  }
+
+  if (!brandName && websiteContent) {
+    const domainMatch = urlToCrawl.match(/(?:https?:\/\/)?(?:www\.)?([^\/]+)/);
+    brandName = domainMatch?.[1]?.split(".")[0] ?? "Your Brand";
+  }
+
+  const durationMap: Record<string, { days: number; label: string }> = {
+    "1week": { days: 7, label: "1 week" },
+    "1month": { days: 30, label: "1 month" },
+    "3months": { days: 90, label: "3 months" },
+  };
+  const { days, label } = durationMap[duration] ?? durationMap["1week"];
+
+  try {
+    if (!hasAI()) throw new Error("no-ai");
+
+    const system = `You are a senior social media strategist for African businesses.
+Generate a practical, ready-to-post content plan.
+NEVER use em dashes (--). Use hyphens or rewrite sentences.
+Return ONLY valid JSON. No markdown, no explanation.`;
+
+    const contextSection = websiteContent
+      ? `WEBSITE CONTENT (from ${urlToCrawl}):\n${websiteContent.slice(0, 3000)}`
+      : brandInfo || `Business: ${brandName}`;
+
+    const postCount = Math.min(Math.ceil(days / 3), 30);
+
+    const user = `Create a ${label} content plan with ${postCount} posts for: ${brandName || "this business"}.
+
+${contextSection}
+
+Return JSON with this exact shape:
+{
+  "brandSummary": "2-sentence summary of what this brand is and who it serves",
+  "plan": [
+    {
+      "id": "post_1",
+      "day": 1,
+      "platform": "Instagram",
+      "contentType": "Carousel",
+      "topic": "short topic title",
+      "angle": "brief content angle",
+      "caption": "ready-to-post caption (under 200 chars)"
+    }
+  ]
+}
+
+Rules:
+- Mix platforms: mostly Instagram and Facebook, some LinkedIn and TikTok
+- Vary content types: Static, Carousel, Reel, Story
+- Vary angles: Promotional, Educational, Engagement, Behind the scenes, Testimonial
+- Captions must be punchy, brand-specific, never generic
+- No em dashes (--) in any caption`;
+
+    const result = await aiJSON<{ brandSummary: string; plan: Array<{ id: string; day: number; platform: string; contentType: string; topic: string; angle: string; caption: string }> }>(system, user, 500);
+
+    res.json({
+      brandName: brandName || "Your Brand",
+      brandSummary: result.brandSummary ?? "",
+      duration: label,
+      totalPosts: result.plan?.length ?? 0,
+      plan: Array.isArray(result.plan) ? result.plan : [],
+    });
+  } catch (err: any) {
+    console.error("quick-plan error:", err);
+    res.status(500).json({ error: "Could not generate plan. Please try again." });
   }
 });
 

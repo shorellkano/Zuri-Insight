@@ -77,9 +77,10 @@ Rules: First slide is the hook - make it impossible to scroll past. Last slide h
 
     const result = await aiJSON<{ title: string; slides: Array<{ slide_number: number; headline: string; body: string; cta?: string }> }>(system, user, 500);
 
+    const logoUrl = prefs?.logoUrl ?? null;
     const slides = result.slides.map((slide, i) => ({
       ...slide,
-      html: buildSlideHtml({ ...slide, brandName: brand.name, colors, style, slideNumber: i + 1, total: result.slides.length, showBrandName }),
+      html: buildSlideHtml({ ...slide, brandName: brand.name, colors, style, slideNumber: i + 1, total: result.slides.length, showBrandName, logoUrl }),
     }));
 
     const [saved] = await db.insert(generatedDesignsTable).values({
@@ -132,18 +133,23 @@ router.post("/generate/quote-card", async (req, res): Promise<void> => {
 
 // ─── HTML builders ────────────────────────────────────────────────────────────
 
-function buildSlideHtml({ headline, body, cta, brandName, colors, style, slideNumber, total, showBrandName = true }: {
+function buildSlideHtml({ headline, body, cta, brandName, colors, style, slideNumber, total, showBrandName = true, logoUrl }: {
   headline: string; body: string; cta?: string; brandName: string;
-  colors: string[]; style: string; slideNumber: number; total: number; showBrandName?: boolean;
+  colors: string[]; style: string; slideNumber: number; total: number; showBrandName?: boolean; logoUrl?: string | null;
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const isDark = style === "dark" || style === "premium";
   const bgColor = isDark ? "#0F0F0F" : bg;
   const textColor = isDark ? "#FFFFFF" : text;
 
-  const brandTag = showBrandName
-    ? `<span style="color:${primary};font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`
-    : `<span></span>`;
+  let brandTag = `<span></span>`;
+  if (showBrandName) {
+    if (logoUrl) {
+      brandTag = `<img src="${logoUrl}" alt="${brandName}" style="height:36px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`;
+    } else {
+      brandTag = `<span style="color:${primary};font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`;
+    }
+  }
 
   return `<div style="width:1080px;height:1080px;background:${bgColor};display:flex;flex-direction:column;justify-content:space-between;padding:80px;font-family:'Inter',sans-serif;box-sizing:border-box;position:relative;overflow:hidden;">
   <div style="position:absolute;top:0;left:0;width:12px;height:100%;background:${primary};"></div>
