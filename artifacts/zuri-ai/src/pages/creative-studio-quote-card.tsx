@@ -19,6 +19,7 @@ export default function CreativeStudioQuoteCard() {
   const [attribution, setAttribution] = useState("");
   const [backgroundStyle, setBackgroundStyle] = useState("solid");
   const [format, setFormat] = useState("square");
+  const [showBrandName, setShowBrandName] = useState(true);
   const [loading, setLoading] = useState(false);
   const [html, setHtml] = useState<string | null>(null);
   const [canvaConfigured, setCanvaConfigured] = useState(false);
@@ -41,7 +42,7 @@ export default function CreativeStudioQuoteCard() {
       const r = await fetch(API("/generate/quote-card"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, quoteText, attribution, backgroundStyle, format }),
+        body: JSON.stringify({ brandId: activeBrandId, quoteText, attribution, backgroundStyle, format, showBrandName }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
@@ -168,6 +169,24 @@ export default function CreativeStudioQuoteCard() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Show brand on card</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Logo or brand name at the bottom</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowBrandName(v => !v)}
+              className="relative rounded-full transition-colors shrink-0"
+              style={{ width: "40px", height: "22px", background: showBrandName ? "var(--primary)" : "rgba(100,100,100,0.3)" }}
+            >
+              <span
+                className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                style={{ transform: showBrandName ? "translateX(20px)" : "translateX(2px)" }}
+              />
+            </button>
           </div>
 
           <button

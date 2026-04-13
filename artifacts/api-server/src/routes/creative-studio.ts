@@ -107,7 +107,7 @@ Rules: First slide is the hook - make it impossible to scroll past. Last slide h
 // ─── Quote Card Generation ─────────────────────────────────────────────────────
 
 router.post("/generate/quote-card", async (req, res): Promise<void> => {
-  const { brandId, quoteText, attribution, backgroundStyle = "solid", format = "square" } = req.body;
+  const { brandId, quoteText, attribution, backgroundStyle = "solid", format = "square", showBrandName = true } = req.body;
   if (!brandId || !quoteText) { res.status(400).json({ error: "brandId and quoteText required" }); return; }
 
   const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
@@ -115,8 +115,9 @@ router.post("/generate/quote-card", async (req, res): Promise<void> => {
 
   const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const logoUrl = prefs?.logoUrl ?? null;
 
-  const html = buildQuoteCardHtml({ quoteText, attribution, brandName: brand.name, colors, backgroundStyle, format });
+  const html = buildQuoteCardHtml({ quoteText, attribution, brandName: brand.name, colors, backgroundStyle, format, showBrandName, logoUrl });
 
   const [saved] = await db.insert(generatedDesignsTable).values({
     brandId,
@@ -168,9 +169,9 @@ function buildSlideHtml({ headline, body, cta, brandName, colors, style, slideNu
 </div>`;
 }
 
-function buildQuoteCardHtml({ quoteText, attribution, brandName, colors, backgroundStyle, format }: {
+function buildQuoteCardHtml({ quoteText, attribution, brandName, colors, backgroundStyle, format, showBrandName = true, logoUrl }: {
   quoteText: string; attribution?: string; brandName: string; colors: string[];
-  backgroundStyle: string; format: string;
+  backgroundStyle: string; format: string; showBrandName?: boolean; logoUrl?: string | null;
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
@@ -178,12 +179,20 @@ function buildQuoteCardHtml({ quoteText, attribution, brandName, colors, backgro
     ? `background:linear-gradient(135deg, ${bg} 0%, ${primary}66 100%)`
     : `background:${bg}`;
 
+  let brandBlock = "";
+  if (showBrandName) {
+    if (logoUrl) {
+      brandBlock = `<img src="${logoUrl}" alt="${brandName}" style="height:40px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);margin:0 auto;" />`;
+    } else {
+      brandBlock = `<p style="color:${primary};font-size:20px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin:0;">${brandName}</p>`;
+    }
+  }
+
   return `<div style="${dims};${gradientBg};display:flex;flex-direction:column;justify-content:center;align-items:center;padding:100px;font-family:'Inter',sans-serif;box-sizing:border-box;text-align:center;">
   <div style="font-size:120px;color:${primary};line-height:0.5;margin-bottom:40px;opacity:0.4;">"</div>
   <p style="color:${text};font-size:${quoteText.length > 100 ? '40px' : '52px'};font-weight:700;line-height:1.4;margin:0 0 48px 0;letter-spacing:-0.5px;">${quoteText}</p>
   ${attribution ? `<p style="color:${text}80;font-size:24px;font-weight:500;margin:0 0 16px 0;">- ${attribution}</p>` : ""}
-  <div style="width:60px;height:3px;background:${primary};border-radius:2px;margin:16px 0;"></div>
-  <p style="color:${primary};font-size:20px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin:0;">${brandName}</p>
+  ${brandBlock ? `<div style="width:60px;height:3px;background:${primary};border-radius:2px;margin:16px 0;"></div>${brandBlock}` : ""}
 </div>`;
 }
 
