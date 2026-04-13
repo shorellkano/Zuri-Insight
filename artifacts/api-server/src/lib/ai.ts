@@ -1,6 +1,15 @@
 import OpenAI from "openai";
 
-const MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+const FREE_MODELS = [
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "nousresearch/hermes-3-llama-3.1-405b:free",
+  "openai/gpt-oss-120b:free",
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "qwen/qwen3-next-80b-a3b-instruct:free",
+];
+
+const VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free";
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -15,19 +24,40 @@ function getClient(): OpenAI {
   });
 }
 
+function isRateLimited(err: any): boolean {
+  return (
+    err?.status === 429 ||
+    err?.statusCode === 429 ||
+    String(err?.message ?? "").includes("429") ||
+    String(err?.message ?? "").toLowerCase().includes("rate limit")
+  );
+}
+
 export async function aiComplete(system: string, user: string, maxTokens = 600): Promise<string> {
   const client = getClient();
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    max_tokens: maxTokens,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-  });
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error("Empty response from AI");
-  return content;
+  let lastErr: any;
+
+  for (const model of FREE_MODELS) {
+    try {
+      const response = await client.chat.completions.create({
+        model,
+        max_tokens: maxTokens,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      });
+      const content = response.choices[0]?.message?.content;
+      if (!content) throw new Error("Empty response from AI");
+      return content;
+    } catch (err: any) {
+      lastErr = err;
+      if (isRateLimited(err)) continue;
+      throw err;
+    }
+  }
+
+  throw lastErr ?? new Error("All AI models are currently busy. Please try again in a moment.");
 }
 
 export async function aiVision(system: string, prompt: string, images: string[], maxTokens = 600): Promise<string> {
@@ -37,7 +67,7 @@ export async function aiVision(system: string, prompt: string, images: string[],
     image_url: { url: dataUrl },
   }));
   const response = await client.chat.completions.create({
-    model: MODEL,
+    model: VISION_MODEL,
     max_tokens: maxTokens,
     messages: [
       { role: "system", content: system },
