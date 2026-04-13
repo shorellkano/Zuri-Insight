@@ -100,21 +100,18 @@ function HeroLogoRings() {
 
       <div
         style={{
-          width: 200, height: 200,
+          width: 210, height: 210,
           borderRadius: "50%",
-          background: Z_BG,
-          border: `1px solid rgba(224,92,42,0.25)`,
-          boxShadow: "0 0 80px rgba(224,92,42,0.30)",
+          backgroundImage: "url('/zuri-logo-head.png')",
+          backgroundSize: "733px 489px",
+          backgroundPosition: "-273px -105px",
+          backgroundRepeat: "no-repeat",
+          border: `2px solid rgba(224,92,42,0.35)`,
+          boxShadow: "0 0 70px rgba(224,92,42,0.4), 0 0 120px rgba(224,92,42,0.15)",
           position: "relative",
           zIndex: 2,
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
         }}
-      >
-        <LogoCanvas size={200} threshold={220} />
-      </div>
+      />
     </div>
   );
 }
