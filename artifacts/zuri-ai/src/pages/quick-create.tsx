@@ -51,20 +51,20 @@ const FORMATS: Record<string, string[]> = {
 };
 
 const PLACEHOLDERS = [
-  "New collection dropping this Friday — bold colours, African print...",
+  "New collection dropping this Friday - bold colours, African print...",
   "Behind the scenes of how I make my products...",
-  "Customer shoutout — they loved their order...",
-  "Flash sale this weekend only — 30% off everything...",
-  "Tips for my audience — 3 things to know about natural hair care...",
+  "Customer shoutout - they loved their order...",
+  "Flash sale this weekend only - 30% off everything...",
+  "Tips for my audience - 3 things to know about natural hair care...",
 ];
 
 const TOPIC_CHIPS = [
-  { label: "New product", text: "Introducing our new [product] — " },
-  { label: "Sale / Promo", text: "Limited time offer — " },
+  { label: "New product", text: "Introducing our new [product] - " },
+  { label: "Sale / Promo", text: "Limited time offer - " },
   { label: "Customer story", text: "A customer shared how [product] changed their " },
   { label: "Behind scenes", text: "Ever wondered how we make our [product]? Here's a behind-the-scenes look at " },
   { label: "Educational tip", text: "3 things you should know about " },
-  { label: "Announcement", text: "Big news — we're excited to announce " },
+  { label: "Announcement", text: "Big news - we're excited to announce " },
   { label: "Celebration", text: "We're celebrating " },
   { label: "Quote / Inspire", text: "This is what drives us every day: " },
 ];
@@ -90,7 +90,7 @@ const PLATFORM_RULES_NOTICE: Record<string, Record<string, string>> = {
   instagram: {
     Reel: "Hook must land in first 3 seconds. Caption can be long but the hook does the work.",
     Story: "Text overlay should be readable in 3 seconds. Use a poll or question sticker to drive engagement.",
-    "Feed Post": "First 125 characters show before 'more' — make them count.",
+    "Feed Post": "First 125 characters show before 'more' - make them count.",
     Carousel: "Slide 1 does the selling. Make them swipe with a strong hook.",
   },
   tiktok: {
@@ -209,7 +209,7 @@ function VariationCard({
           <p className="text-lg font-bold text-foreground leading-snug">{variation.hook}</p>
           <div className="mt-1.5 flex items-center gap-1.5">
             <Info className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-            <span className="text-[11px] text-muted-foreground/60">The first line — it is what stops someone from scrolling.</span>
+            <span className="text-[11px] text-muted-foreground/60">The first line - it is what stops someone from scrolling.</span>
           </div>
         </div>
       </div>
@@ -496,7 +496,7 @@ export default function QuickCreate() {
           <p className="text-muted-foreground text-sm ml-11.5">Platform-ready content in under 60 seconds.</p>
         </div>
 
-        {/* DNA nudge — soft, non-blocking, shown when brand exists but DNA not built */}
+        {/* DNA nudge - soft, non-blocking, shown when brand exists but DNA not built */}
         {brand && !brand.dnaBuilt && (
           <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
             <Sparkles className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
@@ -630,7 +630,7 @@ export default function QuickCreate() {
                   <input
                     value={extraProduct}
                     onChange={(e) => setExtraProduct(e.target.value)}
-                    placeholder="e.g. Glow serum — ₦12,500"
+                    placeholder="e.g. Glow serum - ₦12,500"
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>

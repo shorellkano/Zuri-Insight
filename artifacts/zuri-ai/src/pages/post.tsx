@@ -465,11 +465,11 @@ export function PostPage() {
               <textarea
                 value={context}
                 onChange={(e) => setContext(e.target.value)}
-                placeholder="e.g. New Ankara print collection — bold patterns, vibrant colours. Photoshoot at the workshop with our latest pieces..."
+                placeholder="e.g. New Ankara print collection - bold patterns, vibrant colours. Photoshoot at the workshop with our latest pieces..."
                 rows={4}
                 className="w-full text-sm border border-border rounded-xl px-4 py-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               />
-              <p className="text-xs text-muted-foreground mt-1">Be specific — the more detail you give, the better the captions</p>
+              <p className="text-xs text-muted-foreground mt-1">Be specific - the more detail you give, the better the captions</p>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">

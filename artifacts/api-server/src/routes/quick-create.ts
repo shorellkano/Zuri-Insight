@@ -21,7 +21,7 @@ const PLATFORM_RULES: Record<string, string> = {
   tiktok_story:
     "Hook: 5 words max. Caption: 100 chars max. Hashtags: 2-3 only.",
   facebook_post:
-    "Hook: first 2 lines show before 'see more' — they must do all the work. Caption: 100-250 words, end with a question. Hashtags: 2-5 max.",
+    "Hook: first 2 lines show before 'see more' - they must do all the work. Caption: 100-250 words, end with a question. Hashtags: 2-5 max.",
   facebook_reel:
     "Hook: first 3 seconds. Caption: 80-150 words. Hashtags: 3-8.",
   facebook_story:
@@ -80,8 +80,8 @@ ${rules}
 Return ONLY a JSON object (no array, no markdown, no fences):
 {
   "v": 1,
-  "hook": "<hook — compact, max 10 words>",
-  "caption": "<caption — max 150 words, punchy>",
+  "hook": "<hook - compact, max 10 words>",
+  "caption": "<caption - max 150 words, punchy>",
   "hashtags": [<hashtag strings with #, follow platform rules for count>],
   "keywords": [<5 keyword strings if youtube/linkedin, else []>],
   "hook_char_count": <number>,

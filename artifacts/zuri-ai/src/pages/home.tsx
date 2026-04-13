@@ -44,7 +44,7 @@ const testimonials = [
 
 const BADGE_LINES = [
   { flag: "🇳🇬", text: "Nigeria-First Brand Intelligence" },
-  { flag: "⚡", text: "Your design agency — open 24/7" },
+  { flag: "⚡", text: "Your design agency - open 24/7" },
   { flag: "🧬", text: "Built on real Brand DNA, not guesswork" },
   { flag: "🌍", text: "Cultural AI that speaks your market" },
   { flag: "🚀", text: "Beta - Now powering African brands" },
@@ -118,7 +118,7 @@ export default function Home() {
             running <span className="text-primary">24 hours</span> a day.
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            Zuri AI learns your Brand DNA, understands African markets, and delivers on-brand campaigns, visuals, and copy the moment you need them — no briefs, no waiting.
+            Zuri AI learns your Brand DNA, understands African markets, and delivers on-brand campaigns, visuals, and copy the moment you need them - no briefs, no waiting.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/brands/new" data-testid="hero-cta-primary">
@@ -152,9 +152,9 @@ export default function Home() {
       <section className="py-20 px-4" data-testid="features-section">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-foreground mb-4">A full creative team — built into one platform.</h2>
+            <h2 className="text-3xl font-bold text-foreground mb-4">A full creative team - built into one platform.</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Most AI tools ignore the nuances of African markets. Zuri AI was built from the ground up with the cultural intelligence, brand depth, and creative range of an agency — without the agency costs.
+              Most AI tools ignore the nuances of African markets. Zuri AI was built from the ground up with the cultural intelligence, brand depth, and creative range of an agency - without the agency costs.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -175,7 +175,7 @@ export default function BulkPlan() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Plan a Week or Month</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Zuri builds your entire content calendar, covers all key dates, and generates every caption — you just approve.
+          Zuri builds your entire content calendar, covers all key dates, and generates every caption - you just approve.
         </p>
       </div>
 

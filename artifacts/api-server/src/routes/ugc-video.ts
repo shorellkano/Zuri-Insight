@@ -55,7 +55,7 @@ Aspect ratio: ${aspectRatio}.
 
 The video should feel authentic and native to ${platform}. Keep the prompt under 200 words.
 Be specific about visual style, setting, mood, and pacing.
-Return only the prompt text — no explanation, no labels.`;
+Return only the prompt text - no explanation, no labels.`;
 
       const result = await aiJSON<{ prompt: string }>(system, user + `\n\nReturn JSON: { "prompt": "<your prompt here>" }`, 300);
       prompt = result?.prompt ?? productDescription;
@@ -78,7 +78,7 @@ Return only the prompt text — no explanation, no labels.`;
       userId: (req as any).user?.id ?? brandId,
       designType: "ugc_video",
       platform,
-      title: `UGC Video — ${productDescription.slice(0, 50)}`,
+      title: `UGC Video - ${productDescription.slice(0, 50)}`,
       promptUsed: prompt,
       imageUrls: [],
     });

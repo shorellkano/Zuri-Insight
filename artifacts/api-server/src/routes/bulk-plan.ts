@@ -71,7 +71,7 @@ RULES:
 2. For major events, suggest a lead-up post 1-2 days before.
 3. Distribute posts evenly across the week.
 4. Vary post type (feed_post, carousel, reel, story) across the plan.
-5. Vary content theme — no two consecutive posts on same theme.
+5. Vary content theme - no two consecutive posts on same theme.
 6. Suggest optimal posting times (WAT timezone, peak hours: 7am, 12pm, 7pm).
 7. Professional English content angles only.
 
@@ -194,7 +194,7 @@ router.post("/bulk-plan-items/:itemId/generate", async (req, res): Promise<void>
   const system = `You are an expert African marketing copywriter writing for ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
 ${voice}
 Write authentic, culturally relevant content for African audiences.
-Return ONLY the caption text — no labels, no explanation, no quotes wrapping it.`;
+Return ONLY the caption text - no labels, no explanation, no quotes wrapping it.`;
 
   const user = `Write a ${item.platform} caption for this planned post:
 

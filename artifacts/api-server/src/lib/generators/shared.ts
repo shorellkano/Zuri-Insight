@@ -44,7 +44,7 @@ export async function buildSystemPrompt(
   // 5. Build the complete system prompt
   const sections: string[] = [];
 
-  // Absolute rules — always first
+  // Absolute rules - always first
   sections.push(`ABSOLUTE RULES - NEVER BREAK:
 1. Never fabricate stats, testimonials, or story details.
 2. Use only documented, real examples the user has provided.
@@ -60,7 +60,7 @@ Language: ${brand.language ?? "English"}
 Target Market: ${brand.targetMarket ?? cultural.name}`);
   }
 
-  // Brand DNA — full profile if complete, graceful fallback if not yet built
+  // Brand DNA - full profile if complete, graceful fallback if not yet built
   const dnaComplete = dna && dna.buildStatus === "complete";
 
   if (dnaComplete) {
@@ -87,7 +87,7 @@ Avoid: ${cultural.taboos.join(", ")}`);
       // ignore JSON parse error
     }
   } else {
-    // No completed DNA yet — use the brand brief the user typed during setup
+    // No completed DNA yet - use the brand brief the user typed during setup
     // plus cultural context. This covers Day 1 users with no website or social handles.
     const fallbackParts: string[] = [];
 
@@ -104,7 +104,7 @@ Avoid: ${cultural.taboos.join(", ")}`);
     }
 
     if (fallbackParts.length > 0) {
-      sections.push(`BRAND CONTEXT (early stage — no DNA built yet):
+      sections.push(`BRAND CONTEXT (early stage - no DNA built yet):
 ${fallbackParts.join("\n")}
 Write content that feels authentic to a real ${brand?.industry ?? "business"} based in ${brand?.country ?? "Nigeria"}. Avoid generic filler. Be specific and grounded.`);
     }

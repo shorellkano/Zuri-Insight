@@ -67,7 +67,7 @@ Return JSON:
   ]
 }
 
-Rules: First slide is the hook — make it impossible to scroll past. Last slide has a clear CTA. Keep brand: ${brand.name}.`;
+Rules: First slide is the hook - make it impossible to scroll past. Last slide has a clear CTA. Keep brand: ${brand.name}.`;
 
     const result = await aiJSON<{ title: string; slides: Array<{ slide_number: number; headline: string; body: string; cta?: string }> }>(system, user, 700);
 

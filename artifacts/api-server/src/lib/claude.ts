@@ -1,5 +1,5 @@
 // Delegates to the OpenRouter-based AI client
-// Kept for API compatibility — all logic lives in lib/ai.ts
+// Kept for API compatibility - all logic lives in lib/ai.ts
 import { aiComplete, aiJSON } from "./ai";
 
 export async function claudeComplete(system: string, user: string, maxTokens = 2000): Promise<string> {

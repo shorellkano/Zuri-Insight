@@ -18,10 +18,10 @@ type VideoPlatform = "instagram" | "tiktok" | "youtube";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STYLES: Array<{ id: VideoStyle; label: string; desc: string; Icon: any }> = [
-  { id: "ugc", label: "UGC", desc: "Authentic, hand-held feel — creator-style content", Icon: User },
-  { id: "cinematic", label: "Cinematic", desc: "Premium, polished — high-production look", Icon: Clapperboard },
-  { id: "product_demo", label: "Product Demo", desc: "Clear, informative — shows product in action", Icon: Package },
-  { id: "testimonial", label: "Testimonial", desc: "Person facing camera — trust-building and real", Icon: Star },
+  { id: "ugc", label: "UGC", desc: "Authentic, hand-held feel - creator-style content", Icon: User },
+  { id: "cinematic", label: "Cinematic", desc: "Premium, polished - high-production look", Icon: Clapperboard },
+  { id: "product_demo", label: "Product Demo", desc: "Clear, informative - shows product in action", Icon: Package },
+  { id: "testimonial", label: "Testimonial", desc: "Person facing camera - trust-building and real", Icon: Star },
 ];
 
 const PLATFORMS: Array<{ id: VideoPlatform; label: string; Icon: any; aspectRatio: "9:16" | "1:1" | "16:9" }> = [
@@ -247,7 +247,7 @@ export default function CreativeStudioUgcVideo() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={generating}
-                placeholder="e.g. Handmade leather bags from Lagos — vibrant colours, durable quality. Targeting young professionals who love African craftsmanship..."
+                placeholder="e.g. Handmade leather bags from Lagos - vibrant colours, durable quality. Targeting young professionals who love African craftsmanship..."
                 rows={4}
                 className="w-full text-sm border border-border rounded-xl px-4 py-3 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none disabled:opacity-60"
               />

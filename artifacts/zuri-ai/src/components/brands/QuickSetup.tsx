@@ -312,7 +312,7 @@ export function QuickSetup({ onClose }: Props) {
             <div>
               <h2 className="text-xl font-bold text-foreground">Add your social handles</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Zuri reads your public profile to understand your brand voice. You don't need to connect your account — just type your handle.
+                Zuri reads your public profile to understand your brand voice. You don't need to connect your account - just type your handle.
               </p>
             </div>
 
@@ -381,7 +381,7 @@ export function QuickSetup({ onClose }: Props) {
             </div>
 
             <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-              No handles yet? No problem — Zuri will use what you told us.
+              No handles yet? No problem - Zuri will use what you told us.
             </p>
 
             <button

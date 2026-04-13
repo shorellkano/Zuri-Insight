@@ -18,7 +18,7 @@ router.post("/canva/create-design", async (req, res): Promise<void> => {
   const assetType = rawAssetType ?? getCanvaAssetType(platform ?? "instagram", format ?? "feed");
 
   const result = await createCanvaDesign({
-    title: title ?? `Zuri AI Design — ${platform ?? "Social Post"}`,
+    title: title ?? `Zuri AI Design - ${platform ?? "Social Post"}`,
     assetType,
   });
 

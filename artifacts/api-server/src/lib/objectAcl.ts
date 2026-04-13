@@ -15,7 +15,7 @@ export enum ObjectAccessGroupType {}
 export interface ObjectAccessGroup {
   type: ObjectAccessGroupType;
   // The logic id that identifies qualified group members. Format depends on the
-  // ObjectAccessGroupType — e.g. a user-list DB id, an email domain, a group id.
+  // ObjectAccessGroupType - e.g. a user-list DB id, an email domain, a group id.
   id: string;
 }
 
