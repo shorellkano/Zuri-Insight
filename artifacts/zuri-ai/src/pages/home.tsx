@@ -13,17 +13,45 @@ const Z_FAINT = "rgba(245,240,235,0.3)";
 const Z_BORDER = "rgba(255,255,255,0.06)";
 const Z_BORDER_STRONG = "rgba(255,255,255,0.12)";
 
-function ZuriLogoSVG({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M6 24 C6 13 10 7 16 6 C12 7 9 12 9 20 Z" fill={Z_GOLD} opacity="0.9" />
-      <ellipse cx="17" cy="18" rx="9" ry="11" fill={Z_ORANGE} />
-      <ellipse cx="17" cy="11" rx="9" ry="5" fill={Z_TEAL} />
-      <rect x="8" y="8" width="18" height="4" rx="1" fill={Z_TEAL} />
-      <rect x="9" y="10.5" width="16" height="2.5" rx="0.5" fill={Z_ORANGE} />
-      <path d="M23 7 L24 5.2 L25 7 L26.8 8 L25 9 L24 10.8 L23 9 L21.2 8 Z" fill={Z_GOLD} />
-    </svg>
-  );
+function LogoCanvas({ size, threshold = 220, zoom = 1.7, offsetX = 0.02, offsetY = -0.02 }: {
+  size: number; threshold?: number; zoom?: number; offsetX?: number; offsetY?: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = size;
+      canvas.height = size;
+
+      const drawW = size * zoom;
+      const drawH = size * zoom;
+      const drawX = (size - drawW) / 2 + offsetX * size;
+      const drawY = (size - drawH) / 2 + offsetY * size;
+
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+      const imageData = ctx.getImageData(0, 0, size, size);
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        if (r > threshold && g > threshold && b > threshold) {
+          const brightness = (r + g + b) / 3;
+          const alpha = Math.max(0, 255 - (brightness - threshold) * 8);
+          d[i + 3] = Math.round(alpha);
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+    };
+    img.src = "/zuri-logo-head.png";
+  }, [size, threshold, zoom, offsetX, offsetY]);
+
+  return <canvas ref={canvasRef} width={size} height={size} style={{ display: "block" }} />;
 }
 
 function HeroLogoRings() {
@@ -74,25 +102,18 @@ function HeroLogoRings() {
         style={{
           width: 200, height: 200,
           borderRadius: "50%",
-          background: "#F7EFE4",
-          border: `3px solid rgba(224,92,42,0.3)`,
-          boxShadow: "0 0 80px rgba(224,92,42,0.35), 0 0 0 1px rgba(224,92,42,0.15)",
+          background: Z_BG,
+          border: `1px solid rgba(224,92,42,0.25)`,
+          boxShadow: "0 0 80px rgba(224,92,42,0.30)",
           position: "relative",
           zIndex: 2,
           overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <img
-          src="/zuri-logo-head.png"
-          alt="Zuri AI"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            transform: "scale(1.8)",
-            transformOrigin: "52% 48%",
-          }}
-        />
+        <LogoCanvas size={200} threshold={220} />
       </div>
     </div>
   );
@@ -364,8 +385,13 @@ export default function Home() {
         }}
       >
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <ZuriLogoSVG size={32} />
-          <span style={{ fontSize: 18, fontWeight: 700, color: Z_TEXT }} data-testid="home-logo">
+          <img
+            src="/zuri-logo-head.png"
+            alt="Zuri AI"
+            data-testid="home-logo"
+            style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", objectPosition: "52% 48%", transform: "scale(1.35)", transformOrigin: "center", overflow: "hidden" }}
+          />
+          <span style={{ fontSize: 18, fontWeight: 700, color: Z_TEXT }}>
             Zuri <span style={{ color: Z_ORANGE }}>AI</span>
           </span>
         </Link>
@@ -955,7 +981,11 @@ export default function Home() {
         }}
       >
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-          <ZuriLogoSVG size={28} />
+          <img
+            src="/zuri-logo-head.png"
+            alt="Zuri AI"
+            style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", objectPosition: "52% 48%", transform: "scale(1.35)", transformOrigin: "center", overflow: "hidden" }}
+          />
           <span style={{ fontSize: 16, fontWeight: 700, color: Z_TEXT }}>
             Zuri <span style={{ color: Z_ORANGE }}>AI</span>
           </span>
