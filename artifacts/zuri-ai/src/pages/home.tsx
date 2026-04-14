@@ -742,6 +742,16 @@ function TryZuriSection() {
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hoveredCta, setHoveredCta] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const px = isMobile ? "16px" : "48px";
 
   return (
     <div style={{ background: Z_BG, color: Z_TEXT, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100vh", overflowX: "hidden" }}>
@@ -756,7 +766,7 @@ export default function Home() {
           background: "rgba(12,10,8,0.92)",
           backdropFilter: "blur(12px)",
           borderBottom: `1px solid ${Z_BORDER}`,
-          padding: "0 48px",
+          padding: `0 ${px}`,
           height: 64,
           display: "flex",
           alignItems: "center",
@@ -1002,7 +1012,7 @@ export default function Home() {
       {/* HOW IT WORKS */}
       <section
         data-testid="how-it-works-section"
-        style={{ padding: "100px 48px", maxWidth: 1100, margin: "0 auto" }}
+        style={{ padding: `${isMobile ? "60px" : "100px"} ${px}`, maxWidth: 1100, margin: "0 auto" }}
       >
         <div style={{ textAlign: "center", marginBottom: 56 }}>
           <span style={{
@@ -1024,7 +1034,7 @@ export default function Home() {
           <p style={{ color: Z_MUTED, fontSize: 16 }}>No briefs. No back-and-forth. No waiting.</p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: isMobile ? 12 : 2, borderRadius: 16, overflow: "hidden" }}>
           {STEP_CARDS.map(card => (
             <div
               key={card.num}
@@ -1052,7 +1062,7 @@ export default function Home() {
       {/* FEATURE GRID */}
       <section
         data-testid="features-section"
-        style={{ padding: "0 48px 100px", maxWidth: 1100, margin: "0 auto" }}
+        style={{ padding: `0 ${px} ${isMobile ? "60px" : "100px"}`, maxWidth: 1100, margin: "0 auto" }}
       >
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, letterSpacing: "-1px", marginBottom: 0 }}>
@@ -1061,7 +1071,7 @@ export default function Home() {
           </h2>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 2, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: isMobile ? 12 : 2, borderRadius: 16, overflow: "hidden" }}>
           {FEATURE_CARDS.map(card => (
             <div
               key={card.title}
@@ -1101,11 +1111,11 @@ export default function Home() {
           background: "rgba(224,92,42,0.06)",
           borderTop: `1px solid rgba(224,92,42,0.15)`,
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
           gap: 0,
-          padding: "40px 32px",
+          padding: isMobile ? "28px 20px" : "40px 32px",
         }}>
-          <div>
+          <div style={{ marginBottom: isMobile ? 24 : 0 }}>
             <div style={{ fontSize: 24, marginBottom: 12 }}>🧬</div>
             <h3 style={{ fontSize: 20, fontWeight: 700, color: Z_TEXT, marginBottom: 10 }}>
               Brand DNA - the intelligence layer
@@ -1114,7 +1124,7 @@ export default function Home() {
               Zuri reads your website, Instagram bio, TikTok captions, Facebook page, and LinkedIn simultaneously - building a Brand DNA richer than any tool on the market. Your voice file, your lessons, your cultural context. It gets smarter every time you use it.
             </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, paddingLeft: 40 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, paddingLeft: isMobile ? 0 : 40 }}>
             {[
               { stat: "6", label: "Social platforms read" },
               { stat: "150+", label: "Calendar events known" },
@@ -1142,10 +1152,10 @@ export default function Home() {
           background: "linear-gradient(135deg, rgba(224,92,42,0.08) 0%, rgba(42,157,138,0.05) 100%)",
           borderTop: `1px solid ${Z_BORDER}`,
           borderBottom: `1px solid ${Z_BORDER}`,
-          padding: "80px 48px",
+          padding: `${isMobile ? "48px" : "80px"} ${px}`,
         }}
       >
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 36 : 64, alignItems: "center" }}>
           <div>
             <span style={{
               display: "inline-block",
@@ -1213,7 +1223,7 @@ export default function Home() {
       {/* PRICING */}
       <section
         data-testid="pricing-section"
-        style={{ padding: "100px 48px", maxWidth: 1100, margin: "0 auto" }}
+        style={{ padding: `${isMobile ? "60px" : "100px"} ${px}`, maxWidth: 1100, margin: "0 auto" }}
       >
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, letterSpacing: "-1px", marginBottom: 10 }}>
@@ -1223,7 +1233,7 @@ export default function Home() {
           <p style={{ color: Z_MUTED, fontSize: 15 }}>Africa pricing in Naira. Global pricing in USD. Annual plans save 17%.</p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12 }}>
           {PRICING_PLANS.map(plan => (
             <div
               key={plan.name}
@@ -1314,7 +1324,7 @@ export default function Home() {
       <section
         data-testid="final-cta-section"
         style={{
-          padding: "100px 48px",
+          padding: `${isMobile ? "60px" : "100px"} ${px}`,
           textAlign: "center",
           position: "relative",
           background: "radial-gradient(ellipse 600px 400px at 50% 50%, rgba(224,92,42,0.06) 0%, transparent 70%)",
@@ -1360,7 +1370,7 @@ export default function Home() {
         data-testid="footer"
         style={{
           borderTop: `1px solid ${Z_BORDER}`,
-          padding: "40px 48px",
+          padding: `32px ${px}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
