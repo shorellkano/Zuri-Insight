@@ -1,12 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Layers, Sparkles, BookOpen } from "lucide-react";
+import { Sparkles, Layers, Zap, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Brand Studio", icon: Sparkles },
+  { href: "/quick-create", label: "Solo Founder", icon: Zap },
   { href: "/brands", label: "Brands", icon: Layers },
-  { href: "/generate", label: "Generate", icon: Sparkles },
-  { href: "/content", label: "Content", icon: BookOpen },
+  { href: "/post", label: "Caption Studio", icon: Film },
 ];
 
 export function MobileNav() {

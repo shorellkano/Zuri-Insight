@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Instagram, Youtube, Linkedin, Facebook, Ghost, PlaySquare,
   ChevronDown, ChevronUp, Copy, Check, X, Plus, Calendar,
-  Info, Download, RefreshCw, Zap, Edit2, Loader2, Sparkles,
+  Info, Download, RefreshCw, Zap, Edit2, Loader2, Sparkles, Video, Type,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,7 +27,18 @@ interface GenerateResult {
   id: string;
   platform: string;
   format: string;
+  contentType?: "post" | "video";
   variations: Array<{ id: string; content: string; platform: string; tone: string }>;
+}
+
+interface VideoScript {
+  hook: string;
+  script: string;
+  cta: string;
+  caption: string;
+  hashtags: string[];
+  duration: string;
+  tips: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -451,6 +462,175 @@ function VariationCard({
   );
 }
 
+// ─── Video Script Card ────────────────────────────────────────────────────────
+
+function VideoScriptCard({
+  script,
+  platform,
+  brandId,
+}: {
+  script: VideoScript;
+  platform: string;
+  brandId?: string;
+}) {
+  const { toast } = useToast();
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduled, setScheduled] = useState(false);
+
+  const fullScript = [
+    `HOOK (say this first):\n${script.hook}`,
+    `\nSCRIPT:\n${script.script}`,
+    `\nCALL TO ACTION:\n${script.cta}`,
+    `\nCAPTION (for post):\n${script.caption}`,
+    `\nHASHTAGS:\n${script.hashtags.join(" ")}`,
+  ].join("\n").trim();
+
+  async function handleSchedule() {
+    if (!scheduleDate) { toast({ title: "Pick a date first", variant: "destructive" }); return; }
+    if (!brandId) { toast({ title: "No brand selected", variant: "destructive" }); return; }
+    setScheduling(true);
+    try {
+      const scheduledFor = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+      const res = await fetch("/api/schedule/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandId, platform, postType: "Video Script", caption: script.caption, hashtags: script.hashtags, scheduledFor, timezone: "Africa/Lagos" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setScheduled(true);
+      setScheduleOpen(false);
+      toast({ title: "Video scheduled!", description: `Saved to your content calendar for ${scheduleDate}.` });
+    } catch {
+      toast({ title: "Could not schedule", variant: "destructive" });
+    } finally {
+      setScheduling(false);
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      {script.duration && (
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-xs font-medium text-purple-700">
+          <Video className="h-3.5 w-3.5" /> Estimated duration: {script.duration}
+        </div>
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold uppercase tracking-wide">Hook</span>
+          <CopyButton text={script.hook} />
+        </div>
+        <p className="text-lg font-bold text-foreground leading-snug">{script.hook}</p>
+        <p className="text-[11px] text-muted-foreground/60 mt-1">Say this in the first 3 seconds before anything else.</p>
+      </div>
+
+      <div className="border-t border-border" />
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-foreground">Script</span>
+          <CopyButton text={script.script} />
+        </div>
+        <div className="bg-muted/40 rounded-xl p-4 text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">{script.script}</div>
+      </div>
+
+      <div className="border-t border-border" />
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-foreground">Call to Action</span>
+          <CopyButton text={script.cta} />
+        </div>
+        <p className="text-sm text-foreground leading-relaxed">{script.cta}</p>
+      </div>
+
+      <div className="border-t border-border" />
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-foreground">Caption for post</span>
+          <CopyButton text={script.caption} />
+        </div>
+        <p className="text-sm text-foreground leading-relaxed">{script.caption}</p>
+      </div>
+
+      <div className="border-t border-border" />
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-foreground">Hashtags</span>
+          <CopyButton text={script.hashtags.join(" ")} label="Copy all" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {script.hashtags.map((tag) => (
+            <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/8 text-primary text-xs font-medium">{tag}</span>
+          ))}
+        </div>
+      </div>
+
+      {script.tips && (
+        <>
+          <div className="border-t border-border" />
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-100">
+            <p className="text-xs text-amber-800"><span className="font-semibold">Filming tips:</span> {script.tips}</p>
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        <button onClick={() => navigator.clipboard.writeText(fullScript)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
+          <Copy className="h-3.5 w-3.5" /> Copy full script
+        </button>
+        <button
+          onClick={() => {
+            const blob = new Blob([fullScript], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "zuri-video-script.txt";
+            a.click();
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
+        >
+          <Download className="h-3.5 w-3.5" /> Download
+        </button>
+        <button
+          onClick={() => setScheduleOpen((o) => !o)}
+          className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors", scheduled ? "border-green-500 text-green-700 bg-green-50" : scheduleOpen ? "border-primary text-primary bg-primary/5" : "border-border text-foreground hover:bg-muted")}
+        >
+          <Calendar className="h-3.5 w-3.5" /> {scheduled ? "Scheduled" : "Schedule"}
+        </button>
+      </div>
+
+      {scheduleOpen && (
+        <div className="mt-3 p-4 rounded-xl border border-border bg-muted/30 space-y-3">
+          <p className="text-xs font-semibold text-foreground">Schedule this video</p>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[140px]">
+              <label className="block text-xs text-muted-foreground mb-1">Date</label>
+              <input type="date" value={scheduleDate} min={new Date().toISOString().split("T")[0]} onChange={(e) => setScheduleDate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+            <div className="flex-1 min-w-[120px]">
+              <label className="block text-xs text-muted-foreground mb-1">Time (Lagos)</label>
+              <input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleSchedule} disabled={scheduling || !scheduleDate} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+              {scheduling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calendar className="h-3.5 w-3.5" />}
+              {scheduling ? "Scheduling..." : "Confirm"}
+            </button>
+            <button onClick={() => setScheduleOpen(false)} className="px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function QuickCreate() {
@@ -459,6 +639,7 @@ export default function QuickCreate() {
   const { data: brand } = useGetBrand(activeBrandId ?? "", { query: { enabled: !!activeBrandId } });
   const { toast } = useToast();
 
+  const [contentType, setContentType] = useState<"post" | "video">("post");
   const [platform, setPlatform] = useState("instagram");
   const [format, setFormat] = useState("Reel");
   const [topic, setTopic] = useState("");
@@ -524,7 +705,7 @@ export default function QuickCreate() {
       const res = await fetch("/api/generate/quick-create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, platform, format, topic: topic.trim(), tone, additionalContext: context }),
+        body: JSON.stringify({ brandId: activeBrandId, platform, format, topic: topic.trim(), tone, additionalContext: context, contentType }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -561,6 +742,27 @@ export default function QuickCreate() {
 
   const variations = result?.variations?.map((v) => parseVariation(v.content)).filter(Boolean) as Variation[] ?? [];
 
+  function parseVideoScript(raw: string): VideoScript | null {
+    try {
+      const parsed = JSON.parse(raw);
+      return {
+        hook: parsed.hook ?? "",
+        script: parsed.script ?? "",
+        cta: parsed.cta ?? parsed.call_to_action ?? "",
+        caption: parsed.caption ?? "",
+        hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [],
+        duration: parsed.duration ?? parsed.duration_estimate ?? "",
+        tips: parsed.tips ?? parsed.filming_tips ?? "",
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  const videoScript = (result?.contentType === "video" && result.variations?.[0])
+    ? parseVideoScript(result.variations[0].content)
+    : null;
+
   const countryFlag: Record<string, string> = {
     Nigeria: "🇳🇬", Kenya: "🇰🇪", Ghana: "🇬🇭", "South Africa": "🇿🇦",
     Egypt: "🇪🇬", Senegal: "🇸🇳", Ethiopia: "🇪🇹", Tanzania: "🇹🇿",
@@ -594,9 +796,9 @@ export default function QuickCreate() {
             <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <Zap className="h-5 w-5 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Quick Create</h1>
+            <h1 className="text-2xl font-bold text-foreground">Solo Founder</h1>
           </div>
-          <p className="text-muted-foreground text-sm ml-11.5">Platform-ready content in under 60 seconds.</p>
+          <p className="text-muted-foreground text-sm">Generate captions, scripts and hooks built around your brand - in under 60 seconds.</p>
         </div>
 
         {/* DNA nudge - soft, non-blocking, shown when brand exists but DNA not built */}
@@ -619,6 +821,47 @@ export default function QuickCreate() {
 
         {/* ── MAIN FORM ── */}
         <div className="bg-card border border-border rounded-2xl p-6 space-y-7">
+
+          {/* Content type toggle */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-3">What are you creating?</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { setContentType("post"); setResult(null); }}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all text-left",
+                  contentType === "post"
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                )}
+              >
+                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", contentType === "post" ? "bg-primary/10" : "bg-muted")}>
+                  <Type className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold leading-tight">Caption / Post</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Hook, caption and hashtags</p>
+                </div>
+              </button>
+              <button
+                onClick={() => { setContentType("video"); setResult(null); }}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all text-left",
+                  contentType === "video"
+                    ? "border-purple-500 bg-purple-50 text-purple-700"
+                    : "border-border text-muted-foreground hover:border-purple-300 hover:text-foreground"
+                )}
+              >
+                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", contentType === "video" ? "bg-purple-100" : "bg-muted")}>
+                  <Video className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold leading-tight">Video Script</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">CEO or staff talking to camera</p>
+                </div>
+              </button>
+            </div>
+          </div>
 
           {/* SECTION 1: Platform */}
           <div>
@@ -782,16 +1025,18 @@ export default function QuickCreate() {
         </div>
 
         {/* ── OUTPUT ── */}
-        {result && variations.length > 0 && (
+        {result && (variations.length > 0 || videoScript) && (
           <div ref={outputRef} className="bg-card border border-border rounded-2xl overflow-hidden" data-testid="quick-create-output">
             {/* Output header */}
             <div className="px-6 pt-6 pb-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-semibold text-foreground">Here is your content</h2>
+                  <h2 className="text-base font-semibold text-foreground">
+                    {contentType === "video" ? "Your video script" : "Here is your content"}
+                  </h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/8 text-primary text-xs font-medium">
-                      {PLATFORMS.find((p) => p.id === platform)?.label} {format}
+                    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium", contentType === "video" ? "bg-purple-50 text-purple-700" : "bg-primary/8 text-primary")}>
+                      {contentType === "video" ? <><Video className="h-3 w-3" /> Video Script</> : <>{PLATFORMS.find((p) => p.id === platform)?.label} {format}</>}
                     </span>
                   </div>
                 </div>
@@ -805,8 +1050,8 @@ export default function QuickCreate() {
                 </button>
               </div>
 
-              {/* Variation tabs */}
-              {variations.length > 1 && (
+              {/* Variation tabs - only for text posts */}
+              {contentType === "post" && variations.length > 1 && (
                 <div className="flex gap-1 mt-4">
                   {variations.map((_, i) => (
                     <button
@@ -827,7 +1072,13 @@ export default function QuickCreate() {
             </div>
 
             <div className="p-6">
-              {variations[activeTab] && (
+              {contentType === "video" && videoScript ? (
+                <VideoScriptCard
+                  script={videoScript}
+                  platform={platform}
+                  brandId={activeBrandId ?? undefined}
+                />
+              ) : variations[activeTab] ? (
                 <VariationCard
                   variation={variations[activeTab]}
                   platform={platform}
@@ -835,7 +1086,7 @@ export default function QuickCreate() {
                   index={activeTab}
                   brandId={activeBrandId ?? undefined}
                 />
-              )}
+              ) : null}
 
               <div className="mt-4 pt-4 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
                 <button
@@ -859,7 +1110,7 @@ export default function QuickCreate() {
               <Zap className="h-6 w-6 text-primary" />
             </div>
             <h3 className="font-semibold text-foreground mb-1">Set up your brand first</h3>
-            <p className="text-sm text-muted-foreground mb-4">Quick Create uses your brand voice and DNA to generate content that sounds like you.</p>
+            <p className="text-sm text-muted-foreground mb-4">Solo Founder uses your brand voice and DNA to generate content that sounds like you.</p>
             <Link href="/brands/new">
               <button className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
                 Create your brand

@@ -342,10 +342,10 @@ export function PostPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Camera className="h-6 w-6 text-primary" />
-            Post Content
+            Caption Studio
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Upload your media and get platform-optimized captions in seconds
+            Upload your photo or video and get platform-ready captions written in your brand voice
           </p>
         </div>
 

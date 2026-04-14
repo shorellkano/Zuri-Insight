@@ -62,8 +62,19 @@ function cleanVariation(v: any): any {
   };
 }
 
+function cleanVideoScript(v: any): any {
+  return {
+    ...v,
+    hook: stripEmDashes(v?.hook),
+    script: stripEmDashes(v?.script),
+    cta: stripEmDashes(v?.cta),
+    caption: stripEmDashes(v?.caption),
+    tips: stripEmDashes(v?.tips),
+  };
+}
+
 router.post("/generate/quick-create", async (req, res): Promise<void> => {
-  const { brandId, platform, format, topic, tone = "professional", additionalContext } = req.body ?? {};
+  const { brandId, platform, format, topic, tone = "professional", additionalContext, contentType = "post" } = req.body ?? {};
 
   if (!brandId || typeof brandId !== "string") { res.status(400).json({ error: "brandId is required" }); return; }
   if (!platform || typeof platform !== "string") { res.status(400).json({ error: "platform is required" }); return; }
@@ -76,8 +87,8 @@ router.post("/generate/quick-create", async (req, res): Promise<void> => {
     return;
   }
 
+  const isVideo = contentType === "video";
   const rules = platformRules(platform, format);
-  const needsKeywords = ["youtube", "linkedin"].includes(platform.toLowerCase());
   const contentId = randomUUID();
 
   try {
@@ -85,7 +96,30 @@ router.post("/generate/quick-create", async (req, res): Promise<void> => {
 
     const system = await buildSystemPrompt(brandId, "quick-create", platform);
 
-    const user = `Generate 1 variation of ${platform} ${format} content for ${brand.name}.
+    let user: string;
+
+    if (isVideo) {
+      user = `Write a short-form video script for ${brand.name} to film themselves talking to camera.
+
+Topic: ${topic}
+Tone: ${tone}
+Additional context: ${additionalContext ?? "none"}
+Platform: ${platform}
+
+Return ONLY a JSON object (no array, no markdown, no fences):
+{
+  "hook": "<opening spoken line - the first thing they say on camera, max 12 words, punchy>",
+  "script": "<talking points body - 3 to 5 bullet points the founder covers, written as spoken words not headers>",
+  "cta": "<closing call to action - final spoken line, max 15 words>",
+  "caption": "<social media caption for the post, 80-150 words, conversational>",
+  "hashtags": [<8 to 15 relevant hashtag strings with #>],
+  "duration": "<estimated video duration e.g. 30-45 seconds>",
+  "tips": "<2-3 practical filming tips for a solo founder with a phone camera>"
+}
+
+Write in ${brand.name}'s brand voice. Keep it natural and conversational - this is spoken word, not text. Never fabricate stats.`;
+    } else {
+      user = `Generate 1 variation of ${platform} ${format} content for ${brand.name}.
 
 Topic: ${topic}
 Tone: ${tone}
@@ -107,21 +141,22 @@ Return ONLY a JSON object (no array, no markdown, no fences):
 }
 
 Be specific to ${brand.name}'s voice. Never fabricate stats.`;
+    }
 
-    const rawVariation = await aiJSON<any>(system, user, 500);
-    const result = Array.isArray(rawVariation) ? rawVariation : [rawVariation];
+    const raw = await aiJSON<any>(system, user, isVideo ? 600 : 500);
+    const cleaned = isVideo ? cleanVideoScript(raw) : cleanVariation(Array.isArray(raw) ? raw[0] : raw);
 
-    const varList = result.slice(0, 3).map((v: any) => ({
+    const varList = [{
       id: randomUUID(),
-      content: JSON.stringify(cleanVariation(v)),
+      content: JSON.stringify(cleaned),
       platform,
       tone: format,
-    }));
+    }];
 
     await Promise.all(
       varList.map((v) =>
         db.insert(contentTable).values({
-          type: "quick-create",
+          type: isVideo ? "video-script" : "quick-create",
           brandId,
           prompt: topic,
           content: v.content,
@@ -133,7 +168,8 @@ Be specific to ${brand.name}'s voice. Never fabricate stats.`;
 
     res.json({
       id: contentId,
-      type: "quick-create",
+      type: isVideo ? "video-script" : "quick-create",
+      contentType,
       brandId,
       platform,
       format,
@@ -143,19 +179,35 @@ Be specific to ${brand.name}'s voice. Never fabricate stats.`;
   } catch (err: any) {
     if (err?.message !== "no-ai") console.error("quick-create error:", err);
 
+    let fallbackContent: string;
+
+    if (isVideo) {
+      fallbackContent = JSON.stringify({
+        hook: `Here is what you need to know about ${topic.split(" ").slice(0, 5).join(" ")}`,
+        script: `- Start by sharing what this topic means to you and your business\n- Explain how ${brand.name} approaches this differently\n- Share one practical tip your audience can use today\n- Tell them what results to expect`,
+        cta: `Follow for more tips and tap the link in bio to get started.`,
+        caption: `${topic}\n\nAt ${brand.name}, we believe in keeping it real with you.\n\nSave this if it helped and share with someone who needs to see it.`,
+        hashtags: [`#${brand.name.replace(/\s+/g, "")}`, "#AfricanBusiness", "#Founder", "#ContentCreator", "#BusinessTips"],
+        duration: "30-45 seconds",
+        tips: "Film in natural light near a window. Hold your phone at eye level. Do one practice run before recording.",
+      });
+    } else {
+      fallbackContent = JSON.stringify({
+        v: 1,
+        hook: topic.split(" ").slice(0, 7).join(" "),
+        caption: `${topic}\n\nAt ${brand.name}, we're here to help you make it happen.\n\nReady to get started? Tap the link in bio.`,
+        hashtags: [`#${brand.name.replace(/\s+/g, "")}`, "#Africa", "#Business", "#Growth"],
+        keywords: [],
+        hook_char_count: topic.length,
+        caption_char_count: 120,
+        platform_note: `This is a starter template for ${platform} ${format}. Customise it to match your brand voice.`,
+      });
+    }
+
     const fallback = [
       {
         id: randomUUID(),
-        content: JSON.stringify({
-          v: 1,
-          hook: topic.split(" ").slice(0, 7).join(" "),
-          caption: `${topic}\n\nAt ${brand.name}, we're here to help you make it happen.\n\nReady to get started? Tap the link in bio.`,
-          hashtags: [`#${brand.name.replace(/\s+/g, "")}`, "#Africa", "#Business", "#Growth"],
-          keywords: [],
-          hook_char_count: topic.length,
-          caption_char_count: 120,
-          platform_note: `This is a starter template for ${platform} ${format}. Customise it to match your brand voice.`,
-        }),
+        content: fallbackContent,
         platform,
         tone: format,
       },
@@ -164,7 +216,7 @@ Be specific to ${brand.name}'s voice. Never fabricate stats.`;
     await Promise.all(
       fallback.map((v) =>
         db.insert(contentTable).values({
-          type: "quick-create",
+          type: isVideo ? "video-script" : "quick-create",
           brandId,
           prompt: topic,
           content: v.content,
@@ -176,7 +228,8 @@ Be specific to ${brand.name}'s voice. Never fabricate stats.`;
 
     res.json({
       id: contentId,
-      type: "quick-create",
+      type: isVideo ? "video-script" : "quick-create",
+      contentType,
       brandId,
       platform,
       format,

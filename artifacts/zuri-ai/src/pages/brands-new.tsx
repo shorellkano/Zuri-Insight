@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useCreateBrand, useUpdateBrand, useBuildBrandDna, getListBrandsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, ChevronLeft, CheckCircle2, Loader2, Globe, Instagram, Youtube } from "lucide-react";
+import { ChevronRight, ChevronLeft, CheckCircle2, Loader2, Globe, Instagram, Youtube, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+
+type SetupPath = "website" | "social" | null;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -148,6 +150,7 @@ const defaults: FormData = {
 
 export default function BrandsNew() {
   const [, setLocation] = useLocation();
+  const [setupPath, setSetupPath] = useState<SetupPath>(null);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>(defaults);
   const [brandId, setBrandId] = useState<string | null>(null);
@@ -192,9 +195,10 @@ export default function BrandsNew() {
 
   // ── Step 2 → save market data ──────────────────────────────────────────────
   async function submitStep2() {
-    if (!brandId) { setStep(2); return; }
+    const nextStep = setupPath === "website" ? 3 : 2;
+    if (!brandId) { setStep(nextStep); return; }
     updateBrand.mutate({ brandId, data: { continent: form.continent, country: form.country, city: form.city || undefined, language: form.language, targetMarket: `${form.continent} - ${form.country}` } }, {
-      onSuccess: () => setStep(2),
+      onSuccess: () => setStep(nextStep),
       onError: () => toast({ title: "Error", description: "Failed to save market info.", variant: "destructive" }),
     });
   }
@@ -260,6 +264,14 @@ export default function BrandsNew() {
 
   const isPending = createBrand.isPending || updateBrand.isPending;
 
+  const stepsForPath = setupPath === "website"
+    ? ["Brand Basics", "Your Market", "Brand Brief", "Build DNA"]
+    : ["Brand Basics", "Your Market", "Social Handles", "Brand Brief", "Build DNA"];
+
+  const displayStep = setupPath === "website"
+    ? (step <= 1 ? step : step === 3 ? 2 : step === 4 ? 3 : step)
+    : step;
+
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-7" data-testid="brands-new-page">
       <div>
@@ -267,9 +279,83 @@ export default function BrandsNew() {
         <p className="text-muted-foreground mt-1">Set up your brand profile and build its DNA intelligence.</p>
       </div>
 
-      <StepBar step={step} />
+      {/* ── PATH CHOOSER ─── show first, before wizard steps */}
+      {setupPath === null && (
+        <div className="bg-card border border-border rounded-2xl p-7 space-y-6" data-testid="path-chooser">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">How do you want Zuri to learn your brand?</h2>
+            <p className="text-sm text-muted-foreground mt-1">Choose one. You can always add more later.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => setSetupPath("website")}
+              data-testid="btn-path-website"
+              className="group flex flex-col items-center text-center gap-4 p-6 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/3 transition-all"
+            >
+              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                <Globe className="h-7 w-7 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground text-base">I have a website</p>
+                <p className="text-sm text-muted-foreground mt-1">Paste your URL and Zuri reads your site, extracts your brand voice, and builds your DNA automatically.</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/8 text-primary text-xs font-medium">
+                Fastest setup
+              </span>
+            </button>
 
-      <div className="bg-card border border-border rounded-2xl p-7">
+            <button
+              onClick={() => setSetupPath("social")}
+              data-testid="btn-path-social"
+              className="group flex flex-col items-center text-center gap-4 p-6 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/3 transition-all"
+            >
+              <div className="h-14 w-14 rounded-2xl bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+                <AtSign className="h-7 w-7 text-pink-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground text-base">I am on social media</p>
+                <p className="text-sm text-muted-foreground mt-1">Enter your Instagram, TikTok, or other handles. Zuri reads your public profiles to understand your voice.</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-50 text-pink-700 text-xs font-medium">
+                Great for personal brands
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {setupPath !== null && (
+        <>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSetupPath(null)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" /> Change setup method
+            </button>
+            <span className="text-xs text-muted-foreground">
+              {setupPath === "website" ? "Website setup" : "Social media setup"}
+            </span>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-foreground">Step {displayStep + 1} of {stepsForPath.length}: {stepsForPath[displayStep]}</span>
+              <span className="text-xs text-muted-foreground">{Math.round(((displayStep + 1) / stepsForPath.length) * 100)}%</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${Math.round(((displayStep + 1) / stepsForPath.length) * 100)}%` }} />
+            </div>
+            <div className="flex gap-1">
+              {stepsForPath.map((label, i) => (
+                <div key={label} className={cn("flex-1 h-1 rounded-full transition-colors", i <= displayStep ? "bg-primary" : "bg-muted")} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+
+      {setupPath !== null && <div className="bg-card border border-border rounded-2xl p-7">
         {/* ── STEP 1: Brand Basics ───────────────────────────────────────── */}
         {step === 0 && (
           <div className="space-y-5" data-testid="step-1-brand-basics">
@@ -278,16 +364,18 @@ export default function BrandsNew() {
               <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Kente Market" data-testid="input-brand-name" />
               {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
             </Field>
-            <Field label="Website URL" hint="We'll crawl this to build your Brand DNA">
-              <Input value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="https://yourbrand.com" data-testid="input-website-url" />
-              {errors.websiteUrl && <p className="text-xs text-destructive mt-1">{errors.websiteUrl}</p>}
-              {form.websiteUrl && /^https?:\/\/app\./i.test(form.websiteUrl) && (
-                <div className="mt-2 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <svg className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
-                  <p className="text-xs text-amber-800"><strong>Heads up:</strong> App subdomains (app.*) are usually login pages - Zuri cannot read their content. Use your main marketing website instead, e.g. <strong>storvo.co</strong> not app.storvo.co</p>
-                </div>
-              )}
-            </Field>
+            {setupPath === "website" && (
+              <Field label="Website URL" hint="We will crawl this to build your Brand DNA - this is your main route">
+                <Input value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="https://yourbrand.com" data-testid="input-website-url" />
+                {errors.websiteUrl && <p className="text-xs text-destructive mt-1">{errors.websiteUrl}</p>}
+                {form.websiteUrl && /^https?:\/\/app\./i.test(form.websiteUrl) && (
+                  <div className="mt-2 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <svg className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+                    <p className="text-xs text-amber-800"><strong>Heads up:</strong> App subdomains (app.*) are usually login pages - Zuri cannot read their content. Use your main marketing website instead, e.g. <strong>storvo.co</strong> not app.storvo.co</p>
+                  </div>
+                )}
+              </Field>
+            )}
             <Field label="Industry">
               <Select value={form.industry} onChange={(e) => set("industry", e.target.value)} data-testid="select-industry">
                 <option value="">Select industry…</option>
@@ -414,7 +502,7 @@ export default function BrandsNew() {
               <p className="text-xs text-muted-foreground">Describe what you sell, who your customers are, your tone of voice, and anything that makes your brand unique.</p>
             </div>
             <div className="flex gap-3 pt-1">
-              <Btn variant="ghost" onClick={() => setStep(2)} data-testid="btn-back-step4"><ChevronLeft className="h-4 w-4" /> Back</Btn>
+              <Btn variant="ghost" onClick={() => setStep(setupPath === "website" ? 1 : 2)} data-testid="btn-back-step4"><ChevronLeft className="h-4 w-4" /> Back</Btn>
               <Btn onClick={submitStep4} disabled={isPending} data-testid="btn-next-step4">
                 {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {form.brandBrief.trim() ? "Save & Build My DNA" : "Skip & Build DNA"} <ChevronRight className="h-4 w-4" />
@@ -479,7 +567,7 @@ export default function BrandsNew() {
             )}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
