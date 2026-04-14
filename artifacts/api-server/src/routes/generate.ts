@@ -363,34 +363,38 @@ router.post("/generate/quick-plan", async (req, res): Promise<void> => {
   }
 
   let brandName = "";
-  let brandInfo = "";
+  let brandStyleHints = "";
   let websiteContent = "";
+  const urlToCrawl = websiteUrl?.trim() || "";
 
-  // Load brand info if provided
-  if (brandId) {
-    const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
-    const [dna] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId));
-    if (brand) {
-      brandName = brand.name;
-      brandInfo = `Brand: ${brand.name} | Industry: ${brand.industry ?? "Business"} | Country: ${brand.country ?? "Nigeria"}`;
-      if (dna?.toneOfVoice) brandInfo += ` | Tone: ${dna.toneOfVoice}`;
-      if (dna?.keyMessages?.length) brandInfo += ` | Key messages: ${dna.keyMessages.slice(0, 3).join(", ")}`;
-    }
-  }
-
-  // Crawl website if provided
-  const urlToCrawl = websiteUrl || "";
+  // Crawl website FIRST if provided - website content is the primary context
   if (urlToCrawl) {
     try {
       websiteContent = await crawlWebsite(urlToCrawl);
     } catch {
       websiteContent = "";
     }
-  }
-
-  if (!brandName && websiteContent) {
+    // Extract domain-based fallback name
     const domainMatch = urlToCrawl.match(/(?:https?:\/\/)?(?:www\.)?([^\/]+)/);
     brandName = domainMatch?.[1]?.split(".")[0] ?? "Your Brand";
+  }
+
+  // Load brand info for STYLE hints only (not to override brand name when URL is provided)
+  if (brandId) {
+    const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+    const [dna] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId));
+    if (brand) {
+      // Only use brand name if no website URL was provided
+      if (!urlToCrawl) {
+        brandName = brand.name;
+        brandStyleHints = `Industry: ${brand.industry ?? "Business"} | Country: ${brand.country ?? "Nigeria"}`;
+        if (dna?.toneOfVoice) brandStyleHints += ` | Tone: ${dna.toneOfVoice}`;
+        if (dna?.keyMessages?.length) brandStyleHints += ` | Key messages: ${dna.keyMessages.slice(0, 3).join(", ")}`;
+      } else {
+        // Website URL takes priority for brand identity; use brand profile only for style hints
+        if (dna?.toneOfVoice) brandStyleHints = `Preferred tone: ${dna.toneOfVoice}`;
+      }
+    }
   }
 
   const durationMap: Record<string, { days: number; label: string }> = {
@@ -398,54 +402,70 @@ router.post("/generate/quick-plan", async (req, res): Promise<void> => {
     "1month": { days: 30, label: "1 month" },
     "3months": { days: 90, label: "3 months" },
   };
-  const { days, label } = durationMap[duration] ?? durationMap["1week"];
+  const { label } = durationMap[duration] ?? durationMap["1week"];
 
   try {
     if (!hasAI()) throw new Error("no-ai");
 
-    const system = `You are a senior social media strategist for African businesses.
-Generate a practical, ready-to-post content plan.
-NEVER use em dashes (--). Use hyphens or rewrite sentences.
-Return ONLY valid JSON. No markdown, no explanation.`;
+    const system = `You are an expert social media strategist specializing in African and Nigerian markets.
+Your job is to create highly specific, ready-to-post content plans that feel authentic to the brand.
+CRITICAL RULES:
+- Read the website content carefully and extract the REAL brand name, products, and unique selling points
+- Every caption must reference the brand's actual products/services - NEVER write generic captions
+- Captions must be conversational, punchy, and ready to copy-paste
+- Include relevant emojis in captions (1-3 max)
+- Use Nigerian/African market language where appropriate (e.g., "Oga", "sharp", "level up")
+- NEVER use em dashes. Use commas or full stops instead.
+- Return ONLY valid JSON. No markdown, no explanation outside the JSON.`;
 
     const contextSection = websiteContent
-      ? `WEBSITE CONTENT (from ${urlToCrawl}):\n${websiteContent.slice(0, 3000)}`
-      : brandInfo || `Business: ${brandName}`;
+      ? `SCANNED WEBSITE (${urlToCrawl}):\n${websiteContent.slice(0, 4500)}\n\nFrom this content, identify: the real brand name, their key products/services, target audience, and unique value proposition. Use these to create hyper-specific content.`
+      : brandStyleHints
+        ? `Brand: ${brandName}\n${brandStyleHints}`
+        : `Business: ${brandName}`;
 
     const postCounts: Record<string, number> = { "1week": 7, "1month": 14, "3months": 24 };
     const postCount = postCounts[duration] ?? 7;
+    const styleNote = brandStyleHints && urlToCrawl ? `\nContent style hints: ${brandStyleHints}` : "";
 
-    const user = `Create a ${label} content plan with ${postCount} posts for: ${brandName || "this business"}.
+    const user = `Scan the website content below and create a ${label} content plan with exactly ${postCount} posts.${styleNote}
 
 ${contextSection}
 
-Return JSON with this exact shape:
+IMPORTANT: First identify the actual brand name from the website content. Use it in your brandName field.
+
+Return JSON with this EXACT shape:
 {
-  "brandSummary": "2-sentence summary of what this brand is and who it serves",
+  "brandName": "actual brand name extracted from website",
+  "brandSummary": "2-sentence description of what this brand does and who it serves - be specific about their products",
   "plan": [
     {
       "id": "post_1",
       "day": 1,
       "platform": "Instagram",
       "contentType": "Carousel",
-      "topic": "short topic title",
-      "angle": "brief content angle",
-      "caption": "ready-to-post caption (under 200 chars)"
+      "topic": "specific topic referencing a real product or service from the brand",
+      "angle": "Promotional",
+      "caption": "Ready-to-post caption that mentions the brand and specific product. Max 220 chars. Include 1-2 emojis and a CTA."
     }
   ]
 }
 
-Rules:
-- Mix platforms: mostly Instagram and Facebook, some LinkedIn and TikTok
-- Vary content types: Static, Carousel, Reel, Story
-- Vary angles: Promotional, Educational, Engagement, Behind the scenes, Testimonial
-- Captions must be punchy, brand-specific, never generic
-- No em dashes (--) in any caption`;
+Rules for the plan:
+- Platform mix: 3 Instagram, 2 Facebook, 1 LinkedIn, 1 TikTok (for 7 posts). Scale proportionally.
+- Content type mix: Static, Carousel, Reel, Story - rotate through them
+- Angle mix: Promotional, Educational, Engagement, Testimonial, Behind the scenes
+- Each caption must be UNIQUE and reference something SPECIFIC from the brand (product name, feature, location, price, etc.)
+- NO two captions should sound alike
+- NO generic captions like "level up your game" without specifics`;
 
-    const result = await aiJSON<{ brandSummary: string; plan: Array<{ id: string; day: number; platform: string; contentType: string; topic: string; angle: string; caption: string }> }>(system, user, 3000);
+    const result = await aiJSON<{ brandName?: string; brandSummary: string; plan: Array<{ id: string; day: number; platform: string; contentType: string; topic: string; angle: string; caption: string }> }>(system, user, 3000);
+
+    // Use the AI-extracted brand name if it returned one and a URL was scanned
+    const finalBrandName = (urlToCrawl && result.brandName) ? result.brandName : (brandName || "Your Brand");
 
     res.json({
-      brandName: brandName || "Your Brand",
+      brandName: finalBrandName,
       brandSummary: result.brandSummary ?? "",
       duration: label,
       totalPosts: result.plan?.length ?? 0,
