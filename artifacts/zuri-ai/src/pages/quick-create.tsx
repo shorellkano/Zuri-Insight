@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Instagram, Youtube, Linkedin, Facebook, Ghost, PlaySquare,
   ChevronDown, ChevronUp, Copy, Check, X, Plus, Calendar,
-  Info, Download, Bookmark, RefreshCw, Zap, Edit2, Loader2, Sparkles,
+  Info, Download, RefreshCw, Zap, Edit2, Loader2, Sparkles,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,11 +62,17 @@ const TOPIC_CHIPS = [
   { label: "New product", text: "Introducing our new [product] - " },
   { label: "Sale / Promo", text: "Limited time offer - " },
   { label: "Customer story", text: "A customer shared how [product] changed their " },
-  { label: "Behind scenes", text: "Ever wondered how we make our [product]? Here's a behind-the-scenes look at " },
-  { label: "Educational tip", text: "3 things you should know about " },
-  { label: "Announcement", text: "Big news - we're excited to announce " },
-  { label: "Celebration", text: "We're celebrating " },
+  { label: "Behind scenes", text: "Ever wondered how we make our [product]? Here is a behind-the-scenes look at " },
+  { label: "Quick Tip", text: "Quick tip for [your audience]: " },
+  { label: "Educational", text: "3 things you should know about " },
   { label: "Quote / Inspire", text: "This is what drives us every day: " },
+  { label: "Trending topic", text: "Everyone is talking about [topic]. Here is our take: " },
+  { label: "Announcement", text: "Big news - we are excited to announce " },
+  { label: "Product feature", text: "Have you tried [feature] yet? Here is what makes it different: " },
+  { label: "Poll / Question", text: "We want to hear from you! Which do you prefer: " },
+  { label: "Celebration", text: "We are celebrating " },
+  { label: "Testimonial", text: "[Customer name] said: [quote]. This is why we do what we do." },
+  { label: "How it works", text: "How [product/service] works in 3 simple steps: " },
 ];
 
 const TONES = [
@@ -166,22 +172,67 @@ function VariationCard({
   platform,
   format,
   index,
+  brandId,
 }: {
   variation: Variation;
   platform: string;
   format: string;
   index: number;
+  brandId?: string;
 }) {
   const [hashtags, setHashtags] = useState<string[]>(variation.hashtags ?? []);
   const [newTag, setNewTag] = useState("");
   const [addingTag, setAddingTag] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduled, setScheduled] = useState(false);
+  const { toast } = useToast();
 
   const platformLimit = PLATFORM_LIMITS[platform.toLowerCase()] ?? "";
   const platformNote =
     PLATFORM_RULES_NOTICE[platform.toLowerCase()]?.[format] ?? variation.platform_note;
   const showKeywords = ["youtube", "linkedin"].includes(platform.toLowerCase()) && variation.keywords?.length > 0;
 
-  const allText = `HOOK:\n${variation.hook}\n\nCAPTION:\n${variation.caption}\n\nHASHTAGS:\n${hashtags.join(" ")}${showKeywords ? `\n\nKEYWORDS:\n${variation.keywords.join(", ")}` : ""}`;
+  const allText = [
+    variation.hook,
+    "",
+    variation.caption,
+    "",
+    hashtags.join(" "),
+    ...(showKeywords && variation.keywords?.length ? ["", variation.keywords.join(", ")] : []),
+  ].join("\n").trim();
+
+  async function handleSchedule() {
+    if (!scheduleDate) { toast({ title: "Pick a date first", variant: "destructive" }); return; }
+    if (!brandId) { toast({ title: "No brand selected", variant: "destructive" }); return; }
+    setScheduling(true);
+    try {
+      const scheduledFor = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+      const res = await fetch("/api/schedule/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandId,
+          platform,
+          postType: format,
+          caption: `${variation.hook}\n\n${variation.caption}`,
+          hashtags,
+          scheduledFor,
+          timezone: "Africa/Lagos",
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to schedule");
+      setScheduled(true);
+      setScheduleOpen(false);
+      toast({ title: "Post scheduled!", description: `Saved to your content calendar for ${scheduleDate} at ${scheduleTime}.` });
+    } catch {
+      toast({ title: "Could not schedule", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setScheduling(false);
+    }
+  }
 
   function addTag() {
     const tag = newTag.trim().replace(/^#*/, "#");
@@ -337,13 +388,65 @@ function VariationCard({
         >
           <Download className="h-3.5 w-3.5" /> Download
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors">
-          <Calendar className="h-3.5 w-3.5" /> Schedule
-        </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors">
-          <Bookmark className="h-3.5 w-3.5" /> Save
+        <button
+          onClick={() => setScheduleOpen((o) => !o)}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors",
+            scheduled
+              ? "border-green-500 text-green-700 bg-green-50"
+              : scheduleOpen
+              ? "border-primary text-primary bg-primary/5"
+              : "border-border text-foreground hover:bg-muted"
+          )}
+        >
+          <Calendar className="h-3.5 w-3.5" />
+          {scheduled ? "Scheduled" : "Schedule"}
         </button>
       </div>
+
+      {/* Schedule panel */}
+      {scheduleOpen && (
+        <div className="mt-3 p-4 rounded-xl border border-border bg-muted/30 space-y-3">
+          <p className="text-xs font-semibold text-foreground">Schedule this post</p>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[140px]">
+              <label className="block text-xs text-muted-foreground mb-1">Date</label>
+              <input
+                type="date"
+                value={scheduleDate}
+                min={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="flex-1 min-w-[120px]">
+              <label className="block text-xs text-muted-foreground mb-1">Time (Lagos)</label>
+              <input
+                type="time"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSchedule}
+              disabled={scheduling || !scheduleDate}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {scheduling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calendar className="h-3.5 w-3.5" />}
+              {scheduling ? "Scheduling..." : "Confirm schedule"}
+            </button>
+            <button
+              onClick={() => setScheduleOpen(false)}
+              className="px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -730,6 +833,7 @@ export default function QuickCreate() {
                   platform={platform}
                   format={format}
                   index={activeTab}
+                  brandId={activeBrandId ?? undefined}
                 />
               )}
 

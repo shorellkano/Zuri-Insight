@@ -45,6 +45,23 @@ function platformRules(platform: string, format: string): string {
   return PLATFORM_RULES[key] ?? `Write compelling ${platform} ${format} content that grabs attention and drives engagement.`;
 }
 
+function stripEmDashes(text: string | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/\u2014/g, " - ")
+    .replace(/\u2013/g, " - ")
+    .replace(/--/g, " - ");
+}
+
+function cleanVariation(v: any): any {
+  return {
+    ...v,
+    hook: stripEmDashes(v?.hook),
+    caption: stripEmDashes(v?.caption),
+    platform_note: stripEmDashes(v?.platform_note),
+  };
+}
+
 router.post("/generate/quick-create", async (req, res): Promise<void> => {
   const { brandId, platform, format, topic, tone = "professional", additionalContext } = req.body ?? {};
 
@@ -96,7 +113,7 @@ Be specific to ${brand.name}'s voice. Never fabricate stats.`;
 
     const varList = result.slice(0, 3).map((v: any) => ({
       id: randomUUID(),
-      content: JSON.stringify(v),
+      content: JSON.stringify(cleanVariation(v)),
       platform,
       tone: format,
     }));
