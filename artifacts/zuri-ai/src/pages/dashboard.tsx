@@ -11,15 +11,15 @@ const API = (p: string) => `/api${p}`;
 
 function StatCard({ label, value, icon: Icon, sub }: { label: string; value: string | number; icon: React.ElementType; sub?: string }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6" data-testid={`stat-card-${label}`}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-muted-foreground font-medium">{label}</span>
-        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Icon className="h-4.5 w-4.5 text-primary" />
+    <div className="bg-card border border-border rounded-2xl p-4 sm:p-6" data-testid={`stat-card-${label}`}>
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <span className="text-xs sm:text-sm text-muted-foreground font-medium truncate pr-1">{label}</span>
+        <div className="h-7 w-7 sm:h-9 sm:w-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
         </div>
       </div>
-      <div className="text-3xl font-bold text-foreground mb-1">{value}</div>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+      <div className="text-2xl sm:text-3xl font-bold text-foreground mb-0.5 truncate">{value}</div>
+      {sub && <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{sub}</p>}
     </div>
   );
 }
@@ -136,12 +136,12 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Your website URL</p>
               <div className="flex items-center border border-border bg-background rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
-                <span className="px-3 text-muted-foreground text-sm shrink-0">https://</span>
+                <span className="px-2 sm:px-3 text-muted-foreground text-sm shrink-0">https://</span>
                 <input
                   value={url.replace(/^https?:\/\//, "")}
                   onChange={e => setUrl(e.target.value)}
                   placeholder="yourbrand.com"
-                  className="flex-1 py-2.5 pr-3 bg-transparent text-sm focus:outline-none"
+                  className="flex-1 py-2.5 pr-2 sm:pr-3 bg-transparent text-sm focus:outline-none min-w-0"
                   onKeyDown={e => e.key === "Enter" && generatePlan()}
                   onPaste={e => {
                     const pasted = e.clipboardData.getData("text").trim();
@@ -153,18 +153,18 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
                     }
                   }}
                 />
-                {loading && <Loader2 className="h-4 w-4 animate-spin text-primary mx-3 shrink-0" />}
+                {loading && <Loader2 className="h-4 w-4 animate-spin text-primary mx-2 sm:mx-3 shrink-0" />}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1">Paste your URL and scanning starts instantly</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Paste your URL to auto-scan, or type and press Enter</p>
             </div>
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Plan duration</p>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {(["1week", "1month", "3months"] as const).map(d => (
                   <button
                     key={d}
                     onClick={() => setDuration(d)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${duration === d ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
+                    className={`py-2 rounded-lg text-xs font-semibold border transition-all truncate ${duration === d ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
                   >
                     {d === "1week" ? "1 Week" : d === "1month" ? "1 Month" : "3 Months"}
                   </button>
@@ -172,7 +172,7 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
               </div>
             </div>
             <button
-              onClick={generatePlan}
+              onClick={() => generatePlan()}
               disabled={loading || (!url.trim() && !brandId)}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
@@ -189,10 +189,11 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
                   value={handle}
                   onChange={e => setHandle(e.target.value)}
                   placeholder="yourbrand"
-                  className="flex-1 px-3 py-2.5 bg-transparent text-sm focus:outline-none"
-                  onKeyDown={e => e.key === "Enter" && goSocial()}
+                  className="flex-1 px-3 py-2.5 bg-transparent text-sm focus:outline-none min-w-0"
+                  onKeyDown={e => e.key === "Enter" && handle.trim() && goSocial()}
                 />
               </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Enter your handle then tap Generate below</p>
             </div>
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Platform</p>
@@ -201,7 +202,7 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
                   <button
                     key={p}
                     onClick={() => setPlatform(p)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${platform === p ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${platform === p ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
                   >
                     {p}
                   </button>
@@ -214,7 +215,7 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               <Sparkles className="h-4 w-4" />
-              Generate Posts for @{handle || "yourbrand"}
+              <span className="truncate">Generate Posts for @{handle || "yourbrand"}</span>
             </button>
           </div>
         )}
@@ -293,7 +294,7 @@ export default function Dashboard() {
   const activeBrand = brands?.find(b => b.id === activeBrandId);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8" data-testid="dashboard-page">
+    <div className="px-4 py-5 sm:p-6 max-w-7xl mx-auto space-y-6 sm:space-y-8" data-testid="dashboard-page">
       <div>
         <h1 className="text-2xl font-bold text-foreground">{greeting()}, {name}</h1>
         <p className="text-muted-foreground mt-1">What do you want to create today?</p>
@@ -301,43 +302,43 @@ export default function Dashboard() {
 
       <SmartStart brandId={activeBrandId ?? undefined} websiteUrl={(activeBrand as any)?.websiteUrl ?? ""} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {statsLoading ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 sm:h-32 rounded-2xl" />)
         ) : (
           <>
-            <StatCard label="Total Brands" value={stats?.totalBrands ?? 0} icon={Layers} sub="Managed brand profiles" />
-            <StatCard label="Content Generated" value={stats?.totalContentGenerated ?? 0} icon={Sparkles} sub="All time" />
-            <StatCard label="This Month" value={stats?.contentThisMonth ?? 0} icon={TrendingUp} sub="Content pieces created" />
-            <StatCard label="Most Active" value={stats?.mostActiveBrand ?? "-"} icon={Activity} sub="Top brand by content" />
+            <StatCard label="Total Brands" value={stats?.totalBrands ?? 0} icon={Layers} sub="Brand profiles" />
+            <StatCard label="Generated" value={stats?.totalContentGenerated ?? 0} icon={Sparkles} sub="All time" />
+            <StatCard label="This Month" value={stats?.contentThisMonth ?? 0} icon={TrendingUp} sub="Content created" />
+            <StatCard label="Most Active" value={stats?.mostActiveBrand ?? "-"} icon={Activity} sub="Top brand" />
           </>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
             <h2 className="text-base font-semibold text-foreground">Quick Generate</h2>
             <Link href="/generate" data-testid="dashboard-all-formats-link">
               <span className="text-xs text-primary font-medium hover:underline flex items-center gap-1">All formats <ArrowRight className="h-3 w-3" /></span>
             </Link>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
             {contentTypes.map(({ label, href, color }) => (
               <Link key={label} href={href} data-testid={`quick-gen-${label}`}>
-                <div className="flex items-center gap-2.5 px-4 py-3.5 rounded-xl border border-border hover:border-primary/40 hover:bg-muted/50 transition-all cursor-pointer">
-                  <div className={`h-8 w-8 rounded-lg ${color} flex items-center justify-center text-xs font-bold shrink-0`}>
-                    <Sparkles className="h-3.5 w-3.5" />
+                <div className="flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl border border-border hover:border-primary/40 hover:bg-muted/50 transition-all cursor-pointer">
+                  <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-lg ${color} flex items-center justify-center shrink-0`}>
+                    <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                   </div>
-                  <span className="text-sm font-medium text-foreground">{label}</span>
+                  <span className="text-xs sm:text-sm font-medium text-foreground truncate">{label}</span>
                 </div>
               </Link>
             ))}
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-5">
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
             <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
           </div>
           {activityLoading ? (
@@ -365,8 +366,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
+      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
           <h2 className="text-base font-semibold text-foreground">Your Brands</h2>
           <Link href="/brands" data-testid="dashboard-brands-link">
             <span className="text-xs text-primary font-medium hover:underline flex items-center gap-1">View all <ArrowRight className="h-3 w-3" /></span>

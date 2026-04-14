@@ -28,20 +28,20 @@ export function Topbar() {
   }, []);
 
   return (
-    <header className="h-14 shrink-0 border-b border-border bg-card flex items-center justify-between px-4 gap-4" data-testid="topbar">
-      <div className="relative" ref={ref}>
+    <header className="h-14 shrink-0 border-b border-border bg-card flex items-center justify-between px-3 sm:px-4 gap-2 sm:gap-4" data-testid="topbar">
+      <div className="relative min-w-0" ref={ref}>
         <button
           onClick={() => setOpen((v) => !v)}
           data-testid="brand-switcher-btn"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-sm"
+          className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-sm max-w-[160px] sm:max-w-none"
         >
           <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
             {activeBrand ? activeBrand.name[0] : "?"}
           </div>
-          <span className="font-medium text-foreground max-w-[140px] truncate">
+          <span className="font-medium text-foreground max-w-[90px] sm:max-w-[140px] truncate">
             {activeBrand ? activeBrand.name : "Select a brand"}
           </span>
-          <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
+          <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-180")} />
         </button>
 
         {open && (
@@ -88,15 +88,15 @@ export function Topbar() {
           </div>
         ) : (
           <div className={cn(
-            "flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer",
+            "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer",
             isMax ? "bg-red-100 text-red-700" : isHigh ? "bg-amber-100 text-amber-800" : "bg-muted text-muted-foreground hover:text-foreground"
           )}>
             {isMax ? <AlertTriangle className="h-3 w-3 shrink-0" /> : <Zap className="h-3 w-3 shrink-0 text-amber-500" />}
             <span className="whitespace-nowrap">
-              {isMax ? "Limit reached" : `${usage.mediaPostsUsed} / ${usage.mediaPostsLimit} posts`}
+              {isMax ? "Limit reached" : `${usage.mediaPostsUsed}/${usage.mediaPostsLimit}`}
             </span>
             {!isMax && (
-              <div className="w-12 h-1.5 bg-background/60 rounded-full overflow-hidden">
+              <div className="hidden sm:block w-12 h-1.5 bg-background/60 rounded-full overflow-hidden">
                 <div
                   className={cn("h-full rounded-full transition-all", isHigh ? "bg-amber-500" : "bg-primary")}
                   style={{ width: `${pct}%` }}
