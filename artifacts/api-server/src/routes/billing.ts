@@ -15,6 +15,16 @@ const PAYSTACK_PLAN_CODES: Record<string, string> = {
   studio_annual_africa:  "PLN_asfwfv5nsw7cy2x",
 };
 
+// Amounts in kobo (NGN x 100) — must match your Paystack plan amounts exactly
+const PAYSTACK_AMOUNTS_KOBO: Record<string, number> = {
+  solo_monthly_africa:   950000,
+  solo_annual_africa:    9500400,
+  growth_monthly_africa: 2400000,
+  growth_annual_africa:  24000000,
+  studio_monthly_africa: 5500000,
+  studio_annual_africa:  54999600,
+};
+
 // ─── Stripe price IDs ─────────────────────────────────────────────────────────
 // Create these in dashboard.stripe.com → Products
 // Then replace price_xxxx with the real IDs
@@ -97,6 +107,7 @@ router.post("/billing/create-checkout", async (req, res): Promise<void> => {
       const profile = userId ? await getProfile(userId) : null;
       const email = profile?.email || req.body.email || "unknown@zuriai.co";
 
+      const amountKobo = PAYSTACK_AMOUNTS_KOBO[key] ?? 950000;
       const apiResp = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
@@ -105,6 +116,7 @@ router.post("/billing/create-checkout", async (req, res): Promise<void> => {
         },
         body: JSON.stringify({
           email,
+          amount: amountKobo,
           plan: planCode,
           reference,
           metadata: { userId: userId || "", planId, billingCycle: cycle },
