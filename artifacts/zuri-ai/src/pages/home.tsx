@@ -399,6 +399,13 @@ function TryZuriSection() {
   const [inputFocused, setInputFocused] = useState(false);
   const [btnHovered, setBtnHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 640);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const run = useCallback(async (rawUrl: string) => {
     const trimmed = rawUrl.trim();
@@ -481,73 +488,108 @@ function TryZuriSection() {
         </div>
 
         {/* URL Input */}
-        <div style={{
-          display: "flex",
-          gap: 10,
-          background: Z_SURFACE,
-          border: `1.5px solid ${inputFocused ? Z_ORANGE : Z_BORDER_STRONG}`,
-          borderRadius: 14,
-          padding: "6px 6px 6px 18px",
-          alignItems: "center",
-          transition: "border-color 0.2s, box-shadow 0.2s",
-          boxShadow: inputFocused ? `0 0 0 3px rgba(224,92,42,0.15)` : "none",
-          marginBottom: 14,
-        }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={Z_MUTED} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="url"
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            placeholder="yourwebsite.com or paste full URL..."
-            disabled={loading}
-            style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: Z_TEXT,
-              fontSize: 15,
-              fontFamily: "inherit",
-              padding: "8px 0",
-            }}
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !url.trim()}
-            onMouseEnter={() => setBtnHovered(true)}
-            onMouseLeave={() => setBtnHovered(false)}
-            style={{
-              background: loading || !url.trim() ? "rgba(224,92,42,0.4)" : btnHovered ? Z_ORANGE_DARK : Z_ORANGE,
-              border: "none",
-              color: "#fff",
-              padding: "10px 22px",
-              borderRadius: 10,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: loading || !url.trim() ? "not-allowed" : "pointer",
-              transition: "background 0.2s",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            {loading ? (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 0.8s linear infinite" }}>
-                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                </svg>
-                Reading brand...
-              </>
-            ) : "Generate Content"}
-          </button>
+        <div style={{ marginBottom: 14 }}>
+          <div style={{
+            display: "flex",
+            gap: 10,
+            background: Z_SURFACE,
+            border: `1.5px solid ${inputFocused ? Z_ORANGE : Z_BORDER_STRONG}`,
+            borderRadius: 14,
+            padding: "6px 6px 6px 18px",
+            alignItems: "center",
+            transition: "border-color 0.2s, box-shadow 0.2s",
+            boxShadow: inputFocused ? `0 0 0 3px rgba(224,92,42,0.15)` : "none",
+            marginBottom: isMobile ? 10 : 0,
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={Z_MUTED} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              ref={inputRef}
+              type="url"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              placeholder="yourwebsite.com or paste full URL..."
+              disabled={loading}
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                color: Z_TEXT,
+                fontSize: 15,
+                fontFamily: "inherit",
+                padding: "8px 0",
+                minWidth: 0,
+              }}
+            />
+            {!isMobile && (
+              <button
+                onClick={handleSubmit}
+                disabled={loading || !url.trim()}
+                onMouseEnter={() => setBtnHovered(true)}
+                onMouseLeave={() => setBtnHovered(false)}
+                style={{
+                  background: loading || !url.trim() ? "rgba(224,92,42,0.4)" : btnHovered ? Z_ORANGE_DARK : Z_ORANGE,
+                  border: "none",
+                  color: "#fff",
+                  padding: "10px 22px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: loading || !url.trim() ? "not-allowed" : "pointer",
+                  transition: "background 0.2s",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                {loading ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 0.8s linear infinite" }}>
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                    Reading brand...
+                  </>
+                ) : "Generate Content"}
+              </button>
+            )}
+          </div>
+          {isMobile && (
+            <button
+              onClick={handleSubmit}
+              disabled={loading || !url.trim()}
+              style={{
+                width: "100%",
+                background: loading || !url.trim() ? "rgba(224,92,42,0.4)" : Z_ORANGE,
+                border: "none",
+                color: "#fff",
+                padding: "13px 22px",
+                borderRadius: 12,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: loading || !url.trim() ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              {loading ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 0.8s linear infinite" }}>
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                  Reading brand...
+                </>
+              ) : "Generate Content"}
+            </button>
+          )}
         </div>
 
         <p style={{ fontSize: 12, color: Z_FAINT, textAlign: "center", marginBottom: 40 }}>
@@ -1078,8 +1120,9 @@ export default function Home() {
               data-testid={`feature-card-${card.title}`}
               style={{
                 background: "rgba(255,255,255,0.025)",
-                padding: "36px 32px",
+                padding: isMobile ? "24px 20px" : "36px 32px",
                 transition: "background 0.2s",
+                overflow: "hidden",
               }}
               onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
               onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.025)")}
@@ -1097,6 +1140,9 @@ export default function Home() {
                   padding: "4px 10px",
                   borderRadius: 100,
                   letterSpacing: "0.04em",
+                  whiteSpace: "normal",
+                  wordBreak: "break-word",
+                  maxWidth: "100%",
                 }}>
                   {card.tag}
                 </span>
