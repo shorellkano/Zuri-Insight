@@ -7,12 +7,12 @@ const router = Router();
 // Create these in dashboard.paystack.com → Subscriptions → Plans
 // Then replace PLN_xxxx with the real codes
 const PAYSTACK_PLAN_CODES: Record<string, string> = {
-  solo_monthly_africa: "PLN_xxxx",
-  growth_monthly_africa: "PLN_xxxx",
-  studio_monthly_africa: "PLN_xxxx",
-  solo_annual_africa: "PLN_xxxx",
-  growth_annual_africa: "PLN_xxxx",
-  studio_annual_africa: "PLN_xxxx",
+  solo_monthly_africa:   "PLN_1xkj0lqmf7ber7c",
+  solo_annual_africa:    "PLN_sn2z5po8u5k6vfq",
+  growth_monthly_africa: "PLN_ruk7ihis1gj9c5q",
+  growth_annual_africa:  "PLN_5n7la7ekszv8ucj",
+  studio_monthly_africa: "PLN_sn2z5po8u5k6vfq",
+  studio_annual_africa:  "PLN_asfwfv5nsw7cy2x",
 };
 
 // ─── Stripe price IDs ─────────────────────────────────────────────────────────
