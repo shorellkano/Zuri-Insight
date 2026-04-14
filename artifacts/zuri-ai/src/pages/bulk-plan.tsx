@@ -49,18 +49,7 @@ export default function BulkPlan() {
   const activeBrand = brands?.find(b => b.id === activeBrandId);
   const { toast } = useToast();
 
-  if (!planLoading && !hasFeature('bulk_planning')) {
-    return (
-      <div className="p-6 max-w-3xl mx-auto">
-        <UpgradePrompt
-          feature="Bulk Content Planning"
-          requiredPlan="solo"
-          description="Plan a full week or month of content in one go. Available on Solo plan and above."
-          variant="page"
-        />
-      </div>
-    );
-  }
+  const isGated = !planLoading && !hasFeature('bulk_planning');
 
   const [step, setStep] = useState<"setup" | "suggestion" | "generating" | "results">("setup");
   const [period, setPeriod] = useState<"week" | "month" | "custom">("week");
@@ -173,6 +162,19 @@ export default function BulkPlan() {
   const total = items.length;
   const calendarItems = items.filter(i => i.calendarEvent);
   const doneCount = Object.keys(generatedItems).length;
+
+  if (isGated) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <UpgradePrompt
+          feature="Bulk Content Planning"
+          requiredPlan="solo"
+          description="Plan a full week or month of content in one go. Available on Solo plan and above."
+          variant="page"
+        />
+      </div>
+    );
+  }
 
   if (!activeBrandId || !activeBrand) {
     return (

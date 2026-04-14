@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays, Zap, Camera } from "lucide-react";
+import { LayoutDashboard, Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays, Zap, Camera, CreditCard } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -19,6 +19,7 @@ const navItems = [
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/content", label: "Content Library", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/pricing", label: "Pricing", icon: CreditCard },
 ];
 
 const planColors: Record<string, string> = {
@@ -153,7 +154,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <SidebarSheet open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <Topbar />
+          <Topbar onOpenSidebar={() => setMobileOpen(true)} />
           <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 bg-[#FAFAF9]" data-testid="main-content">
             <div className="max-w-screen-xl mx-auto">
               <QuickSetupGate>{children}</QuickSetupGate>

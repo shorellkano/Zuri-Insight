@@ -70,19 +70,6 @@ export default function ContentCalendar() {
   const activeBrand = brands?.find(b => b.id === activeBrandId);
   const qc = useQueryClient();
 
-  if (!planLoading && !hasFeature('content_calendar')) {
-    return (
-      <div className="p-6 max-w-3xl mx-auto">
-        <UpgradePrompt
-          feature="Content Calendar"
-          requiredPlan="solo"
-          description="View and manage all your scheduled posts in a calendar view. Available on Solo plan and above."
-          variant="page"
-        />
-      </div>
-    );
-  }
-
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -91,17 +78,19 @@ export default function ContentCalendar() {
   const [showScheduleSheet, setShowScheduleSheet] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<string | null>(null);
 
+  const isGated = !planLoading && !hasFeature('content_calendar');
+
   const { data: posts = [] } = useQuery<ScheduledPost[]>({
     queryKey: ["scheduled-posts", activeBrandId],
     queryFn: () => fetch(API(`/brands/${activeBrandId}/scheduled-posts`)).then(r => r.json()),
-    enabled: !!activeBrandId,
+    enabled: !!activeBrandId && !isGated,
     staleTime: 30000,
   });
 
   const { data: stats } = useQuery<CalendarStats>({
     queryKey: ["calendar-stats", activeBrandId],
     queryFn: () => fetch(API(`/brands/${activeBrandId}/calendar-stats`)).then(r => r.json()),
-    enabled: !!activeBrandId,
+    enabled: !!activeBrandId && !isGated,
     staleTime: 30000,
   });
 
@@ -115,6 +104,19 @@ export default function ContentCalendar() {
     if (activePlatforms.size === 0) return posts;
     return posts.filter(p => activePlatforms.has(p.platform));
   }, [posts, activePlatforms]);
+
+  if (isGated) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <UpgradePrompt
+          feature="Content Calendar"
+          requiredPlan="solo"
+          description="View and manage all your scheduled posts in a calendar view. Available on Solo plan and above."
+          variant="page"
+        />
+      </div>
+    );
+  }
 
   function postsForDay(day: number) {
     return filteredPosts.filter(p => {

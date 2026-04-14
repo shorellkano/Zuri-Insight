@@ -1,12 +1,12 @@
 import { Link } from "wouter";
-import { ChevronDown, Plus, Zap, AlertTriangle } from "lucide-react";
+import { ChevronDown, Plus, Zap, AlertTriangle, Menu } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useListBrands } from "@workspace/api-client-react";
 import { useBrand } from "@/context/brand-context";
 import { cn } from "@/lib/utils";
 import { usePlan } from "@/hooks/use-plan";
 
-export function Topbar() {
+export function Topbar({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   const { activeBrandId, setActiveBrandId } = useBrand();
   const { data: brands } = useListBrands();
   const { planId, plan, usage } = usePlan();
@@ -29,52 +29,66 @@ export function Topbar() {
 
   return (
     <header className="h-14 shrink-0 border-b border-border bg-card flex items-center justify-between px-3 sm:px-4 gap-2 sm:gap-4" data-testid="topbar">
-      <div className="relative min-w-0" ref={ref}>
+      <div className="flex items-center gap-2 min-w-0">
         <button
-          onClick={() => setOpen((v) => !v)}
-          data-testid="brand-switcher-btn"
-          className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-sm max-w-[160px] sm:max-w-none"
+          className="lg:hidden p-1.5 rounded-md hover:bg-muted transition-colors shrink-0"
+          onClick={onOpenSidebar}
+          aria-label="Open navigation"
         >
-          <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-            {activeBrand ? activeBrand.name[0] : "?"}
-          </div>
-          <span className="font-medium text-foreground max-w-[90px] sm:max-w-[140px] truncate">
-            {activeBrand ? activeBrand.name : "Select a brand"}
-          </span>
-          <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-180")} />
+          <Menu className="h-5 w-5 text-foreground" />
         </button>
 
-        {open && (
-          <div className="absolute top-full left-0 mt-1 w-56 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden" data-testid="brand-switcher-dropdown">
-            <div className="py-1">
-              {brands?.map((brand) => (
-                <button
-                  key={brand.id}
-                  onClick={() => { setActiveBrandId(brand.id); setOpen(false); }}
-                  data-testid={`brand-option-${brand.id}`}
-                  className={cn(
-                    "w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors text-left",
-                    brand.id === activeBrandId && "bg-primary/5 text-primary font-medium"
-                  )}
-                >
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
-                    {brand.name[0]}
-                  </div>
-                  <span className="truncate">{brand.name}</span>
-                  {brand.id === activeBrandId && <span className="ml-auto text-[10px] text-primary">✓</span>}
-                </button>
-              ))}
-              <div className="border-t border-border mt-1 pt-1">
-                <Link href="/brands/new" onClick={() => setOpen(false)}>
-                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer" data-testid="brand-switcher-add-brand">
-                    <Plus className="h-3.5 w-3.5" />
-                    Add brand
-                  </div>
-                </Link>
+        <Link href="/dashboard" className="lg:hidden shrink-0">
+          <img src="/zuri-logo-head.png" alt="Zuri AI" className="h-7 w-7 object-contain" />
+        </Link>
+
+        <div className="relative min-w-0" ref={ref}>
+          <button
+            onClick={() => setOpen((v) => !v)}
+            data-testid="brand-switcher-btn"
+            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors text-sm max-w-[160px] sm:max-w-none"
+          >
+            <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+              {activeBrand ? activeBrand.name[0] : "?"}
+            </div>
+            <span className="font-medium text-foreground max-w-[90px] sm:max-w-[140px] truncate">
+              {activeBrand ? activeBrand.name : "Select a brand"}
+            </span>
+            <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-180")} />
+          </button>
+
+          {open && (
+            <div className="absolute top-full left-0 mt-1 w-56 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden" data-testid="brand-switcher-dropdown">
+              <div className="py-1">
+                {brands?.map((brand) => (
+                  <button
+                    key={brand.id}
+                    onClick={() => { setActiveBrandId(brand.id); setOpen(false); }}
+                    data-testid={`brand-option-${brand.id}`}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted transition-colors text-left",
+                      brand.id === activeBrandId && "bg-primary/5 text-primary font-medium"
+                    )}
+                  >
+                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                      {brand.name[0]}
+                    </div>
+                    <span className="truncate">{brand.name}</span>
+                    {brand.id === activeBrandId && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                  </button>
+                ))}
+                <div className="border-t border-border mt-1 pt-1">
+                  <Link href="/brands/new" onClick={() => setOpen(false)}>
+                    <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer" data-testid="brand-switcher-add-brand">
+                      <Plus className="h-3.5 w-3.5" />
+                      Add brand
+                    </div>
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Link href="/settings/billing" data-testid="credits-display">

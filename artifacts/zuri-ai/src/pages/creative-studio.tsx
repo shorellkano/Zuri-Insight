@@ -93,18 +93,7 @@ export default function CreativeStudio() {
   const activeBrand = brands?.find(b => b.id === activeBrandId);
   const [showPrefsSheet, setShowPrefsSheet] = useState(false);
 
-  if (!planLoading && !hasFeature('creative_studio')) {
-    return (
-      <div className="p-6 max-w-3xl mx-auto">
-        <UpgradePrompt
-          feature="Creative Studio"
-          requiredPlan="growth"
-          description="Design carousels, quote cards, announcements, and branded visuals. Available on Growth plan and above."
-          variant="page"
-        />
-      </div>
-    );
-  }
+  const isGated = !planLoading && !hasFeature('creative_studio');
 
   const { data: prefs, refetch: refetchPrefs } = useQuery<{ designStyle?: string; includeLogo?: string; brandColors?: string[] } | null>({
     queryKey: ["visual-prefs", activeBrandId],
@@ -120,6 +109,19 @@ export default function CreativeStudio() {
 
   const hasPrefs = !!prefs;
   const needsSetup = activeBrandId && !hasPrefs;
+
+  if (isGated) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <UpgradePrompt
+          feature="Creative Studio"
+          requiredPlan="growth"
+          description="Design carousels, quote cards, announcements, and branded visuals. Available on Growth plan and above."
+          variant="page"
+        />
+      </div>
+    );
+  }
 
   if (!activeBrandId || !activeBrand) {
     return (
