@@ -11,7 +11,7 @@ const PAYSTACK_PLAN_CODES: Record<string, string> = {
   solo_annual_africa:    "PLN_sn2z5po8u5k6vfq",
   growth_monthly_africa: "PLN_ruk7ihis1gj9c5q",
   growth_annual_africa:  "PLN_5n7la7ekszv8ucj",
-  studio_monthly_africa: "PLN_sn2z5po8u5k6vfq",
+  studio_monthly_africa: "PLN_ocl0ecb5awkoic5",
   studio_annual_africa:  "PLN_asfwfv5nsw7cy2x",
 };
 
