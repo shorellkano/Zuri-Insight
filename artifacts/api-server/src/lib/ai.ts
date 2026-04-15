@@ -1,15 +1,19 @@
 import OpenAI from "openai";
 
-const FREE_MODELS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "nousresearch/hermes-3-llama-3.1-405b:free",
-  "openai/gpt-oss-120b:free",
-  "google/gemma-4-31b-it:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "qwen/qwen3-next-80b-a3b-instruct:free",
+const PRIMARY_MODELS = [
+  "anthropic/claude-sonnet-4-5",
+  "anthropic/claude-3.5-sonnet",
+  "anthropic/claude-3-haiku",
 ];
 
-const VISION_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free";
+const FALLBACK_MODELS = [
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemma-4-31b-it:free",
+];
+
+const ALL_MODELS = [...PRIMARY_MODELS, ...FALLBACK_MODELS];
+
+const VISION_MODEL = "anthropic/claude-3-haiku";
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -33,11 +37,11 @@ function isRateLimited(err: any): boolean {
   );
 }
 
-export async function aiComplete(system: string, user: string, maxTokens = 600): Promise<string> {
+export async function aiComplete(system: string, user: string, maxTokens = 900): Promise<string> {
   const client = getClient();
   let lastErr: any;
 
-  for (const model of FREE_MODELS) {
+  for (const model of ALL_MODELS) {
     try {
       const response = await client.chat.completions.create({
         model,
@@ -52,7 +56,7 @@ export async function aiComplete(system: string, user: string, maxTokens = 600):
       return content;
     } catch (err: any) {
       lastErr = err;
-      if (isRateLimited(err)) continue;
+      if (isRateLimited(err) || err?.status === 402 || err?.status === 503) continue;
       throw err;
     }
   }
@@ -60,7 +64,7 @@ export async function aiComplete(system: string, user: string, maxTokens = 600):
   throw lastErr ?? new Error("All AI models are currently busy. Please try again in a moment.");
 }
 
-export async function aiVision(system: string, prompt: string, images: string[], maxTokens = 600): Promise<string> {
+export async function aiVision(system: string, prompt: string, images: string[], maxTokens = 900): Promise<string> {
   const client = getClient();
   const imageContent = images.map(dataUrl => ({
     type: "image_url" as const,
