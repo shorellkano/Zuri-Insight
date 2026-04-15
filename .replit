@@ -4,7 +4,7 @@ modules = ["nodejs-24", "postgresql-16"]
 router = "application"
 deploymentTarget = "autoscale"
 build = ["sh", "-c", "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/zuri-ai run build && pnpm --filter @workspace/api-server run build"]
-run = ["sh", "-c", "NODE_ENV=production pnpm --filter @workspace/api-server run start"]
+run = ["pnpm", "start"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
