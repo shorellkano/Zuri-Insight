@@ -37,6 +37,23 @@ export default function CreativeStudioCarousel() {
       .catch(() => {});
   }, []);
 
+  // Auto-load saved logo URL from brand visual prefs
+  useEffect(() => {
+    if (!activeBrandId) return;
+    fetch(API(`/brands/${activeBrandId}/visual-prefs`))
+      .then(r => r.ok ? r.json() : null)
+      .then(prefs => {
+        if (!prefs) return;
+        if (prefs.logoUrl) {
+          setCustomLogoUrl(prefs.logoUrl);
+          setLogoMode("image");
+        }
+        if (prefs.includeLogo === "always") setShowBrandName(true);
+        if (prefs.includeLogo === "never") setShowBrandName(false);
+      })
+      .catch(() => {});
+  }, [activeBrandId]);
+
   async function generate() {
     if (!activeBrandId) return;
     setLoading(true);

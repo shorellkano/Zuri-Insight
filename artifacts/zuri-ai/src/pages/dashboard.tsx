@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Sparkles, Layers, BookOpen, TrendingUp, ArrowRight, Activity, Globe, AtSign, ChevronRight, Loader2, Calendar, Copy, CheckCircle2, X } from "lucide-react";
+import { Sparkles, Layers, TrendingUp, ArrowRight, Activity, Globe, AtSign, Loader2, Calendar, Copy, CheckCircle2, X } from "lucide-react";
 import { useGetDashboardStats, useGetDashboardActivity, useListBrands } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/auth-context";
@@ -52,11 +52,10 @@ const platformColors: Record<string, string> = {
 };
 
 function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: string }) {
-  const [mode, setMode] = useState<"website" | "social">("website");
   const [url, setUrl] = useState(websiteUrl ?? "");
   const [handle, setHandle] = useState("");
   const [platform, setPlatform] = useState("Instagram");
-  const [duration, setDuration] = useState<"1week" | "1month" | "3months">("1week");
+  const [duration, setDuration] = useState<"1week" | "1month" | "3months">("1month");
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<QuickPlan | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -102,128 +101,143 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
   }
 
   return (
-    <div className="bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20 rounded-2xl overflow-hidden">
-      <div className="p-6 pb-4">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
-            <Sparkles className="h-4.5 w-4.5 text-white" />
+    <div className="space-y-4">
+      {/* Hero heading */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 px-6 py-5">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
+            <Sparkles className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h2 className="font-bold text-foreground text-base">Get content instantly</h2>
-            <p className="text-xs text-muted-foreground">Drop your website or social handle - Zuri does the rest</p>
-          </div>
+          <h2 className="text-lg font-bold text-foreground">Generate your content plan now</h2>
         </div>
-
-        <div className="flex gap-1 mb-5 bg-muted/50 p-1 rounded-xl w-fit">
-          <button
-            onClick={() => { setMode("website"); setPlan(null); }}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${mode === "website" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Globe className="h-3.5 w-3.5" />
-            From Website
-          </button>
-          <button
-            onClick={() => { setMode("social"); setPlan(null); }}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${mode === "social" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <AtSign className="h-3.5 w-3.5" />
-            From Socials
-          </button>
-        </div>
-
-        {mode === "website" ? (
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Your website URL</p>
-              <div className="flex items-center border border-border bg-background rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
-                <span className="px-2 sm:px-3 text-muted-foreground text-sm shrink-0">https://</span>
-                <input
-                  value={url.replace(/^https?:\/\//, "")}
-                  onChange={e => setUrl(e.target.value)}
-                  placeholder="yourbrand.com"
-                  className="flex-1 py-2.5 pr-2 sm:pr-3 bg-transparent text-sm focus:outline-none min-w-0"
-                  onKeyDown={e => e.key === "Enter" && generatePlan()}
-                  onPaste={e => {
-                    const pasted = e.clipboardData.getData("text").trim();
-                    if (pasted.includes(".")) {
-                      const clean = pasted.replace(/^https?:\/\//, "");
-                      setUrl(clean);
-                      e.preventDefault();
-                      setTimeout(() => generatePlan(clean), 50);
-                    }
-                  }}
-                />
-                {loading && <Loader2 className="h-4 w-4 animate-spin text-primary mx-2 sm:mx-3 shrink-0" />}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">Paste your URL to auto-scan, or type and press Enter</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Plan duration</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(["1week", "1month", "3months"] as const).map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setDuration(d)}
-                    className={`py-2 rounded-lg text-xs font-semibold border transition-all truncate ${duration === d ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
-                  >
-                    {d === "1week" ? "1 Week" : d === "1month" ? "1 Month" : "3 Months"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={() => generatePlan()}
-              disabled={loading || (!url.trim() && !brandId)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Scanning your brand...</> : <><Sparkles className="h-4 w-4" />Generate Content Plan</>}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Your social handle</p>
-              <div className="flex items-center border border-border bg-background rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
-                <span className="px-3 py-2.5 bg-muted text-muted-foreground text-sm border-r border-border shrink-0">@</span>
-                <input
-                  value={handle}
-                  onChange={e => setHandle(e.target.value)}
-                  placeholder="yourbrand"
-                  className="flex-1 px-3 py-2.5 bg-transparent text-sm focus:outline-none min-w-0"
-                  onKeyDown={e => e.key === "Enter" && handle.trim() && goSocial()}
-                />
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">Enter your handle then tap Generate below</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Platform</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {["Instagram", "TikTok", "Facebook", "Twitter/X", "LinkedIn"].map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPlatform(p)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${platform === p ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={goSocial}
-              disabled={!handle.trim()}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span className="truncate">Generate Posts for @{handle || "yourbrand"}</span>
-            </button>
-          </div>
-        )}
+        <p className="text-sm text-muted-foreground ml-11">
+          Give Zuri your website or social handle and it will scan your brand, understand your voice, and build you a ready-to-post content plan.
+        </p>
       </div>
 
+      {/* Two entry points */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* Card 1 — From Website */}
+        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Globe className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">From your website</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Paste your website link. Zuri will read your brand and write a full content plan - ready to post.
+              </p>
+            </div>
+          </div>
+
+          {/* URL input */}
+          <div className="flex items-center border border-border bg-background rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
+            <span className="px-3 text-muted-foreground text-sm shrink-0 border-r border-border py-3 bg-muted/50">https://</span>
+            <input
+              value={url.replace(/^https?:\/\//, "")}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="yourbrand.com"
+              className="flex-1 px-3 py-3 bg-transparent text-sm focus:outline-none min-w-0"
+              onKeyDown={e => e.key === "Enter" && generatePlan()}
+              onPaste={e => {
+                const pasted = e.clipboardData.getData("text").trim();
+                if (pasted.includes(".")) {
+                  const clean = pasted.replace(/^https?:\/\//, "");
+                  setUrl(clean);
+                  e.preventDefault();
+                  setTimeout(() => generatePlan(clean), 50);
+                }
+              }}
+            />
+            {loading && <Loader2 className="h-4 w-4 animate-spin text-primary mx-3 shrink-0" />}
+          </div>
+
+          {/* Duration picker */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">How much content do you want?</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(["1week", "1month", "3months"] as const).map(d => (
+                <button
+                  key={d}
+                  onClick={() => setDuration(d)}
+                  className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all ${duration === d ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                >
+                  {d === "1week" ? "1 Week" : d === "1month" ? "1 Month" : "3 Months"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={() => generatePlan()}
+            disabled={loading || (!url.trim() && !brandId)}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {loading
+              ? <><Loader2 className="h-4 w-4 animate-spin" />Scanning your brand...</>
+              : <><Sparkles className="h-4 w-4" />Build My Content Plan</>}
+          </button>
+        </div>
+
+        {/* Card 2 — From Socials */}
+        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
+              <AtSign className="h-5 w-5 text-secondary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">From your social handle</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Enter your Instagram, TikTok or Facebook handle. Zuri will study your vibe and write posts that match it.
+              </p>
+            </div>
+          </div>
+
+          {/* Handle input */}
+          <div className="flex items-center border border-border bg-background rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-secondary/20 focus-within:border-secondary transition-colors">
+            <span className="px-3 py-3 bg-muted/50 text-muted-foreground text-base font-bold border-r border-border shrink-0">@</span>
+            <input
+              value={handle}
+              onChange={e => setHandle(e.target.value)}
+              placeholder="yourbrand"
+              className="flex-1 px-3 py-3 bg-transparent text-sm focus:outline-none min-w-0"
+              onKeyDown={e => e.key === "Enter" && handle.trim() && goSocial()}
+            />
+          </div>
+
+          {/* Platform picker */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Which platform?</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {["Instagram", "TikTok", "Facebook", "Twitter/X", "LinkedIn"].map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPlatform(p)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${platform === p ? "bg-secondary text-secondary-foreground border-secondary" : "border-border text-muted-foreground hover:border-secondary/40 hover:text-foreground"}`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={goSocial}
+            disabled={!handle.trim()}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-secondary text-secondary-foreground rounded-xl font-bold text-sm hover:bg-secondary/90 disabled:opacity-50 transition-colors mt-auto"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span className="truncate">Write Posts for @{handle || "yourbrand"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Plan results */}
       {plan && (
-        <div className="border-t border-border">
-          <div className="p-6 pb-4">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="p-5 pb-4">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="font-bold text-foreground text-sm">{plan.brandName} - {plan.duration} Content Plan</h3>

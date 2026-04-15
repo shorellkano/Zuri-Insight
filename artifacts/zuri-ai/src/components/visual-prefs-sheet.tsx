@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Check } from "lucide-react";
+import { X, Check, Upload, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,7 +15,7 @@ const DESIGN_STYLES = [
 
 interface VisualPrefsSheetProps {
   brandId: string;
-  existingPrefs?: { designStyle?: string; includeLogo?: string; brandColors?: string[] } | null;
+  existingPrefs?: { designStyle?: string; includeLogo?: string; logoUrl?: string; brandColors?: string[] } | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -23,6 +23,7 @@ interface VisualPrefsSheetProps {
 export function VisualPrefsSheet({ brandId, existingPrefs, onClose, onSaved }: VisualPrefsSheetProps) {
   const { toast } = useToast();
   const [includeLogo, setIncludeLogo] = useState<string>(existingPrefs?.includeLogo ?? "ask");
+  const [logoUrl, setLogoUrl] = useState<string>(existingPrefs?.logoUrl ?? "");
   const [designStyle, setDesignStyle] = useState<string>(existingPrefs?.designStyle ?? "professional");
   const [colors, setColors] = useState<string[]>(existingPrefs?.brandColors?.length ? existingPrefs.brandColors : ["#D97706", "#1C1917"]);
   const [saving, setSaving] = useState(false);
@@ -43,10 +44,10 @@ export function VisualPrefsSheet({ brandId, existingPrefs, onClose, onSaved }: V
       const r = await fetch(API(`/brands/${brandId}/visual-prefs`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ includeLogo, brandColors: colors, designStyle }),
+        body: JSON.stringify({ includeLogo, logoUrl: logoUrl.trim() || null, brandColors: colors, designStyle }),
       });
       if (!r.ok) throw new Error("Failed to save");
-      toast({ title: "Preferences saved" });
+      toast({ title: "Brand assets saved", description: "Your logo and design preferences will be used in all future designs." });
       onSaved();
     } catch {
       toast({ title: "Failed to save preferences", variant: "destructive" });
@@ -60,39 +61,84 @@ export function VisualPrefsSheet({ brandId, existingPrefs, onClose, onSaved }: V
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="absolute inset-y-0 right-0 w-full max-w-md bg-background border-l border-border flex flex-col shadow-xl z-10">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="font-semibold text-foreground">Visual Preferences</h2>
+          <div>
+            <h2 className="font-semibold text-foreground">Brand Assets & Visual Style</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Saved once, applied to every design Zuri creates for you</p>
+          </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
+
+          {/* Logo section */}
           <div>
-            <label className="text-sm font-semibold text-foreground block mb-1">Include your logo in designs?</label>
-            <p className="text-xs text-muted-foreground mb-3">Zuri will apply this to every design created for your brand.</p>
-            <div className="grid grid-cols-3 gap-3">
+            <label className="text-sm font-semibold text-foreground block mb-1">Your brand logo</label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Upload your logo once and Zuri will place it on every carousel, quote card, and announcement automatically.
+            </p>
+
+            {/* Logo preference */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
               {[
-                { value: "always", label: "Always include" },
+                { value: "always", label: "Always add logo" },
                 { value: "ask", label: "Ask me each time" },
-                { value: "never", label: "No - colours only" },
+                { value: "never", label: "Colours only" },
               ].map(opt => (
                 <button
                   key={opt.value}
                   onClick={() => setIncludeLogo(opt.value)}
                   className={cn(
-                    "flex flex-col items-center justify-center p-4 rounded-xl border-2 text-center text-xs font-medium transition-all gap-2",
+                    "flex flex-col items-center justify-center p-3 rounded-xl border-2 text-center text-xs font-medium transition-all gap-1.5",
                     includeLogo === opt.value
                       ? "border-primary bg-primary/8 text-primary"
                       : "border-border text-muted-foreground hover:border-foreground/30"
                   )}
                 >
-                  {includeLogo === opt.value && <Check className="h-4 w-4" />}
+                  {includeLogo === opt.value && <Check className="h-3.5 w-3.5" />}
                   {opt.label}
                 </button>
               ))}
             </div>
+
+            {/* Logo URL input — show when not "never" */}
+            {includeLogo !== "never" && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Logo image URL</label>
+                <div className={cn(
+                  "flex items-center border rounded-xl overflow-hidden transition-colors",
+                  logoUrl ? "border-primary/40 bg-primary/3" : "border-border bg-background"
+                )}>
+                  <div className="px-3 py-2.5 bg-muted/50 border-r border-border shrink-0">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Logo preview" className="h-6 w-6 object-contain rounded" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      <Image className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={logoUrl}
+                    onChange={e => setLogoUrl(e.target.value)}
+                    placeholder="https://yourbrand.com/logo.png"
+                    className="flex-1 px-3 py-2.5 bg-transparent text-sm focus:outline-none min-w-0"
+                  />
+                  {logoUrl && (
+                    <button onClick={() => setLogoUrl("")} className="px-2 text-muted-foreground hover:text-foreground transition-colors">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Use a direct link to your logo image (PNG with transparent background works best).
+                  You can host it on your website, Google Drive (set to public), or Dropbox.
+                </p>
+              </div>
+            )}
           </div>
 
+          {/* Brand colours */}
           <div>
             <label className="text-sm font-semibold text-foreground block mb-1">Brand colours</label>
             <p className="text-xs text-muted-foreground mb-3">Up to 3 hex colours. These are applied to every design.</p>
@@ -123,6 +169,7 @@ export function VisualPrefsSheet({ brandId, existingPrefs, onClose, onSaved }: V
             </div>
           </div>
 
+          {/* Design style */}
           <div>
             <label className="text-sm font-semibold text-foreground block mb-1">Design style</label>
             <p className="text-xs text-muted-foreground mb-3">Sets the overall look and feel for all designs.</p>
@@ -152,7 +199,7 @@ export function VisualPrefsSheet({ brandId, existingPrefs, onClose, onSaved }: V
             disabled={saving}
             className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
           >
-            {saving ? "Saving..." : "Save preferences"}
+            {saving ? "Saving..." : "Save brand assets"}
           </button>
         </div>
       </div>
