@@ -16,6 +16,7 @@ import ugcVideoRouter from "./ugc-video";
 import canvaApiRouter from "./canva-api";
 import billingRouter from "./billing";
 import gammaRouter from "./gamma";
+import sevenDayRouter from "./seven-day";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(ugcVideoRouter);
 router.use(canvaApiRouter);
 router.use(billingRouter);
 router.use(gammaRouter);
+router.use(sevenDayRouter);
 
 export default router;

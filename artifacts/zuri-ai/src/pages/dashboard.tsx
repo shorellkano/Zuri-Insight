@@ -352,6 +352,26 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-1">What do you want to create today?</p>
       </div>
 
+      {/* 7-Day Starter — Featured banner */}
+      <Link href="/7-day-starter">
+        <div className="group relative overflow-hidden flex items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground cursor-pointer hover:opacity-95 transition-all shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0 text-2xl">🗓️</div>
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="font-black text-base leading-tight">7-Day Content Starter</p>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 font-bold uppercase tracking-wide">New</span>
+              </div>
+              <p className="text-sm text-primary-foreground/80">Instagram + TikTok. 7 days of Reels, Carousels, Stories and UGC scripts — ready to post.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 transition-colors shrink-0">
+            <span className="text-sm font-bold">Start</span>
+            <ArrowRight className="h-4 w-4" />
+          </div>
+        </div>
+      </Link>
+
       {/* Quick Actions Hub */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Link href="/quick-create">

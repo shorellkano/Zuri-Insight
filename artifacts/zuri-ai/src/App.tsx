@@ -44,6 +44,7 @@ import BrandCalendarPage from "@/pages/brand-calendar-page";
 import BrandSettings from "@/pages/brand-settings";
 import QuickCreate from "@/pages/quick-create";
 import { PostPage } from "@/pages/post";
+import SevenDayStarter from "@/pages/seven-day-starter";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,6 +103,7 @@ function Router() {
       <Route path="/generate/whatsapp"><Wrap><GenerateWhatsapp /></Wrap></Route>
       <Route path="/generate/video-scripts"><Wrap><GenerateVideoScripts /></Wrap></Route>
       <Route path="/quick-create"><Wrap><QuickCreate /></Wrap></Route>
+      <Route path="/7-day-starter"><Wrap><SevenDayStarter /></Wrap></Route>
       <Route path="/post"><Wrap><PostPage /></Wrap></Route>
       <Route path="/calendar"><Wrap><ContentCalendar /></Wrap></Route>
       <Route path="/content"><Wrap><ContentLibrary /></Wrap></Route>
