@@ -4,6 +4,7 @@ import { useListBrands, useGetBrand } from "@workspace/api-client-react";
 import { useBrand } from "@/context/brand-context";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { CreateVisualButton } from "@/components/create-visual-button";
 import {
   Instagram, Youtube, Linkedin, Facebook, Ghost, PlaySquare,
   ChevronDown, ChevronUp, Copy, Check, X, Plus, Calendar,
@@ -386,6 +387,12 @@ function VariationCard({
         >
           <Copy className="h-3.5 w-3.5" /> Copy all
         </button>
+        <CreateVisualButton
+          format={format}
+          platform={platform}
+          hook={variation.hook}
+          caption={variation.caption}
+        />
         <button
           onClick={() => {
             const blob = new Blob([allText], { type: "text/plain" });

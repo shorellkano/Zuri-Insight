@@ -64,7 +64,10 @@ export default function CreativeStudioUgcVideo() {
   const { data: brands } = useListBrands();
   const { toast } = useToast();
 
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("description") ?? "";
+  });
   const [style, setStyle] = useState<VideoStyle>("ugc");
   const [platform, setPlatform] = useState<VideoPlatform>("instagram");
   const [imageFile, setImageFile] = useState<File | null>(null);

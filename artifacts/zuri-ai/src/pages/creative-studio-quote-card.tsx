@@ -15,7 +15,10 @@ export default function CreativeStudioQuoteCard() {
   const activeBrand = brands?.find(b => b.id === activeBrandId);
   const { toast } = useToast();
 
-  const [quoteText, setQuoteText] = useState("");
+  const [quoteText, setQuoteText] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("quote") ?? "";
+  });
   const [attribution, setAttribution] = useState("");
   const [backgroundStyle, setBackgroundStyle] = useState("solid");
   const [format, setFormat] = useState("square");

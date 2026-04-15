@@ -18,7 +18,10 @@ export default function CreativeStudioStoryCover() {
   const { activeBrandId } = useBrand();
   const { toast } = useToast();
 
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("topic") ?? "";
+  });
   const [mood, setMood] = useState("bold");
   const [showBrandName, setShowBrandName] = useState(true);
   const [loading, setLoading] = useState(false);

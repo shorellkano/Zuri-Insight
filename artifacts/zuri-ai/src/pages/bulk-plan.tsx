@@ -7,6 +7,7 @@ import { Loader2, CalendarDays, Check, Trash2, Copy, CheckCircle2, Sparkles, Che
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { PptxExport, buildBulkPlanSlides } from "@/components/pptx-export";
+import { CreateVisualButton } from "@/components/create-visual-button";
 
 const API = (path: string) => `/api${path}`;
 
@@ -506,13 +507,20 @@ export default function BulkPlan() {
                   </div>
 
                   {isExpanded && (
-                    <div className="px-4 pb-4 border-t border-border pt-3">
+                    <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
                       {failed ? (
                         <p className="text-xs text-red-500">Caption generation failed for this post. You can retry by regenerating the plan.</p>
                       ) : caption ? (
                         <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{caption}</p>
                       ) : (
                         <p className="text-xs text-muted-foreground italic">No caption generated.</p>
+                      )}
+                      {caption && !failed && (
+                        <CreateVisualButton
+                          format={item.postType?.replace("_", " ") ?? "post"}
+                          platform={item.platform}
+                          caption={caption}
+                        />
                       )}
                     </div>
                   )}

@@ -16,7 +16,10 @@ export default function CreativeStudioCarousel() {
   const activeBrand = brands?.find(b => b.id === activeBrandId);
   const { toast } = useToast();
 
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("topic") ?? "";
+  });
   const [slideCount, setSlideCount] = useState(5);
   const [platform, setPlatform] = useState("instagram");
   const [showBrandName, setShowBrandName] = useState(true);

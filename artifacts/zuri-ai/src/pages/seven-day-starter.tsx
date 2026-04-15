@@ -9,6 +9,7 @@ import {
   ChevronDown, ChevronUp, ArrowRight, Download, CalendarDays,
 } from "lucide-react";
 import { PptxExport } from "@/components/pptx-export";
+import { CreateVisualButton } from "@/components/create-visual-button";
 import type { PptxSlide } from "@/components/pptx-export";
 
 const API = (p: string) => `/api${p}`;
@@ -116,7 +117,10 @@ function DayCard({ day, index }: { day: DayContent; index: number }) {
                 <span className="text-xs font-bold text-foreground">Instagram {day.instagram.format}</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-pink-50 text-pink-700 font-semibold">{day.instagram.contentType}</span>
               </div>
-              <CopyBtn text={igFull} />
+              <div className="flex items-center gap-1.5">
+                <CreateVisualButton format={day.instagram.format} platform="instagram" hook={day.instagram.hook} caption={day.instagram.caption} />
+                <CopyBtn text={igFull} />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -146,7 +150,10 @@ function DayCard({ day, index }: { day: DayContent; index: number }) {
                 <span className="text-xs font-bold text-foreground">TikTok UGC Video</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700 font-semibold">{day.tiktok.contentType}</span>
               </div>
-              <CopyBtn text={tiktokFull} />
+              <div className="flex items-center gap-1.5">
+                <CreateVisualButton format="UGC Video" platform="tiktok" hook={day.tiktok.hook} script={day.tiktok.script} />
+                <CopyBtn text={tiktokFull} />
+              </div>
             </div>
 
             <div className="space-y-2">
