@@ -838,12 +838,17 @@ export default function Home() {
         </Link>
 
         <div className="hidden md:flex" style={{ gap: 32 }}>
-          {["Features", "Pricing", "For Africa", "Blog"].map(link => (
-            <a key={link} href="#" style={{ fontSize: 14, color: Z_MUTED, textDecoration: "none", transition: "color 0.2s" }}
+          {[
+            { label: "Features", href: "/features" },
+            { label: "Pricing", href: "/pricing" },
+            { label: "For Africa", href: "/africa" },
+            { label: "Blog", href: "/blog" },
+          ].map(({ label, href }) => (
+            <Link key={label} href={href} style={{ fontSize: 14, color: Z_MUTED, textDecoration: "none", transition: "color 0.2s" }}
               onMouseEnter={e => (e.currentTarget.style.color = Z_TEXT)}
               onMouseLeave={e => (e.currentTarget.style.color = Z_MUTED)}>
-              {link}
-            </a>
+              {label}
+            </Link>
           ))}
         </div>
 
@@ -903,11 +908,16 @@ export default function Home() {
           background: "rgba(12,10,8,0.98)", display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center", gap: 32,
         }}>
-          {["Features", "Pricing", "For Africa", "Blog"].map(link => (
-            <a key={link} href="#" onClick={() => setMobileMenuOpen(false)}
+          {[
+            { label: "Features", href: "/features" },
+            { label: "Pricing", href: "/pricing" },
+            { label: "For Africa", href: "/africa" },
+            { label: "Blog", href: "/blog" },
+          ].map(({ label, href }) => (
+            <Link key={label} href={href} onClick={() => setMobileMenuOpen(false)}
               style={{ fontSize: 22, color: Z_TEXT, textDecoration: "none", fontWeight: 600 }}>
-              {link}
-            </a>
+              {label}
+            </Link>
           ))}
           <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
             <button style={{ background: Z_ORANGE, color: "#fff", border: "none", padding: "12px 32px", borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: "pointer" }}>
@@ -1401,7 +1411,7 @@ export default function Home() {
               Build Your Brand DNA - Free
             </button>
           </Link>
-          <a href="mailto:hello@zuri.ai">
+          <Link href="/contact">
             <button style={{
               background: "transparent", border: `1px solid ${Z_BORDER_STRONG}`,
               color: Z_TEXT, padding: "14px 32px", borderRadius: 10,
@@ -1411,7 +1421,7 @@ export default function Home() {
               onMouseLeave={e => { e.currentTarget.style.borderColor = Z_BORDER_STRONG; e.currentTarget.style.background = "transparent"; }}>
               Talk to us
             </button>
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -1444,13 +1454,18 @@ export default function Home() {
             Zuri <span style={{ color: Z_ORANGE }}>AI</span>
           </span>
         </Link>
-        <div style={{ display: "flex", gap: 24 }}>
-          {["Privacy", "Terms", "Pricing", "Contact"].map(link => (
-            <a key={link} href="#" style={{ fontSize: 13, color: Z_FAINT, textDecoration: "none" }}
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          {[
+            { label: "Privacy", href: "/privacy" },
+            { label: "Terms", href: "/terms" },
+            { label: "Pricing", href: "/pricing" },
+            { label: "Contact", href: "/contact" },
+          ].map(({ label, href }) => (
+            <Link key={label} href={href} style={{ fontSize: 13, color: Z_FAINT, textDecoration: "none" }}
               onMouseEnter={e => (e.currentTarget.style.color = Z_MUTED)}
               onMouseLeave={e => (e.currentTarget.style.color = Z_FAINT)}>
-              {link}
-            </a>
+              {label}
+            </Link>
           ))}
         </div>
         <p style={{ fontSize: 12, color: Z_FAINT }}>© 2026 Zuri AI. Built for Africa.</p>

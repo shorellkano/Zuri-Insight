@@ -45,6 +45,12 @@ import BrandSettings from "@/pages/brand-settings";
 import QuickCreate from "@/pages/quick-create";
 import { PostPage } from "@/pages/post";
 import SevenDayStarter from "@/pages/seven-day-starter";
+import Features from "@/pages/features";
+import Africa from "@/pages/africa";
+import Blog from "@/pages/blog";
+import Privacy from "@/pages/privacy";
+import Terms from "@/pages/terms";
+import Contact from "@/pages/contact";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -110,6 +116,12 @@ function Router() {
       <Route path="/settings/billing"><Wrap><SettingsBilling /></Wrap></Route>
       <Route path="/settings"><Wrap><Settings /></Wrap></Route>
       <Route path="/pricing" component={Pricing} />
+      <Route path="/features" component={Features} />
+      <Route path="/africa" component={Africa} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
+      <Route path="/contact" component={Contact} />
       <Route component={NotFound} />
     </Switch>
   );
