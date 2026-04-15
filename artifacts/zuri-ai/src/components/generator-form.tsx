@@ -107,22 +107,25 @@ function AdCopyForm({ onGenerate, isPending, culturalCtx }: { onGenerate: (v: Ge
 const socialSchema = z.object({
   platform: z.string().min(1, "Select a platform"),
   topic: z.string().optional().default(""),
-  pillar: z.string().min(1, "Select a content pillar"),
+  pillar: z.string().optional().default("any"),
   hashtags: z.boolean(),
 });
 type SocialFields = z.infer<typeof socialSchema>;
 
 function SocialForm({ onGenerate, isPending, culturalCtx }: { onGenerate: (v: GeneratorFormValues) => void; isPending: boolean; culturalCtx: CulturalContext }) {
   const { activeBrandId } = useBrand();
-  const form = useForm<SocialFields>({ resolver: zodResolver(socialSchema), defaultValues: { platform: "Instagram", topic: "", pillar: "promotion", hashtags: true } });
+  const form = useForm<SocialFields>({ resolver: zodResolver(socialSchema), defaultValues: { platform: "Instagram", topic: "", pillar: "any", hashtags: true } });
 
   function submit(d: SocialFields) {
     const topicPart = d.topic?.trim()
       ? `Topic: ${d.topic.trim()}.`
-      : "No topic given - suggest a relevant, timely topic that fits this brand and content pillar, then write the post.";
+      : "No topic given - suggest a relevant, timely topic that fits this brand and chosen post goal, then write the post.";
+    const pillarPart = (!d.pillar || d.pillar === "any")
+      ? "Post goal: Choose the best goal that fits this brand right now."
+      : `Post goal: ${d.pillar}.`;
     onGenerate({
       brandId: activeBrandId!,
-      prompt: `${topicPart} Content pillar: ${d.pillar}. ${d.hashtags ? "Include relevant hashtags." : "No hashtags."}`,
+      prompt: `${topicPart} ${pillarPart} ${d.hashtags ? "Include relevant hashtags." : "No hashtags."}`,
       platform: d.platform,
       language: culturalCtx.language,
       culturalContext: `${culturalCtx.country} - ${culturalCtx.language}`,
@@ -156,15 +159,16 @@ function SocialForm({ onGenerate, isPending, culturalCtx }: { onGenerate: (v: Ge
         )} />
         <FormField control={form.control} name="pillar" render={({ field }) => (
           <FormItem>
-            <FormLabel>Content Pillar</FormLabel>
+            <FormLabel>What should this post do? <span className="text-muted-foreground font-normal text-xs">(optional)</span></FormLabel>
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="education">Education - teach something</SelectItem>
-                <SelectItem value="entertainment">Entertainment - delight</SelectItem>
-                <SelectItem value="inspiration">Inspiration - motivate</SelectItem>
-                <SelectItem value="promotion">Promotion - sell</SelectItem>
-                <SelectItem value="behind-the-scenes">Behind the scenes - show culture</SelectItem>
+                <SelectItem value="any">Not sure - Zuri will decide</SelectItem>
+                <SelectItem value="education">Teach my audience something useful</SelectItem>
+                <SelectItem value="promotion">Promote my product or service</SelectItem>
+                <SelectItem value="inspiration">Inspire or motivate people</SelectItem>
+                <SelectItem value="entertainment">Entertain and get engagement</SelectItem>
+                <SelectItem value="behind-the-scenes">Show behind the scenes</SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />

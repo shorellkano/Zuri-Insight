@@ -17,6 +17,19 @@ const router: IRouter = Router();
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function stripEmDashes(text: string): string {
+  return text.replace(/\u2014/g, " - ");
+}
+
+function stripEmDashesDeep<T>(val: T): T {
+  if (typeof val === "string") return stripEmDashes(val) as unknown as T;
+  if (Array.isArray(val)) return val.map(stripEmDashesDeep) as unknown as T;
+  if (val && typeof val === "object") {
+    return Object.fromEntries(Object.entries(val).map(([k, v]) => [k, stripEmDashesDeep(v)])) as unknown as T;
+  }
+  return val;
+}
+
 function stripJsonFences(raw: string): string {
   return raw
     .replace(/^```json\s*/i, "")
@@ -27,7 +40,8 @@ function stripJsonFences(raw: string): string {
 
 async function safeAiJSON<T>(system: string, user: string, maxTokens = 500): Promise<T> {
   const raw = await aiComplete(system, user, maxTokens);
-  return JSON.parse(stripJsonFences(raw)) as T;
+  const parsed = JSON.parse(stripJsonFences(raw)) as T;
+  return stripEmDashesDeep(parsed);
 }
 
 async function saveContent(type: string, brandId: string, prompt: string, content: string, platform?: string, tone?: string) {

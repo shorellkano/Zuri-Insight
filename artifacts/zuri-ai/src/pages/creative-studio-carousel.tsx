@@ -20,6 +20,8 @@ export default function CreativeStudioCarousel() {
   const [slideCount, setSlideCount] = useState(5);
   const [platform, setPlatform] = useState("instagram");
   const [showBrandName, setShowBrandName] = useState(true);
+  const [logoMode, setLogoMode] = useState<"text" | "image">("text");
+  const [customLogoUrl, setCustomLogoUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -40,10 +42,11 @@ export default function CreativeStudioCarousel() {
     setLoading(true);
     setCanvaEditUrl(null);
     try {
+      const logoUrl = showBrandName && logoMode === "image" && customLogoUrl.trim() ? customLogoUrl.trim() : undefined;
       const r = await fetch(API("/generate/carousel"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, topic, slideCount, platform, showBrandName }),
+        body: JSON.stringify({ brandId: activeBrandId, topic, slideCount, platform, showBrandName, logoUrl }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
@@ -154,22 +157,78 @@ export default function CreativeStudioCarousel() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between py-1">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Show brand name on slides</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Displays your brand name on each slide</p>
+          {/* Brand mark section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Brand mark on slides</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Show your brand on every slide</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBrandName(v => !v)}
+                className="relative rounded-full transition-colors shrink-0"
+                style={{ width: "40px", height: "22px", background: showBrandName ? "var(--primary)" : "rgba(100,100,100,0.3)" }}
+              >
+                <span
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                  style={{ transform: showBrandName ? "translateX(20px)" : "translateX(2px)" }}
+                />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowBrandName(v => !v)}
-              className="relative rounded-full transition-colors shrink-0"
-              style={{ width: "40px", height: "22px", background: showBrandName ? "var(--primary)" : "rgba(100,100,100,0.3)" }}
-            >
-              <span
-                className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
-                style={{ transform: showBrandName ? "translateX(20px)" : "translateX(2px)" }}
-              />
-            </button>
+
+            {showBrandName && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                <p className="text-[11px] font-medium text-muted-foreground">How should your brand appear?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLogoMode("text")}
+                    className="py-2 px-3 rounded-lg border text-xs font-medium transition-colors text-left"
+                    style={{
+                      borderColor: logoMode === "text" ? "var(--primary)" : "var(--border)",
+                      background: logoMode === "text" ? "color-mix(in srgb, var(--primary) 10%, transparent)" : "transparent",
+                      color: logoMode === "text" ? "var(--primary)" : "var(--muted-foreground)",
+                    }}
+                  >
+                    <div className="font-bold text-sm mb-0.5">Aa</div>
+                    Brand name as text
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLogoMode("image")}
+                    className="py-2 px-3 rounded-lg border text-xs font-medium transition-colors text-left"
+                    style={{
+                      borderColor: logoMode === "image" ? "var(--primary)" : "var(--border)",
+                      background: logoMode === "image" ? "color-mix(in srgb, var(--primary) 10%, transparent)" : "transparent",
+                      color: logoMode === "image" ? "var(--primary)" : "var(--muted-foreground)",
+                    }}
+                  >
+                    <div className="font-bold text-sm mb-0.5">🖼</div>
+                    Upload logo image
+                  </button>
+                </div>
+
+                {logoMode === "image" && (
+                  <div className="space-y-1">
+                    <input
+                      type="url"
+                      value={customLogoUrl}
+                      onChange={e => setCustomLogoUrl(e.target.value)}
+                      placeholder="Paste your logo image URL here..."
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Upload your logo somewhere (Google Drive, Dropbox, etc.) and paste the public link here. PNG with transparent background works best.</p>
+                  </div>
+                )}
+
+                {logoMode === "text" && activeBrand && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Will display: <span className="font-semibold text-foreground">{activeBrand.name}</span>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <button

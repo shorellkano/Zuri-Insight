@@ -32,8 +32,18 @@ router.post("/brands/:brandId/visual-prefs", async (req, res): Promise<void> => 
 
 // ─── Carousel Generation ──────────────────────────────────────────────────────
 
+// Strip em dashes from any string recursively (safety net)
+function stripEmDashes<T>(val: T): T {
+  if (typeof val === "string") return val.replace(/\u2014/g, " - ") as unknown as T;
+  if (Array.isArray(val)) return val.map(stripEmDashes) as unknown as T;
+  if (val && typeof val === "object") {
+    return Object.fromEntries(Object.entries(val).map(([k, v]) => [k, stripEmDashes(v)])) as unknown as T;
+  }
+  return val;
+}
+
 router.post("/generate/carousel", async (req, res): Promise<void> => {
-  const { brandId, topic, slideCount = 5, platform = "instagram", showBrandName = true } = req.body;
+  const { brandId, topic, slideCount = 5, platform = "instagram", showBrandName = true, logoUrl: reqLogoUrl } = req.body;
   if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
 
   const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
@@ -48,7 +58,7 @@ router.post("/generate/carousel", async (req, res): Promise<void> => {
 
     const system = `You are a social media content strategist for African businesses.
 Design high-quality carousel post copy for ${platform}.
-NEVER use em dashes (--). Use hyphens (-) or rewrite sentences instead.
+NEVER use the em dash character \u2014 (—). This character is completely banned. Use a hyphen (-) or rewrite sentences instead.
 Return ONLY valid JSON. No explanation, no markdown.`;
 
     const topicLine = topic?.trim()
@@ -73,14 +83,15 @@ Return JSON:
   ]
 }
 
-Rules: First slide is the hook - make it impossible to scroll past. Last slide has a clear CTA. Never use em dashes (--).`;
+Rules: First slide is the hook - make it impossible to scroll past. Last slide has a clear CTA. NEVER use the em dash character \u2014 (—).`;
 
     const result = await aiJSON<{ title: string; slides: Array<{ slide_number: number; headline: string; body: string; cta?: string }> }>(system, user, 500);
 
-    const logoUrl = prefs?.logoUrl ?? null;
-    const slides = result.slides.map((slide, i) => ({
+    const logoUrl = reqLogoUrl ?? prefs?.logoUrl ?? null;
+    const cleanResult = stripEmDashes(result);
+    const slides = cleanResult.slides.map((slide, i) => ({
       ...slide,
-      html: buildSlideHtml({ ...slide, brandName: brand.name, colors, style, slideNumber: i + 1, total: result.slides.length, showBrandName, logoUrl }),
+      html: buildSlideHtml({ ...slide, brandName: brand.name, colors, style, slideNumber: i + 1, total: cleanResult.slides.length, showBrandName, logoUrl }),
     }));
 
     const [saved] = await db.insert(generatedDesignsTable).values({

@@ -49,7 +49,7 @@ export async function buildSystemPrompt(
 1. Never fabricate stats, testimonials, or story details.
 2. Use only documented, real examples the user has provided.
 3. Be concise - remove every word that does not earn its place.
-4. NEVER use em dashes (--). Use a hyphen (-) or rewrite the sentence instead.`);
+4. NEVER use the em dash character \u2014 (—). This character is completely banned. Use a hyphen (-) or rewrite the sentence. Check every sentence before responding.`);
 
   // Brand identity
   if (brand) {
