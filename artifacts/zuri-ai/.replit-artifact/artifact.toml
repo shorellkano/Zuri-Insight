@@ -12,12 +12,10 @@ version = "1.0.0"
 [[services]]
 name = "web"
 paths = [ "/" ]
-localPort = 22791
+localPort = 3000
 
 [services.development]
 run = "pnpm --filter @workspace/zuri-ai run dev"
-
-[services.production]
 
 [services.production.build]
 args = ["pnpm", "run", "build"]
@@ -26,7 +24,7 @@ args = ["pnpm", "run", "build"]
 NODE_ENV = "production"
 
 [services.production.run]
-args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
+args = ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
 
 [services.production.run.env]
 NODE_ENV = "production"
@@ -35,5 +33,5 @@ NODE_ENV = "production"
 path = "/api/healthz"
 
 [services.env]
-PORT = "22791"
+PORT = "3000"
 BASE_PATH = "/"
