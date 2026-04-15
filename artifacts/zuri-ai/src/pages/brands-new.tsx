@@ -173,7 +173,11 @@ export default function BrandsNew() {
   function validateStep1() {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = "Brand name is required";
-    if (form.websiteUrl && !/^https?:\/\/.+/.test(form.websiteUrl)) errs.websiteUrl = "Enter a valid URL (https://...)";
+    if (form.websiteUrl) {
+      const normalized = /^https?:\/\//i.test(form.websiteUrl) ? form.websiteUrl : `https://${form.websiteUrl}`;
+      if (normalized !== form.websiteUrl) set("websiteUrl", normalized);
+      if (!/^https?:\/\/.+\..+/.test(normalized)) errs.websiteUrl = "Enter your website, e.g. yourbrand.com";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -366,7 +370,16 @@ export default function BrandsNew() {
             </Field>
             {setupPath === "website" && (
               <Field label="Website URL" hint="We will crawl this to build your Brand DNA - this is your main route">
-                <Input value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="https://yourbrand.com" data-testid="input-website-url" />
+                <Input
+                  value={form.websiteUrl}
+                  onChange={(e) => set("websiteUrl", e.target.value)}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v && !/^https?:\/\//i.test(v)) set("websiteUrl", `https://${v}`);
+                  }}
+                  placeholder="yourbrand.com"
+                  data-testid="input-website-url"
+                />
                 {errors.websiteUrl && <p className="text-xs text-destructive mt-1">{errors.websiteUrl}</p>}
                 {form.websiteUrl && /^https?:\/\/app\./i.test(form.websiteUrl) && (
                   <div className="mt-2 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">

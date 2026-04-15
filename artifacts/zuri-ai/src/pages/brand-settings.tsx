@@ -462,7 +462,11 @@ export default function BrandSettings() {
             <Input
               value={form.websiteUrl}
               onChange={e => set("websiteUrl", e.target.value)}
-              placeholder="https://yourbrand.com"
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v && !/^https?:\/\//i.test(v)) set("websiteUrl", `https://${v}`);
+              }}
+              placeholder="yourbrand.com"
               data-testid="settings-input-website"
             />
             {form.websiteUrl && /^https?:\/\/app\./i.test(form.websiteUrl) && (
