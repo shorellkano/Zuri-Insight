@@ -89,12 +89,34 @@ export async function aiVision(system: string, prompt: string, images: string[],
 
 export async function aiJSON<T = any>(system: string, user: string, maxTokens = 600): Promise<T> {
   const raw = await aiComplete(system, user, maxTokens);
-  const clean = raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```\s*$/i, "")
+
+  // Strip all markdown code fences (anywhere in the string)
+  let clean = raw
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/gi, "")
     .trim();
-  return JSON.parse(clean) as T;
+
+  // Try direct parse first
+  try {
+    return JSON.parse(clean) as T;
+  } catch {
+    // Extract largest JSON object or array from the text
+    const objMatch = clean.match(/\{[\s\S]*\}/);
+    const arrMatch = clean.match(/\[[\s\S]*\]/);
+    const chosen = objMatch && arrMatch
+      ? (clean.indexOf(objMatch[0]) <= clean.indexOf(arrMatch[0]) ? objMatch[0] : arrMatch[0])
+      : (objMatch?.[0] ?? arrMatch?.[0]);
+    if (chosen) {
+      try {
+        return JSON.parse(chosen) as T;
+      } catch {
+        // Last resort: strip control characters and retry
+        const stripped = chosen.replace(/[\x00-\x1F\x7F]/g, c => c === "\n" || c === "\t" ? c : " ");
+        return JSON.parse(stripped) as T;
+      }
+    }
+    throw new Error(`AI returned non-JSON response: ${raw.slice(0, 200)}`);
+  }
 }
 
 export function hasAI(): boolean {

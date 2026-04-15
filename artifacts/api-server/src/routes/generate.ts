@@ -435,14 +435,15 @@ CRITICAL RULES:
     const contextSection = websiteContent
       ? `SCANNED WEBSITE (${urlToCrawl}):\n${websiteContent.slice(0, 4500)}\n\nFrom this content, identify: the real brand name, their key products/services, target audience, and unique value proposition. Use these to create hyper-specific content.`
       : brandStyleHints
-        ? `Brand: ${brandName}\n${brandStyleHints}`
-        : `Business: ${brandName}`;
+        ? `Brand: ${brandName}\n${brandStyleHints}\n\nCreate content for this business based on the brand details above.`
+        : `Business name: ${brandName}\n\nCreate authentic social media content for this business. Infer likely products/services from the brand name and use engaging, relatable content for African and Nigerian markets.`;
 
     const postCounts: Record<string, number> = { "1week": 7, "1month": 14, "3months": 24 };
     const postCount = postCounts[duration] ?? 7;
     const styleNote = brandStyleHints && urlToCrawl ? `\nContent style hints: ${brandStyleHints}` : "";
+    const taskVerb = websiteContent ? "Scan the website content below and create" : "Create";
 
-    const user = `Scan the website content below and create a ${label} content plan with exactly ${postCount} posts.${styleNote}
+    const user = `${taskVerb} a ${label} content plan with exactly ${postCount} posts.${styleNote}
 
 ${contextSection}
 

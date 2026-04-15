@@ -423,7 +423,11 @@ function TryZuriSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ websiteUrl: finalUrl, duration: "1week" }),
       });
-      if (!resp.ok) throw new Error("Could not read your website. Try a different URL.");
+      if (!resp.ok) {
+        let msg = "Generation failed. Please try again.";
+        try { const d = await resp.json(); if (d?.error) msg = d.error; } catch {}
+        throw new Error(msg);
+      }
       const data: QuickPlanResult = await resp.json();
       setResult(data);
     } catch (e: any) {
