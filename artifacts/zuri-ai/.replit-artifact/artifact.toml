@@ -17,15 +17,6 @@ localPort = 22791
 [services.development]
 run = "pnpm --filter @workspace/zuri-ai run dev"
 
-[services.production]
-build = [ "pnpm", "--filter", "@workspace/zuri-ai", "run", "build" ]
-publicDir = "artifacts/zuri-ai/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
-
 [services.env]
 PORT = "22791"
 BASE_PATH = "/"
