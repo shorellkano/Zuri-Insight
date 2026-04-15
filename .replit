@@ -84,3 +84,6 @@ channel = "stable-25_05"
 [userenv.shared]
 NEXT_PUBLIC_SUPABASE_URL = "https://ypxuifxnladxuedqayhn.supabase.co"
 VITE_SUPABASE_URL = "https://ypxuifxnladxuedqayhn.supabase.co"
+
+[userenv.development]
+APP_URL = "https://0515fc2b-d4ef-4f91-9f15-af76d8b652df-00-2b74y1kzrgzow.riker.replit.dev"
