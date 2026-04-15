@@ -59,6 +59,7 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<QuickPlan | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [mobileRoute, setMobileRoute] = useState<"website" | "social">("website");
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -115,11 +116,29 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
         </p>
       </div>
 
+      {/* Mobile: choose one route */}
+      <div className="flex lg:hidden rounded-xl border border-border overflow-hidden bg-muted/30">
+        <button
+          onClick={() => setMobileRoute("website")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${mobileRoute === "website" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <Globe className="h-4 w-4" />
+          Website
+        </button>
+        <button
+          onClick={() => setMobileRoute("social")}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${mobileRoute === "social" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <AtSign className="h-4 w-4" />
+          Social Handle
+        </button>
+      </div>
+
       {/* Two entry points */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Card 1 — From Website */}
-        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4">
+        <div className={`bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 ${mobileRoute !== "website" ? "hidden lg:flex" : ""}`}>
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Globe className="h-5 w-5 text-primary" />
@@ -182,7 +201,7 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
         </div>
 
         {/* Card 2 — From Socials */}
-        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4">
+        <div className={`bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 ${mobileRoute !== "social" ? "hidden lg:flex" : ""}`}>
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
               <AtSign className="h-5 w-5 text-secondary" />

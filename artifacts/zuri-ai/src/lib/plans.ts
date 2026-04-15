@@ -270,7 +270,10 @@ export function getPlan(planId: PlanId): PlanDefinition {
   return PLANS[planId] || PLANS.free
 }
 
+export const TESTING_MODE = true
+
 export function canAccess(planId: PlanId, feature: keyof PlanDefinition['features']): boolean {
+  if (TESTING_MODE) return true
   return PLANS[planId]?.features[feature] ?? false
 }
 
@@ -279,6 +282,7 @@ export function withinLimit(
   limitKey: keyof PlanDefinition['limits'],
   currentUsage: number
 ): boolean {
+  if (TESTING_MODE) return true
   const limit = PLANS[planId]?.limits[limitKey]
   if (limit === undefined) return false
   if (limit === -1) return true

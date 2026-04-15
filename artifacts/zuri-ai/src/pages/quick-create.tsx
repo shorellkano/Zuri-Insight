@@ -861,6 +861,19 @@ export default function QuickCreate() {
                 </div>
               </button>
             </div>
+            <a
+              href="/generate/creative-studio/ugc-video"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors text-left mt-1"
+            >
+              <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                <span className="text-base">🎥</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-800 leading-tight">CEO / Staff Video</p>
+                <p className="text-[11px] text-amber-700 mt-0.5">Generate an AI talking head video - no camera needed</p>
+              </div>
+              <svg className="h-4 w-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </a>
           </div>
 
           {/* SECTION 1: Platform */}

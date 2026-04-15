@@ -3,10 +3,10 @@ import { Sparkles, Layers, Zap, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/dashboard", label: "Brand Studio", icon: Sparkles },
+  { href: "/dashboard", label: "Brand Hub", icon: Sparkles },
   { href: "/quick-create", label: "Solo Founder", icon: Zap },
+  { href: "/post", label: "Content Studio", icon: Film },
   { href: "/brands", label: "Brands", icon: Layers },
-  { href: "/post", label: "Caption Studio", icon: Film },
 ];
 
 export function MobileNav() {

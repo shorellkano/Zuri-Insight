@@ -19,12 +19,19 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   const { data: brands } = useListBrands();
 
   useEffect(() => {
-    if (brands && brands.length > 0 && !activeBrandId) {
+    if (!brands) return;
+    if (brands.length === 0) {
+      setActiveBrandIdState(null);
+      localStorage.removeItem("zuri_active_brand_id");
+      return;
+    }
+    const ids = brands.map(b => b.id);
+    if (!activeBrandId || !ids.includes(activeBrandId)) {
       const first = brands[0].id;
       setActiveBrandIdState(first);
       localStorage.setItem("zuri_active_brand_id", first);
     }
-  }, [brands, activeBrandId]);
+  }, [brands]);
 
   function setActiveBrandId(id: string | null) {
     setActiveBrandIdState(id);

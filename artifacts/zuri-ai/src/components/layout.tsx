@@ -11,9 +11,9 @@ import { QuickSetup } from "@/components/brands/QuickSetup";
 import { usePlan } from "@/hooks/use-plan";
 
 const navItems = [
-  { href: "/dashboard", label: "Brand Studio", icon: Sparkles, highlight: false },
+  { href: "/dashboard", label: "Brand Hub", icon: Sparkles, highlight: false },
   { href: "/quick-create", label: "Solo Founder", icon: Zap, highlight: true },
-  { href: "/post", label: "Caption Studio", icon: Film },
+  { href: "/post", label: "Content Studio", icon: Film },
   { href: "/brands", label: "Brands", icon: Layers },
   { href: "/generate", label: "Generate", icon: Video },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },

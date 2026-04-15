@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Check, X, ChevronDown } from "lucide-react";
 import { PLANS, formatPrice, type PlanId } from "@/lib/plans";
+import { useAuth } from "@/context/auth-context";
 
 const Z_ORANGE = "#E05C2A";
 const Z_ORANGE_DARK = "#C4391A";
@@ -149,6 +150,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 export default function Pricing() {
   const [isAfrica, setIsAfrica] = useState(true);
   const [isAnnual, setIsAnnual] = useState(false);
+  const { user } = useAuth();
 
   return (
     <div style={{ background: Z_BG, color: Z_TEXT, fontFamily: "Inter, system-ui, sans-serif", minHeight: "100vh" }}>
@@ -337,7 +339,7 @@ export default function Pricing() {
                     </button>
                   </a>
                 ) : (
-                  <Link href={`/signup?plan=${planId}`}>
+                  <Link href={user ? `/settings/billing?plan=${planId}` : `/signup?plan=${planId}`}>
                     <button style={{
                       width: "100%", padding: 11, borderRadius: 10,
                       border: plan.popular ? "none" : `1px solid ${Z_BORDER_STRONG}`,
@@ -345,7 +347,7 @@ export default function Pricing() {
                       color: plan.popular ? "#fff" : Z_TEXT,
                       fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "background 0.2s",
                     }}>
-                      {plan.cta}
+                      {user ? `Upgrade to ${plan.name}` : plan.cta}
                     </button>
                   </Link>
                 )}
