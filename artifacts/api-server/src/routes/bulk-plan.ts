@@ -188,8 +188,8 @@ router.post("/bulk-plan-items/:itemId/generate", async (req, res): Promise<void>
     youtube: "YouTube description: 2-3 sentences summarising value, include a CTA.",
   };
 
-  const voice = dna ? `Brand voice: ${dna.brandVoice ?? "professional and engaging"}. Core values: ${(dna.coreValues ?? []).slice(0, 3).join(", ")}.` : "";
-  const tip = platformTips[item.platform] ?? "Write an engaging social media post.";
+  const voice = dna ? `Brand voice: ${dna.toneOfVoice ?? "professional and engaging"}. Core values: ${(dna.coreValues ?? []).slice(0, 3).join(", ")}.` : "";
+  const tip = platformTips[item.platform ?? ""] ?? "Write an engaging social media post.";
 
   const system = `You are an expert African marketing copywriter writing for ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
 ${voice}

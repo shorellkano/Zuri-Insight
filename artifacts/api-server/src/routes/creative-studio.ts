@@ -233,7 +233,7 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
   try {
     if (hasAI()) {
       const result = await aiJSON(`You are a brand copywriter for African businesses.
-Brand: ${brand.name}. Industry: ${brand.industry || "Business"}. ${brand.description ? `About: ${brand.description}` : ""}
+Brand: ${brand.name}. Industry: ${brand.industry || "Business"}.
 Event/Announcement details: ${eventDetails || "General announcement - make something exciting"}
 
 Generate announcement copy. Return JSON: { "headline": string (max 8 words, punchy), "subtext": string (max 20 words, supporting detail), "cta": string (max 4 words) }
@@ -343,7 +343,7 @@ router.post("/generate/story-cover", async (req, res): Promise<void> => {
   try {
     if (hasAI()) {
       const result = await aiJSON(`You are a social media strategist for African brands.
-Brand: ${brand.name}. Industry: ${brand.industry || "Business"}. ${brand.description ? `About: ${brand.description}` : ""}
+Brand: ${brand.name}. Industry: ${brand.industry || "Business"}.
 Mood: ${mood}. ${topic ? `Topic: ${topic}` : "Generate a compelling hook"}
 
 Write an Instagram/TikTok story cover. Return JSON: { "hookText": string (bold hook, max 6 words, all caps works great), "subText": string (call to action, max 5 words) }

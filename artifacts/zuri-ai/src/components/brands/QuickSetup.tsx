@@ -133,7 +133,7 @@ export function QuickSetup({ onClose }: Props) {
       {
         data: {
           name: form.name,
-          brandBrief: form.description || undefined,
+
           country: form.country,
           continent,
           industry: "Other",

@@ -10,8 +10,8 @@ export default function BrandDetail() {
   const queryClient = useQueryClient();
 
   const { data: brand, isLoading: brandLoading } = useGetBrand(brandId);
-  const { data: dna, isLoading: dnaLoading } = useGetBrandDna(brandId, { query: { enabled: !!brandId } });
-  const { data: content, isLoading: contentLoading } = useListBrandContent(brandId, { query: { enabled: !!brandId } });
+  const { data: dna, isLoading: dnaLoading } = useGetBrandDna(brandId, { query: { enabled: !!brandId } as any });
+  const { data: content, isLoading: contentLoading } = useListBrandContent(brandId, { query: { enabled: !!brandId } as any });
   const buildDna = useBuildBrandDna();
 
   function handleBuildDna() {

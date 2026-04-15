@@ -12,7 +12,7 @@ async function getCanvaToken(): Promise<string> {
     }),
   });
   if (!res.ok) throw new Error(`Canva auth failed: ${res.status}`);
-  const data = await res.json();
+  const data = await res.json() as any;
   return data.access_token;
 }
 
@@ -37,7 +37,7 @@ export async function createCanvaDesign(input: {
       console.warn("Canva design creation failed:", res.status);
       return null;
     }
-    const data = await res.json();
+    const data = await res.json() as any;
     return {
       designId: data.design?.id,
       editUrl: data.design?.urls?.edit_url,

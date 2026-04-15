@@ -57,7 +57,7 @@ function FeedbackSheet({ variationId, sourceContent, brandId }: { variationId: s
   const [contentType, setContentType] = useState("");
   const [platform, setPlatform] = useState("");
   const [savedLesson, setSavedLesson] = useState<string | null>(null);
-  const { data: brand } = useGetBrand(brandId ?? "", { query: { enabled: !!brandId } });
+  const { data: brand } = useGetBrand(brandId ?? "", { query: { enabled: !!brandId } as any });
 
   const save = useMutation({
     mutationFn: () =>

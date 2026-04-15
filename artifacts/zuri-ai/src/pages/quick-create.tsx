@@ -636,7 +636,7 @@ function VideoScriptCard({
 export default function QuickCreate() {
   const { activeBrandId } = useBrand();
   const { data: brands } = useListBrands();
-  const { data: brand } = useGetBrand(activeBrandId ?? "", { query: { enabled: !!activeBrandId } });
+  const { data: brand } = useGetBrand(activeBrandId ?? "", { query: { enabled: !!activeBrandId } as any });
   const { toast } = useToast();
 
   const [contentType, setContentType] = useState<"post" | "video">("post");

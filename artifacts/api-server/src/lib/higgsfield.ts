@@ -39,7 +39,7 @@ export async function generateUGCVideo(input: {
     const err = await res.json().catch(() => ({}));
     throw new Error(`Higgsfield API error ${res.status}: ${JSON.stringify(err)}`);
   }
-  return res.json();
+  return res.json() as Promise<HiggsfieldJobResult>;
 }
 
 export async function pollVideoStatus(jobId: string): Promise<HiggsfieldJobResult> {
@@ -50,5 +50,5 @@ export async function pollVideoStatus(jobId: string): Promise<HiggsfieldJobResul
     headers: { Authorization: `Bearer ${process.env.HIGGSFIELD_API_KEY}` },
   });
   if (!res.ok) throw new Error(`Higgsfield status error: ${res.status}`);
-  return res.json();
+  return res.json() as Promise<HiggsfieldJobResult>;
 }

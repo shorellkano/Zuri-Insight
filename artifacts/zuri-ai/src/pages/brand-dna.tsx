@@ -48,7 +48,7 @@ export default function BrandDna() {
   const queryClient = useQueryClient();
 
   const { data: brand, isLoading: brandLoading } = useGetBrand(brandId);
-  const { data: dna, isLoading: dnaLoading } = useGetBrandDna(brandId, { query: { enabled: !!brandId } });
+  const { data: dna, isLoading: dnaLoading } = useGetBrandDna(brandId, { query: { enabled: !!brandId } as any });
   const buildDna = useBuildBrandDna();
 
   function handleRebuild() {

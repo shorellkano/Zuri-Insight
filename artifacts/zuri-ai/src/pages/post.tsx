@@ -194,7 +194,7 @@ function CaptionCard({ data, initialOpen = false }: { data: PlatformCaption; ini
 export function PostPage() {
   const { activeBrandId, setActiveBrandId } = useBrand();
   const { data: brandsData } = useListBrands();
-  const brands = brandsData?.brands ?? [];
+  const brands = brandsData ?? [];
   const { toast } = useToast();
 
   const [step, setStep] = useState(0);

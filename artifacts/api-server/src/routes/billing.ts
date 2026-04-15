@@ -123,7 +123,7 @@ router.post("/billing/create-checkout", async (req, res): Promise<void> => {
           callback_url: `${process.env.APP_URL || ""}/settings/billing?success=true`,
         }),
       });
-      const data = await apiResp.json();
+      const data = await apiResp.json() as any;
       if (!data.status) throw new Error(data.message || "Paystack init failed");
       res.json({ url: data.data.authorization_url, provider: "paystack", reference: data.data.reference });
     } catch (err: any) {
@@ -170,7 +170,7 @@ router.post("/billing/create-checkout", async (req, res): Promise<void> => {
       },
       body: params.toString(),
     });
-    const session = await sessionResp.json();
+    const session = await sessionResp.json() as any;
     if (session.error) throw new Error(session.error.message);
     res.json({ url: session.url, provider: "stripe" });
   } catch (err: any) {
@@ -207,7 +207,7 @@ router.post("/billing/portal", async (req, res): Promise<void> => {
       },
       body: params.toString(),
     });
-    const session = await portalResp.json();
+    const session = await portalResp.json() as any;
     if (session.error) throw new Error(session.error.message);
     res.json({ url: session.url });
   } catch (err: any) {

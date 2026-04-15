@@ -6,7 +6,6 @@ import { ContentOutput, EmptyOutputState } from "@/components/content-output";
 import { Megaphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useBrand } from "@/context/brand-context";
-import { useNavigate } from "wouter";
 
 type Output = { id: string; type: string; brandId: string; variations: { id: string; content: string; platform?: string; tone?: string }[] };
 
