@@ -28,8 +28,12 @@ router.post("/brands", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [brand] = await db.insert(brandsTable).values(parsed.data).returning();
-  res.status(201).json(brand);
+  try {
+    const [brand] = await db.insert(brandsTable).values(parsed.data).returning();
+    res.status(201).json(brand);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "Failed to save brand" });
+  }
 });
 
 router.get("/brands/:brandId", async (req, res): Promise<void> => {
