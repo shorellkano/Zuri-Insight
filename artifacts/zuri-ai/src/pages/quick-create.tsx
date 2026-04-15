@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Instagram, Youtube, Linkedin, Facebook, Ghost, PlaySquare,
   ChevronDown, ChevronUp, Copy, Check, X, Plus, Calendar,
-  Info, Download, RefreshCw, Zap, Edit2, Loader2, Sparkles, Video, Type,
+  Info, Download, RefreshCw, Zap, Edit2, Loader2, Sparkles, Video, Type, Settings2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -639,6 +639,7 @@ export default function QuickCreate() {
   const { data: brand } = useGetBrand(activeBrandId ?? "", { query: { enabled: !!activeBrandId } as any });
   const { toast } = useToast();
 
+  const [simpleMode, setSimpleMode] = useState(true);
   const [contentType, setContentType] = useState<"post" | "video">("post");
   const [platform, setPlatform] = useState("instagram");
   const [format, setFormat] = useState("Reel");
@@ -791,14 +792,28 @@ export default function QuickCreate() {
         )}
 
         {/* Page heading */}
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Zap className="h-5 w-5 text-primary" />
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">Solo Founder</h1>
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Solo Founder</h1>
+            <p className="text-muted-foreground text-sm">
+              {simpleMode ? "Pick your platform, type your idea, hit Create. Done." : "Full control over format, tone, and context."}
+            </p>
           </div>
-          <p className="text-muted-foreground text-sm">Generate captions, scripts and hooks built around your brand - in under 60 seconds.</p>
+          <button
+            onClick={() => setSimpleMode(v => !v)}
+            className={cn(
+              "flex items-center gap-1.5 shrink-0 mt-1 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors",
+              simpleMode ? "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30" : "border-primary text-primary bg-primary/5"
+            )}
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            {simpleMode ? "Advanced" : "Simple"}
+          </button>
         </div>
 
         {/* DNA nudge - soft, non-blocking, shown when brand exists but DNA not built */}
@@ -819,7 +834,70 @@ export default function QuickCreate() {
           </div>
         )}
 
-        {/* ── MAIN FORM ── */}
+        {/* ── SIMPLE MODE FORM ── */}
+        {simpleMode && (
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-3">Where is this post going?</label>
+              <div className="grid grid-cols-3 gap-2.5">
+                {PLATFORMS.map(({ id, label, Icon, bg, color }) => (
+                  <button
+                    key={id}
+                    onClick={() => { setPlatform(id); const fmts = FORMATS[id] ?? []; setFormat(fmts[0] ?? ""); }}
+                    className={cn(
+                      "flex flex-col items-center gap-2 py-4 rounded-xl border-2 transition-all",
+                      platform === id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/30 hover:bg-muted/30"
+                    )}
+                  >
+                    <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center", platform === id ? "bg-primary/10" : bg)}>
+                      <Icon className={cn("h-5 w-5", platform === id ? "text-primary" : color)} />
+                    </div>
+                    <span className={cn("text-xs font-semibold", platform === id ? "text-primary" : "text-muted-foreground")}>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">What do you want to say?</label>
+              <textarea
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder={PLACEHOLDERS[placeholderIdx]}
+                rows={3}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              />
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {TOPIC_CHIPS.slice(0, 6).map(({ label, text }) => (
+                  <button
+                    key={label}
+                    onClick={() => setTopic(text)}
+                    className="px-2.5 py-1 rounded-full bg-muted text-xs text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors border border-border"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={generate}
+              disabled={generating}
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 transition-colors disabled:opacity-70"
+            >
+              {generating ? (
+                <><Loader2 className="h-5 w-5 animate-spin" />{LOADING_MESSAGES[loadingMsg]}</>
+              ) : (
+                <><Sparkles className="h-5 w-5" />Create My Post</>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* ── MAIN FORM (Advanced Mode) ── */}
+        {!simpleMode && (
         <div className="bg-card border border-border rounded-2xl p-6 space-y-7">
 
           {/* Content type toggle */}
@@ -1036,6 +1114,7 @@ export default function QuickCreate() {
             )}
           </button>
         </div>
+        )}
 
         {/* ── OUTPUT ── */}
         {result && (variations.length > 0 || videoScript) && (

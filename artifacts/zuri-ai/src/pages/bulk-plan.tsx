@@ -6,6 +6,7 @@ import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
 import { Loader2, CalendarDays, Check, Trash2, Copy, CheckCircle2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { PptxExport, buildBulkPlanSlides } from "@/components/pptx-export";
 
 const API = (path: string) => `/api${path}`;
 
@@ -534,6 +535,24 @@ export default function BulkPlan() {
               Back to plan view
             </button>
           </div>
+
+          {plan && Object.keys(generatedItems).length > 0 && (
+            <PptxExport
+              variant="card"
+              deckTitle={plan.planName ?? "Content Plan"}
+              buttonLabel="Download Full Plan as PowerPoint"
+              slides={buildBulkPlanSlides(
+                plan.planName ?? "Content Plan",
+                items.map(item => ({
+                  platform: item.platform,
+                  contentTheme: item.contentTheme,
+                  suggestedDate: item.suggestedDate,
+                  captionDraft: generatedItems[item.id] ?? item.captionDraft ?? null,
+                }))
+              )}
+              filename={(plan.planName ?? "content_plan").toLowerCase().replace(/\s+/g, "_")}
+            />
+          )}
         </div>
       )}
     </div>

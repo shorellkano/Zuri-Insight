@@ -76,6 +76,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
-    "html2canvas": "^1.4.1"
+    "html2canvas": "^1.4.1",
+    "pptxgenjs": "^4.0.1"
   }
 }

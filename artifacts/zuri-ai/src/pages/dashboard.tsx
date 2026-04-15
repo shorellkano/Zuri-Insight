@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Sparkles, Layers, TrendingUp, ArrowRight, Activity, Globe, AtSign, Loader2, Calendar, Copy, CheckCircle2, X } from "lucide-react";
+import { Sparkles, Layers, TrendingUp, ArrowRight, Activity, Globe, AtSign, Loader2, Calendar, Copy, CheckCircle2, X, Zap, CalendarDays, Film, LayoutGrid } from "lucide-react";
 import { useGetDashboardStats, useGetDashboardActivity, useListBrands } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/auth-context";
 import { useBrand } from "@/context/brand-context";
 import { useToast } from "@/hooks/use-toast";
+import { PptxExport, buildContentPlanSlides } from "@/components/pptx-export";
 
 const API = (p: string) => `/api${p}`;
 
@@ -310,6 +311,24 @@ function SmartStart({ brandId, websiteUrl }: { brandId?: string; websiteUrl?: st
                 </button>
               </Link>
             </div>
+            {plan && (
+              <PptxExport
+                variant="card"
+                deckTitle={`${plan.brandName} - ${plan.duration} Content Plan`}
+                brandName={plan.brandName}
+                buttonLabel="Download as PowerPoint"
+                slides={buildContentPlanSlides(plan.plan.map(p => ({
+                  day: p.day,
+                  platform: p.platform,
+                  contentType: p.contentType,
+                  topic: p.topic,
+                  angle: p.angle,
+                  caption: p.caption,
+                })))}
+                filename={`${plan.brandName.toLowerCase().replace(/\s+/g, "_")}_content_plan`}
+                className="mt-2"
+              />
+            )}
           </div>
         </div>
       )}
@@ -331,6 +350,54 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">{greeting()}, {name}</h1>
         <p className="text-muted-foreground mt-1">What do you want to create today?</p>
+      </div>
+
+      {/* Quick Actions Hub */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Link href="/quick-create">
+          <div className="group flex flex-col gap-3 p-4 rounded-2xl bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 transition-all shadow-sm">
+            <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
+              <Zap className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm leading-tight">Write a Post</p>
+              <p className="text-[11px] text-primary-foreground/70 mt-0.5">Caption in 60 sec</p>
+            </div>
+          </div>
+        </Link>
+        <Link href="/generate/bulk-plan">
+          <div className="group flex flex-col gap-3 p-4 rounded-2xl bg-card border border-border cursor-pointer hover:border-primary/40 hover:bg-muted/40 transition-all">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <CalendarDays className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-bold text-sm leading-tight text-foreground">Plan My Month</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">30 days of content</p>
+            </div>
+          </div>
+        </Link>
+        <Link href="/generate/creative-studio">
+          <div className="group flex flex-col gap-3 p-4 rounded-2xl bg-card border border-border cursor-pointer hover:border-primary/40 hover:bg-muted/40 transition-all">
+            <div className="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center">
+              <Film className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="font-bold text-sm leading-tight text-foreground">Create Visuals</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Carousels, quotes, video</p>
+            </div>
+          </div>
+        </Link>
+        <Link href="/calendar">
+          <div className="group flex flex-col gap-3 p-4 rounded-2xl bg-card border border-border cursor-pointer hover:border-primary/40 hover:bg-muted/40 transition-all">
+            <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
+              <LayoutGrid className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="font-bold text-sm leading-tight text-foreground">Content Calendar</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Your scheduled posts</p>
+            </div>
+          </div>
+        </Link>
       </div>
 
       <SmartStart brandId={activeBrandId ?? undefined} websiteUrl={(activeBrand as any)?.websiteUrl ?? ""} />

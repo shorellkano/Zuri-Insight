@@ -13,7 +13,10 @@ Zuri AI is an AI-powered marketing content platform for African businesses and g
 - **Frontend**: React + Vite (artifacts/zuri-ai) — terracotta/teal/gold branding
 - **API framework**: Express 5 (artifacts/api-server)
 - **Database**: PostgreSQL + Drizzle ORM
-- **AI**: OpenRouter (`OPENROUTER_API_KEY`) → `anthropic/claude-sonnet-4.6` via OpenAI-compatible SDK
+- **AI**: OpenRouter (`OPENROUTER_API_KEY`) → free models only: Llama-3.3-70b, Gemma-3-27b, Mistral-small-3.2, Qwen3-14b, Hermes-3 (fallback chain). NO paid models — closed beta, free tier only.
+- **TESTING_MODE=true** in `artifacts/zuri-ai/src/lib/plans.ts` — all plan limits bypassed, full access for everyone
+- **PPTX Export**: `pptxgenjs` installed in zuri-ai frontend. `PptxExport` component in `src/components/pptx-export.tsx` generates downloadable .pptx files from content plans and bulk plans — no external API needed.
+- **Gamma API**: Integration built (`api-server/src/lib/gamma.ts` + `routes/gamma.ts`) — requires `GAMMA_API_KEY` secret (Gamma Pro plan needed). Frontend component in `src/components/gamma-export.tsx`. Currently dormant until user obtains API key.
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
