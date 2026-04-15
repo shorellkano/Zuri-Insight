@@ -1,19 +1,17 @@
 import OpenAI from "openai";
 
-const PRIMARY_MODELS = [
-  "anthropic/claude-sonnet-4-5",
-  "anthropic/claude-3.5-sonnet",
-  "anthropic/claude-3-haiku",
-];
-
-const FALLBACK_MODELS = [
+const FREE_MODELS = [
   "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemma-3-27b-it:free",
+  "mistralai/mistral-small-3.2-24b-instruct:free",
+  "qwen/qwen3-14b:free",
+  "nousresearch/hermes-3-llama-3.1-405b:free",
   "google/gemma-4-31b-it:free",
 ];
 
-const ALL_MODELS = [...PRIMARY_MODELS, ...FALLBACK_MODELS];
+const ALL_MODELS = FREE_MODELS;
 
-const VISION_MODEL = "anthropic/claude-3-haiku";
+const VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free";
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY;

@@ -15,6 +15,7 @@ import mediaPostRouter from "./media-post";
 import ugcVideoRouter from "./ugc-video";
 import canvaApiRouter from "./canva-api";
 import billingRouter from "./billing";
+import gammaRouter from "./gamma";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(mediaPostRouter);
 router.use(ugcVideoRouter);
 router.use(canvaApiRouter);
 router.use(billingRouter);
+router.use(gammaRouter);
 
 export default router;
