@@ -60,9 +60,10 @@ const queryClient = new QueryClient({
 });
 
 // Warm up the production server as early as possible.
-// Autoscale deployments cold-start between requests; pinging healthz
-// on app boot ensures the server is ready before the user submits any form.
-fetch("/api/healthz").catch(() => {});
+// POST is used instead of GET because GET responses may be cached by
+// Replit's reverse proxy, meaning the server never actually receives them.
+// POST requests bypass all caching layers and reach the server directly.
+fetch("/api/ping", { method: "POST" }).catch(() => {});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();

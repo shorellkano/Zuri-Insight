@@ -165,13 +165,14 @@ export default function BrandsNew() {
     setSetupPath(urlPath);
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep the server warm while user fills in the form.
-  // Production uses autoscale (scales to zero on inactivity); a periodic ping
-  // prevents cold-start 500 errors between wizard steps.
+  // Keep the server warm while the user fills in the wizard.
+  // GET /api/healthz may be cached by Replit's reverse proxy (never reaching
+  // the server), so we use POST /api/ping which bypasses all caching and is
+  // guaranteed to reach the server, keeping the autoscale instance alive.
   useEffect(() => {
-    const ping = () => fetch("/api/healthz").catch(() => {});
-    ping(); // immediate warmup when wizard mounts
-    const id = setInterval(ping, 3 * 60 * 1000); // re-ping every 3 min
+    const ping = () => fetch("/api/ping", { method: "POST" }).catch(() => {});
+    ping(); // immediate warmup on mount
+    const id = setInterval(ping, 90 * 1000); // re-ping every 90 seconds
     return () => clearInterval(id);
   }, []);
 
