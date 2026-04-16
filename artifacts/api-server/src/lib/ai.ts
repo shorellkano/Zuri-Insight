@@ -1,33 +1,49 @@
 import OpenAI from "openai";
 
+// ─── Model Registry ───────────────────────────────────────────────────────────
+// Ordered: reliable models first (lighter global usage), heavy-hitters last.
+// The cooldown system means exhausted models get skipped rather than retried.
 const FREE_MODELS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "google/gemma-3-27b-it:free",
-  "mistralai/mistral-small-3.2-24b-instruct:free",
-  "qwen/qwen3-14b:free",
-  "nousresearch/hermes-3-llama-3.1-405b:free",
-  "google/gemma-4-31b-it:free",
   "deepseek/deepseek-r1:free",
   "deepseek/deepseek-chat-v3-0324:free",
-  "qwen/qwen3-235b-a22b:free",
   "microsoft/phi-4:free",
-  "meta-llama/llama-3.1-8b-instruct:free",
   "mistralai/mistral-7b-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "qwen/qwen3-14b:free",
+  "qwen/qwen3-235b-a22b:free",
+  "mistralai/mistral-small-3.2-24b-instruct:free",
+  "google/gemma-3-27b-it:free",
+  "google/gemma-4-31b-it:free",
+  "nousresearch/hermes-3-llama-3.1-405b:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
 ];
-
-function shuffledModels(): string[] {
-  const arr = [...FREE_MODELS];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
 
 const VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free";
 
+// ─── Per-model cooldown tracker ───────────────────────────────────────────────
+// When a model returns 429, mark it as cooling down for COOLDOWN_MS.
+// Any request in that window skips the model entirely rather than wasting time.
+const COOLDOWN_MS = 90_000; // 90 seconds
+const modelCooldowns = new Map<string, number>();
+
+function isModelCooling(model: string): boolean {
+  const until = modelCooldowns.get(model);
+  if (!until) return false;
+  if (Date.now() >= until) { modelCooldowns.delete(model); return false; }
+  return true;
+}
+
+function markModelRateLimited(model: string): void {
+  modelCooldowns.set(model, Date.now() + COOLDOWN_MS);
+}
+
+function availableModels(): string[] {
+  return FREE_MODELS.filter(m => !isModelCooling(m));
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const RATE_LIMIT_ERR = Object.assign(
-  new Error("AI models are temporarily busy due to high demand. Please wait 30 seconds and try again."),
+  new Error("AI models are temporarily busy due to high demand. Please wait a moment and try again."),
   { status: 429, isRateLimit: true }
 );
 
@@ -57,12 +73,25 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function logCooldownStatus(): void {
+  const cooling = FREE_MODELS.filter(m => isModelCooling(m));
+  if (cooling.length > 0) {
+    console.log(`[AI] ${cooling.length}/${FREE_MODELS.length} models cooling down. ${FREE_MODELS.length - cooling.length} available.`);
+  }
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 export async function aiComplete(system: string, user: string, maxTokens = 900): Promise<string> {
   const client = getClient();
   let lastErr: any;
-  let rateLimitCount = 0;
 
-  for (const model of shuffledModels()) {
+  logCooldownStatus();
+  const models = availableModels();
+
+  if (models.length === 0) throw RATE_LIMIT_ERR;
+
+  for (const model of models) {
     try {
       const response = await client.chat.completions.create({
         model,
@@ -78,8 +107,8 @@ export async function aiComplete(system: string, user: string, maxTokens = 900):
     } catch (err: any) {
       lastErr = err;
       if (isRateLimited(err)) {
-        rateLimitCount++;
-        await sleep(300);
+        markModelRateLimited(model);
+        await sleep(150);
         continue;
       }
       if (err?.status === 402 || err?.status === 503) continue;
@@ -87,7 +116,8 @@ export async function aiComplete(system: string, user: string, maxTokens = 900):
     }
   }
 
-  if (rateLimitCount > 0) throw RATE_LIMIT_ERR;
+  // All available models failed — check if it was rate limits
+  if (availableModels().length < FREE_MODELS.length) throw RATE_LIMIT_ERR;
   throw lastErr ?? new Error("All AI models are currently unavailable. Please try again in a moment.");
 }
 
@@ -135,9 +165,13 @@ function extractJson<T>(raw: string): T {
 export async function aiJSON<T = any>(system: string, user: string, maxTokens = 600): Promise<T> {
   const client = getClient();
   let lastErr: any;
-  let rateLimitCount = 0;
 
-  for (const model of shuffledModels()) {
+  logCooldownStatus();
+  const models = availableModels();
+
+  if (models.length === 0) throw RATE_LIMIT_ERR;
+
+  for (const model of models) {
     // Attempt 1: response_format json_object (guarantees JSON from supported models)
     try {
       const response = await client.chat.completions.create({
@@ -153,9 +187,9 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
       if (raw) return extractJson<T>(raw);
     } catch (err: any) {
       if (isRateLimited(err)) {
-        rateLimitCount++;
+        markModelRateLimited(model);
         lastErr = err;
-        await sleep(300);
+        await sleep(150);
         continue;
       }
       if (err?.status === 402 || err?.status === 503) {
@@ -180,8 +214,8 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
     } catch (err: any) {
       lastErr = err;
       if (isRateLimited(err)) {
-        rateLimitCount++;
-        await sleep(300);
+        markModelRateLimited(model);
+        await sleep(150);
         continue;
       }
       if (err?.status === 402 || err?.status === 503) continue;
@@ -189,10 +223,20 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
     }
   }
 
-  if (rateLimitCount > 0) throw RATE_LIMIT_ERR;
+  if (availableModels().length < FREE_MODELS.length) throw RATE_LIMIT_ERR;
   throw lastErr ?? new Error("All AI models are currently unavailable. Please try again in a moment.");
 }
 
 export function hasAI(): boolean {
   return !!process.env.OPENROUTER_API_KEY;
+}
+
+/** Expose cooldown state for health/debug endpoint */
+export function getModelStatus(): { model: string; available: boolean; coolingUntil?: number }[] {
+  return FREE_MODELS.map(model => {
+    const until = modelCooldowns.get(model);
+    const now = Date.now();
+    const available = !until || now >= until;
+    return { model, available, ...(until && now < until ? { coolingUntil: until } : {}) };
+  });
 }
