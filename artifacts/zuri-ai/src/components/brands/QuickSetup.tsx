@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useBrand } from "@/context/brand-context";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Loader2, ChevronRight, X, Instagram, Youtube } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,7 @@ export function QuickSetup({ onClose }: Props) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { setActiveBrandId } = useBrand();
+  const { toast } = useToast();
 
   const createBrand = useCreateBrand();
   const updateBrand = useUpdateBrand();
@@ -133,7 +135,6 @@ export function QuickSetup({ onClose }: Props) {
       {
         data: {
           name: form.name,
-
           country: form.country,
           continent,
           industry: "Other",
@@ -146,6 +147,7 @@ export function QuickSetup({ onClose }: Props) {
           setActiveBrandId(brand.id);
           setScreen(1);
         },
+        onError: (err: any) => toast({ title: "Error", description: err?.data?.error ?? err?.message ?? "Failed to save brand.", variant: "destructive" }),
       }
     );
   }

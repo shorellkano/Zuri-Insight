@@ -61,12 +61,16 @@ router.put("/brands/:brandId", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [brand] = await db.update(brandsTable).set(parsed.data).where(eq(brandsTable.id, params.data.brandId)).returning();
-  if (!brand) {
-    res.status(404).json({ error: "Brand not found" });
-    return;
+  try {
+    const [brand] = await db.update(brandsTable).set(parsed.data).where(eq(brandsTable.id, params.data.brandId)).returning();
+    if (!brand) {
+      res.status(404).json({ error: "Brand not found" });
+      return;
+    }
+    res.json(brand);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "Failed to update brand" });
   }
-  res.json(brand);
 });
 
 router.delete("/brands/:brandId", async (req, res): Promise<void> => {

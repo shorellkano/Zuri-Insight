@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
@@ -35,6 +35,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Global error handler — always return JSON, never HTML
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const status = err?.status ?? err?.statusCode ?? 500;
+  const message = err?.message ?? "Internal server error";
+  logger.error({ err, status }, "Unhandled error");
+  res.status(status).json({ error: message });
+});
 
 if (process.env.NODE_ENV === "production") {
   const clientDist = path.resolve(__dirname, "../../zuri-ai/dist/public");

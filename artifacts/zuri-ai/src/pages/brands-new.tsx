@@ -184,15 +184,16 @@ export default function BrandsNew() {
 
   async function submitStep1() {
     if (!validateStep1()) return;
+    const brandData = { name: form.name, websiteUrl: form.websiteUrl || undefined, industry: form.industry || undefined };
     if (brandId) {
-      updateBrand.mutate({ brandId, data: { name: form.name, websiteUrl: form.websiteUrl || undefined, industry: form.industry || undefined } }, {
+      updateBrand.mutate({ brandId, data: brandData }, {
         onSuccess: () => setStep(1),
-        onError: () => toast({ title: "Error", description: "Failed to save brand.", variant: "destructive" }),
+        onError: (err: any) => toast({ title: "Error", description: err?.data?.error ?? err?.message ?? "Failed to save brand.", variant: "destructive" }),
       });
     } else {
-      createBrand.mutate({ data: { name: form.name, websiteUrl: form.websiteUrl || undefined, industry: form.industry || undefined } }, {
+      createBrand.mutate({ data: brandData }, {
         onSuccess: (b) => { setBrandId(b.id); queryClient.invalidateQueries({ queryKey: getListBrandsQueryKey() }); setStep(1); },
-        onError: () => toast({ title: "Error", description: "Failed to save brand.", variant: "destructive" }),
+        onError: (err: any) => toast({ title: "Error", description: err?.data?.error ?? err?.message ?? "Failed to save brand.", variant: "destructive" }),
       });
     }
   }
