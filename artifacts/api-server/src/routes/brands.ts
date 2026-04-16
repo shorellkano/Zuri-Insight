@@ -18,8 +18,12 @@ import { getCulturalContext } from "../lib/cultural/profiles.js";
 const router: IRouter = Router();
 
 router.get("/brands", async (req, res): Promise<void> => {
-  const brands = await db.select().from(brandsTable).orderBy(desc(brandsTable.createdAt));
-  res.json(brands);
+  try {
+    const brands = await db.select().from(brandsTable).orderBy(desc(brandsTable.createdAt));
+    res.json(brands);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "Failed to fetch brands" });
+  }
 });
 
 router.post("/brands", async (req, res): Promise<void> => {
@@ -42,12 +46,16 @@ router.get("/brands/:brandId", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, params.data.brandId));
-  if (!brand) {
-    res.status(404).json({ error: "Brand not found" });
-    return;
+  try {
+    const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, params.data.brandId));
+    if (!brand) {
+      res.status(404).json({ error: "Brand not found" });
+      return;
+    }
+    res.json(brand);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "Failed to fetch brand" });
   }
-  res.json(brand);
 });
 
 router.put("/brands/:brandId", async (req, res): Promise<void> => {
@@ -79,12 +87,16 @@ router.delete("/brands/:brandId", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [brand] = await db.delete(brandsTable).where(eq(brandsTable.id, params.data.brandId)).returning();
-  if (!brand) {
-    res.status(404).json({ error: "Brand not found" });
-    return;
+  try {
+    const [brand] = await db.delete(brandsTable).where(eq(brandsTable.id, params.data.brandId)).returning();
+    if (!brand) {
+      res.status(404).json({ error: "Brand not found" });
+      return;
+    }
+    res.sendStatus(204);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "Failed to delete brand" });
   }
-  res.sendStatus(204);
 });
 
 router.get("/brands/:brandId/dna", async (req, res): Promise<void> => {
