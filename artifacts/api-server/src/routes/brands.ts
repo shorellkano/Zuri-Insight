@@ -367,7 +367,8 @@ Return ONLY this JSON (no markdown fences, no explanation):
       console.error("Failed to save error status to DB:", dbErr);
     }
 
-    res.status(500).json({ error: errorMessage });
+    const statusCode = (err as any)?.isRateLimit ? 429 : 500;
+    res.status(statusCode).json({ error: errorMessage });
   }
 });
 

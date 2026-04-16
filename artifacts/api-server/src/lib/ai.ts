@@ -7,11 +7,29 @@ const FREE_MODELS = [
   "qwen/qwen3-14b:free",
   "nousresearch/hermes-3-llama-3.1-405b:free",
   "google/gemma-4-31b-it:free",
+  "deepseek/deepseek-r1:free",
+  "deepseek/deepseek-chat-v3-0324:free",
+  "qwen/qwen3-235b-a22b:free",
+  "microsoft/phi-4:free",
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
 ];
 
-const ALL_MODELS = FREE_MODELS;
+function shuffledModels(): string[] {
+  const arr = [...FREE_MODELS];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 const VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free";
+
+const RATE_LIMIT_ERR = Object.assign(
+  new Error("AI models are temporarily busy due to high demand. Please wait 30 seconds and try again."),
+  { status: 429, isRateLimit: true }
+);
 
 function getClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -20,7 +38,7 @@ function getClient(): OpenAI {
     apiKey,
     baseURL: "https://openrouter.ai/api/v1",
     defaultHeaders: {
-      "HTTP-Referer": "https://zuri.ai",
+      "HTTP-Referer": "https://zuriai.africa",
       "X-Title": "Zuri AI",
     },
   });
@@ -35,11 +53,16 @@ function isRateLimited(err: any): boolean {
   );
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export async function aiComplete(system: string, user: string, maxTokens = 900): Promise<string> {
   const client = getClient();
   let lastErr: any;
+  let rateLimitCount = 0;
 
-  for (const model of ALL_MODELS) {
+  for (const model of shuffledModels()) {
     try {
       const response = await client.chat.completions.create({
         model,
@@ -54,12 +77,18 @@ export async function aiComplete(system: string, user: string, maxTokens = 900):
       return content;
     } catch (err: any) {
       lastErr = err;
-      if (isRateLimited(err) || err?.status === 402 || err?.status === 503) continue;
+      if (isRateLimited(err)) {
+        rateLimitCount++;
+        await sleep(300);
+        continue;
+      }
+      if (err?.status === 402 || err?.status === 503) continue;
       throw err;
     }
   }
 
-  throw lastErr ?? new Error("All AI models are currently busy. Please try again in a moment.");
+  if (rateLimitCount > 0) throw RATE_LIMIT_ERR;
+  throw lastErr ?? new Error("All AI models are currently unavailable. Please try again in a moment.");
 }
 
 export async function aiVision(system: string, prompt: string, images: string[], maxTokens = 900): Promise<string> {
@@ -106,8 +135,9 @@ function extractJson<T>(raw: string): T {
 export async function aiJSON<T = any>(system: string, user: string, maxTokens = 600): Promise<T> {
   const client = getClient();
   let lastErr: any;
+  let rateLimitCount = 0;
 
-  for (const model of ALL_MODELS) {
+  for (const model of shuffledModels()) {
     // Attempt 1: response_format json_object (guarantees JSON from supported models)
     try {
       const response = await client.chat.completions.create({
@@ -122,8 +152,13 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
       const raw = response.choices[0]?.message?.content ?? "";
       if (raw) return extractJson<T>(raw);
     } catch (err: any) {
-      // Rate limited / out of credits → try next model
-      if (isRateLimited(err) || err?.status === 402 || err?.status === 503) {
+      if (isRateLimited(err)) {
+        rateLimitCount++;
+        lastErr = err;
+        await sleep(300);
+        continue;
+      }
+      if (err?.status === 402 || err?.status === 503) {
         lastErr = err; continue;
       }
       // Model doesn't support json_object → fall through to Attempt 2
@@ -144,12 +179,18 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
       if (raw) return extractJson<T>(raw);
     } catch (err: any) {
       lastErr = err;
-      if (isRateLimited(err) || err?.status === 402 || err?.status === 503) continue;
+      if (isRateLimited(err)) {
+        rateLimitCount++;
+        await sleep(300);
+        continue;
+      }
+      if (err?.status === 402 || err?.status === 503) continue;
       throw err;
     }
   }
 
-  throw lastErr ?? new Error("All AI models are currently busy. Please try again in a moment.");
+  if (rateLimitCount > 0) throw RATE_LIMIT_ERR;
+  throw lastErr ?? new Error("All AI models are currently unavailable. Please try again in a moment.");
 }
 
 export function hasAI(): boolean {

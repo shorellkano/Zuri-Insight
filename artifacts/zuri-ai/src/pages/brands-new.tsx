@@ -276,7 +276,14 @@ export default function BrandsNew() {
           // Trigger actual build
           buildDna.mutate({ brandId: brandId! }, {
             onSuccess: () => { setDnaPhase(6); queryClient.invalidateQueries({ queryKey: getListBrandsQueryKey() }); },
-            onError: (err: any) => { setDnaPhase(7); setDnaError(err?.message ?? "DNA build failed"); },
+            onError: (err: any) => {
+              const msg = err?.data?.error ?? err?.message ?? "DNA build failed";
+              const friendly = msg.includes("429") || msg.toLowerCase().includes("busy") || msg.toLowerCase().includes("rate limit")
+                ? "AI models are temporarily busy. Please wait 30 seconds and tap Try again."
+                : msg;
+              setDnaPhase(7);
+              setDnaError(friendly);
+            },
           });
           return;
         }
