@@ -55,8 +55,14 @@ import Contact from "@/pages/contact";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1 },
+    mutations: { retry: 2 },
   },
 });
+
+// Warm up the production server as early as possible.
+// Autoscale deployments cold-start between requests; pinging healthz
+// on app boot ensures the server is ready before the user submits any form.
+fetch("/api/healthz").catch(() => {});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();

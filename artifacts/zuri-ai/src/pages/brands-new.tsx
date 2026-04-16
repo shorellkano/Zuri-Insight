@@ -164,6 +164,17 @@ export default function BrandsNew() {
   useEffect(() => {
     setSetupPath(urlPath);
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the server warm while user fills in the form.
+  // Production uses autoscale (scales to zero on inactivity); a periodic ping
+  // prevents cold-start 500 errors between wizard steps.
+  useEffect(() => {
+    const ping = () => fetch("/api/healthz").catch(() => {});
+    ping(); // immediate warmup when wizard mounts
+    const id = setInterval(ping, 3 * 60 * 1000); // re-ping every 3 min
+    return () => clearInterval(id);
+  }, []);
+
   const [form, setForm] = useState<FormData>(defaults);
   const [brandId, setBrandId] = useState<string | null>(null);
   const [dnaPhase, setDnaPhase] = useState(-1); // -1=idle, 0-5=animating, 6=done, 7=error

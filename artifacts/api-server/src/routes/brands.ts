@@ -36,7 +36,9 @@ router.post("/brands", async (req, res): Promise<void> => {
     const [brand] = await db.insert(brandsTable).values(parsed.data).returning();
     res.status(201).json(brand);
   } catch (err: any) {
-    res.status(500).json({ error: err?.message ?? "Failed to save brand" });
+    const msg = err?.message ?? "Failed to save brand";
+    console.error("[POST /brands] DB error:", msg, err?.code, err?.detail);
+    res.status(500).json({ error: msg });
   }
 });
 
