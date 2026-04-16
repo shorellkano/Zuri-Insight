@@ -34,25 +34,66 @@ function cleanDay(d: any) {
   return d;
 }
 
+function buildFallbackDays(brandName: string, weekFocus?: string) {
+  const bName = brandName || "Your Brand";
+  const FALLBACK_INSTAGRAM_HOOKS = [
+    `The one thing ${bName} does differently`,
+    `3 things you didn't know about us`,
+    `This is your sign to start today`,
+    `POV: You just discovered ${bName}`,
+    `5 reasons our customers keep coming back`,
+    `That feeling when it just works`,
+    `Your week starts here`,
+  ];
+  const FALLBACK_TIKTOK_HOOKS = [
+    `Wait - you need to hear this`,
+    `Let me show you something real quick`,
+    `Here's the truth about this industry`,
+    `This changed everything for us`,
+    `Nobody talks about this enough`,
+    `Come behind the scenes with us`,
+    `Last chance to catch this`,
+  ];
+  return DAY_PLAN.map((d, i) => cleanDay({
+    day: i + 1,
+    instagram: {
+      format: d.instagram.format,
+      contentType: d.instagram.contentType,
+      hook: FALLBACK_INSTAGRAM_HOOKS[i] ?? `Day ${i + 1} with ${bName}`,
+      caption: `${FALLBACK_INSTAGRAM_HOOKS[i] ?? bName}\n\nAt ${bName}, we're committed to delivering real value to you every day. This is our story and we'd love for you to be part of it.\n\nSave this post and share with someone who needs to see it.\n\n#${bName.replace(/\s+/g, "")} #AfricanBusiness #Growth #SmallBusiness #MadeInAfrica`,
+      hashtags: [`#${bName.replace(/\s+/g, "")}`, "#AfricanBusiness", "#Growth", "#Entrepreneur", "#SmallBusiness", "#Nigeria", "#Africa"],
+    },
+    tiktok: {
+      contentType: d.tiktok.contentType,
+      hook: FALLBACK_TIKTOK_HOOKS[i] ?? `Day ${i + 1}`,
+      script: `Start by introducing yourself and what ${bName} does. Then explain why you started this business and who you serve. Share one thing that makes ${bName} different. End by telling your audience what to do next.`,
+      cta: `Follow for more and tap the link in bio to get started.`,
+      hashtags: [`#${bName.replace(/\s+/g, "")}`, "#fyp", "#AfricanBusiness", "#BusinessTips"],
+    },
+  }));
+}
+
 router.post("/generate/7day-starter", async (req, res) => {
+  const { brandId, weekFocus } = req.body;
+
+  if (!brandId) {
+    res.status(400).json({ error: "brandId is required" });
+    return;
+  }
+
+  if (!hasAI()) {
+    res.status(503).json({ error: "AI not configured" });
+    return;
+  }
+
+  // Fetch brand outside try so it's accessible in the catch fallback
+  const brand = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId)).then(r => r[0]);
+  if (!brand) {
+    res.status(404).json({ error: "Brand not found" });
+    return;
+  }
+
   try {
-    if (!hasAI()) {
-      res.status(503).json({ error: "AI not configured" });
-      return;
-    }
-
-    const { brandId, weekFocus } = req.body;
-    if (!brandId) {
-      res.status(400).json({ error: "brandId is required" });
-      return;
-    }
-
-    const brand = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId)).then(r => r[0]);
-    if (!brand) {
-      res.status(404).json({ error: "Brand not found" });
-      return;
-    }
-
     const dnaRows = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)).limit(1);
     const dna = dnaRows[0];
 
@@ -122,7 +163,19 @@ Return ONLY valid JSON with this structure:
     res.json({ weekTheme: result.weekTheme ?? "", days });
   } catch (err: any) {
     console.error("7-day starter error:", err);
-    res.status(500).json({ error: err.message ?? "Generation failed" });
+
+    const isRateLimit = err?.isRateLimit || String(err?.message ?? "").includes("429") || String(err?.message ?? "").toLowerCase().includes("busy");
+    const noteText = isRateLimit
+      ? "AI was busy - here is a starter template. Edit the captions to match your brand voice and products."
+      : "Starter template - edit captions to match your brand.";
+
+    const days = buildFallbackDays(brand.name, weekFocus);
+    res.json({
+      weekTheme: weekFocus ?? `${brand.name} - Week 1`,
+      days,
+      isTemplateFallback: true,
+      note: noteText,
+    });
   }
 });
 

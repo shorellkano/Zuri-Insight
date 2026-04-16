@@ -488,7 +488,57 @@ Rules for the plan:
     });
   } catch (err: any) {
     console.error("quick-plan error:", err);
-    res.status(500).json({ error: "Could not generate plan. Please try again." });
+
+    // Fallback: return a template plan using brand/website info we already have
+    const isRateLimit = err?.isRateLimit || String(err?.message ?? "").includes("429") || String(err?.message ?? "").toLowerCase().includes("busy");
+    const postCounts2: Record<string, number> = { "1week": 7, "1month": 14, "3months": 24 };
+    const postCount2 = postCounts2[duration] ?? 7;
+    const FALLBACK_STRUCTURE = [
+      { platform: "Instagram", contentType: "Carousel", angle: "Educational" },
+      { platform: "Facebook", contentType: "Static Post", angle: "Promotional" },
+      { platform: "Instagram", contentType: "Reel", angle: "Engagement" },
+      { platform: "LinkedIn", contentType: "Static Post", angle: "Brand Story" },
+      { platform: "TikTok", contentType: "Video", angle: "Behind the Scenes" },
+      { platform: "Facebook", contentType: "Story", angle: "Engagement" },
+      { platform: "Instagram", contentType: "Static Post", angle: "Promotional" },
+      { platform: "Instagram", contentType: "Carousel", angle: "Educational" },
+      { platform: "Facebook", contentType: "Reel", angle: "Promotional" },
+      { platform: "LinkedIn", contentType: "Article", angle: "Educational" },
+      { platform: "Instagram", contentType: "Reel", angle: "Behind the Scenes" },
+      { platform: "TikTok", contentType: "Video", angle: "Engagement" },
+      { platform: "Facebook", contentType: "Static Post", angle: "Brand Story" },
+      { platform: "Instagram", contentType: "Story", angle: "Promotional" },
+    ];
+    const TOPICS = [
+      "What makes us different",
+      "Meet the team behind the brand",
+      "Our most popular product this week",
+      "Customer spotlight",
+      "Quick tip for our community",
+      "Behind the scenes at our workspace",
+      "This week's offer",
+    ];
+    const plan = Array.from({ length: postCount2 }, (_, i) => {
+      const s = FALLBACK_STRUCTURE[i % FALLBACK_STRUCTURE.length];
+      return {
+        id: `post_${i + 1}`,
+        day: i + 1,
+        platform: s.platform,
+        contentType: s.contentType,
+        topic: TOPICS[i % TOPICS.length],
+        angle: s.angle,
+        caption: `✨ ${brandName ? brandName + " – " : ""}${TOPICS[i % TOPICS.length]}. Tap the link in bio to learn more.`,
+      };
+    });
+    const note = isRateLimit ? " AI was busy so we generated a starter template — edit the topics and captions to match your brand." : "";
+    res.json({
+      brandName: brandName || "Your Brand",
+      brandSummary: `A ${label} content plan ready to customise.${note}`,
+      duration: label,
+      totalPosts: plan.length,
+      plan,
+      isTemplateFallback: true,
+    });
   }
 });
 
