@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link, useSearch } from "wouter";
 import { useCreateBrand, useUpdateBrand, useBuildBrandDna, getListBrandsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ChevronLeft, CheckCircle2, Loader2, Globe, Instagram, Youtube, AtSign } from "lucide-react";
@@ -150,8 +150,20 @@ const defaults: FormData = {
 
 export default function BrandsNew() {
   const [, setLocation] = useLocation();
-  const [setupPath, setSetupPath] = useState<SetupPath>(null);
+  const search = useSearch();
+  // Read ?path= from URL — works on all mobile browsers via native link taps
+  const urlPath = (() => {
+    const p = new URLSearchParams(search).get("path");
+    if (p === "website" || p === "social") return p as SetupPath;
+    return null;
+  })();
+  const [setupPath, setSetupPath] = useState<SetupPath>(urlPath);
   const [step, setStep] = useState(0);
+
+  // Sync setupPath with URL param (keeps back/forward navigation working)
+  useEffect(() => {
+    setSetupPath(urlPath);
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
   const [form, setForm] = useState<FormData>(defaults);
   const [brandId, setBrandId] = useState<string | null>(null);
   const [dnaPhase, setDnaPhase] = useState(-1); // -1=idle, 0-5=animating, 6=done, 7=error
@@ -292,10 +304,10 @@ export default function BrandsNew() {
             <p className="text-sm text-muted-foreground mt-1">Choose one. You can always add more later.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button
-              onClick={() => setSetupPath("website")}
+            <Link
+              href="/brands/new?path=website"
               data-testid="btn-path-website"
-              className="group flex flex-col items-center text-center gap-4 p-6 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/3 transition-all"
+              className="group flex flex-col items-center text-center gap-4 p-6 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all no-underline"
             >
               <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
                 <Globe className="h-7 w-7 text-primary" />
@@ -304,15 +316,15 @@ export default function BrandsNew() {
                 <p className="font-semibold text-foreground text-base">I have a website</p>
                 <p className="text-sm text-muted-foreground mt-1">Paste your URL and Zuri reads your site, extracts your brand voice, and builds your DNA automatically.</p>
               </div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/8 text-primary text-xs font-medium">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
                 Fastest setup
               </span>
-            </button>
+            </Link>
 
-            <button
-              onClick={() => setSetupPath("social")}
+            <Link
+              href="/brands/new?path=social"
               data-testid="btn-path-social"
-              className="group flex flex-col items-center text-center gap-4 p-6 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/3 transition-all"
+              className="group flex flex-col items-center text-center gap-4 p-6 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all no-underline"
             >
               <div className="h-14 w-14 rounded-2xl bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
                 <AtSign className="h-7 w-7 text-pink-600" />
@@ -324,7 +336,7 @@ export default function BrandsNew() {
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-50 text-pink-700 text-xs font-medium">
                 Great for personal brands
               </span>
-            </button>
+            </Link>
           </div>
         </div>
       )}
@@ -332,12 +344,13 @@ export default function BrandsNew() {
       {setupPath !== null && (
         <>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSetupPath(null)}
+            <Link
+              href="/brands/new"
+              onClick={() => { setSetupPath(null); setStep(0); }}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" /> Change setup method
-            </button>
+            </Link>
             <span className="text-xs text-muted-foreground">
               {setupPath === "website" ? "Website setup" : "Social media setup"}
             </span>
