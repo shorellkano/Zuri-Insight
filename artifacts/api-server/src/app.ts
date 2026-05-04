@@ -1,7 +1,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 // @ts-ignore
-import pinoHttp from "pino-http";
+import * as pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes";
@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 const app: Express = express();
 
 app.use(
-pinoHttp({
+(pinoHttp as any)({
     logger,
     serializers: {
       req(req: any) {
