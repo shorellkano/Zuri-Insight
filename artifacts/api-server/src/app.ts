@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 // @ts-ignore
+import pinoHttp from "pino-http";
 const pinoHttpAny: any = pinoHttp;
 import path from "path";
 import { fileURLToPath } from "url";
