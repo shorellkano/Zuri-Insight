@@ -12,8 +12,9 @@ const __dirname = path.dirname(__filename);
 
 const app: Express = express();
 
-app.use(
-(pinoHttp as any)({
+app.use( 
+// @ts-ignore
+pinoHttp({
     logger,
     serializers: {
       req(req: any) {
