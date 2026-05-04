@@ -1,6 +1,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
-import * as pinoHttp from "pino-http";
+// @ts-ignore
+const pinoHttp = require("pino-http");
 import path from "path";
 import { fileURLToPath } from "url";
 import router from "./routes";
