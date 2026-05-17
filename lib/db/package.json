@@ -2,24 +2,16 @@
   "name": "@workspace/db",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
-  },
-  "scripts": {
-    "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
-  },
   "dependencies": {
+    "drizzle-orm": "^0.30.0",
     "tsx": "^4.7.0",
     "drizzle-zod": "^0.8.3",
     "pg": "^8.20.0",
-    "zod": "^3.22.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/pg": "^8.18.0",
-    "drizzle-kit": "^0.31.9",
+    "drizzle-kit": "^0.31.9"
   }
 }
