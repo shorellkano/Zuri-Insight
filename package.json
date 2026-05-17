@@ -2,7 +2,7 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "packageManager": "pnpm@9.1.1",
+  
   "scripts": {
     "build": "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/zuri-ai run build && pnpm --filter @workspace/api-server run build",
     "start": "NODE_ENV=production node --enable-source-maps artifacts/api-server/dist/index.mjs",
