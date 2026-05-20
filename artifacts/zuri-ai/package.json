@@ -1,6 +1,6 @@
 {
   "name": "@workspace/zuri-ai",
-  "react": "^18.2.0",,
+  "react": "^18.2.0",
   "private": true,
   "type": "module",
   "scripts": {
