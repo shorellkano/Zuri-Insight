@@ -45,7 +45,7 @@
     "@tanstack/react-query": "LATEST",
     "@types/node": "LATEST",
     "@types/react": "LATEST",
-    ""react-dom": "^18.2.0",,
+   "react-dom": "^18.2.0",
     "@vitejs/plugin-react": "LATEST",
     "@workspace/api-client-react": "workspace:*",
     "class-variance-authority": "LATEST",
