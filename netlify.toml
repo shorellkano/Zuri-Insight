@@ -4,5 +4,5 @@
   NODE_VERSION = "22"
 
 [build]
-  command = "npm run build"
-  publish = "build"
+  command = "cd lib/api-client-react && npm install && cd ../.. && cd artifacts/zuri-ai && npm install && npm run build"
+  publish = "artifacts/zuri-ai/dist/public"
