@@ -50,6 +50,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
       "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+      // ✅ Add this alias for @workspace imports
+      "@workspace": path.resolve(import.meta.dirname, "..", ".."),
+      "@workspace/api-client-react": path.resolve(import.meta.dirname, "..", "..", "artifacts", "api-client-react"),
     },
     dedupe: ["react", "react-dom"],
   },
@@ -57,6 +60,10 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // ✅ Add rolldownOptions to handle external modules
+    rolldownOptions: {
+      external: ['@workspace/api-client-react'],
+    },
   },
   server: {
     port,
