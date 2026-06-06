@@ -1,0 +1,7 @@
+[build.environment]
+  PORT = "3000"
+  NODE_VERSION = "22"
+
+[build]
+  command = "npm run build"
+  publish = "build"
