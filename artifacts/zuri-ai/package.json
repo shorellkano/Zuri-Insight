@@ -41,7 +41,6 @@
     "@replit/vite-plugin-dev-banner": "latest",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "latest",
-    "@tanstack/react-query": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
     "react-dom": "^18.2.0",
@@ -72,6 +71,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
+    "@tanstack/react-query": "latest",
     "html2canvas": "^1.4.1",
     "pptxgenjs": "^4.0.1",
     "react": "^18.2.0"
