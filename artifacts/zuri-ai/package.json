@@ -1,6 +1,5 @@
 {
   "name": "@workspace/zuri-ai",
-  "react": "^18.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -45,7 +44,7 @@
     "@tanstack/react-query": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
-   "react-dom": "^18.2.0",
+    "react-dom": "^18.2.0",
     "@vitejs/plugin-react": "latest",
     "class-variance-authority": "latest",
     "clsx": "latest",
@@ -54,9 +53,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "latest",
     "input-otp": "^1.4.2",
-   "dependencies": {
-  "lucide-react": "^0.475.0" 
-}
+    "lucide-react": "^0.475.0",
     "next-themes": "^0.4.6",
     "react": "latest",
     "react-day-picker": "^9.11.1",
@@ -76,6 +73,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
     "html2canvas": "^1.4.1",
-    "pptxgenjs": "^4.0.1"
+    "pptxgenjs": "^4.0.1",
+    "react": "^18.2.0"
   }
 }
