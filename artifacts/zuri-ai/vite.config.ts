@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-//import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 const rawPort = process.env.PORT;
 
@@ -31,7 +30,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    //runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -50,9 +48,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
       "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
-      // ✅ Add this alias for @workspace imports
-      "@workspace": path.resolve(import.meta.dirname, "..", ".."),
-      "@workspace/api-client-react": path.resolve(import.meta.dirname, "..", "..", "artifacts", "api-client-react"),
+      // ✅ CORRECT PATH: @workspace points to lib folder
+      "@workspace": path.resolve(import.meta.dirname, "..", "..", "lib"),
+      "@workspace/api-client-react": path.resolve(import.meta.dirname, "..", "..", "lib", "api-client-react"),
     },
     dedupe: ["react", "react-dom"],
   },
@@ -60,10 +58,6 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    // ✅ Add rolldownOptions to handle external modules
-    rolldownOptions: {
-      external: ['@workspace/api-client-react'],
-    },
   },
   server: {
     port,
