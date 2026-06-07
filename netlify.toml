@@ -1,10 +1,11 @@
 [build.environment]
   PORT = "3000"
+  BASE_PATH = "/"
   NODE_VERSION = "22"
 
 [build]
-  command = "cd artifacts/zuri-ai && npm install && npm run build"
-  publish = "artifacts/zuri-ai/dist"
+  command = "cd lib/api-client-react && npm install && cd ../../artifacts/zuri-ai && npm install && npm run build"
+  publish = "artifacts/zuri-ai/dist/public"
 
 [[redirects]]
   from = "/*"
