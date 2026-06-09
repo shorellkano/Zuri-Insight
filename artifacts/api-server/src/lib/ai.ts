@@ -1,22 +1,22 @@
 import OpenAI from "openai";
 
 // ─── Model Registry ───────────────────────────────────────────────────────────
-// Ordered: highest quality / largest models first for best output.
-// The cooldown system skips rate-limited models automatically, so we always
-// fall back to the next one rather than blocking.
+// Verified free on OpenRouter as of 2026-06-09. Ordered: largest/best first.
+// The cooldown system (+ 404 skip) means dead or rate-limited models are
+// bypassed automatically — always falls through to the next available one.
 const FREE_MODELS = [
-  "deepseek/deepseek-r1:free",              // #1 — best reasoning
-  "qwen/qwen3-235b-a22b:free",              // #2 — largest Qwen, very capable
-  "meta-llama/llama-3.3-70b-instruct:free", // #3 — strong all-rounder
-  "nousresearch/hermes-3-llama-3.1-405b:free", // #4 — huge, excellent instruction-following
-  "mistralai/mistral-small-3.2-24b-instruct:free", // #5 — solid mid-tier
-  "google/gemma-4-31b-it:free",             // #6 — latest Google model
-  "google/gemma-3-27b-it:free",             // #7 — previous Google gen
-  "qwen/qwen3-14b:free",                    // #8 — lighter Qwen
-  "deepseek/deepseek-chat-v3-0324:free",    // #9 — fast DeepSeek chat
-  "microsoft/phi-4:free",                   // #10 — compact Microsoft model
-  "mistralai/mistral-7b-instruct:free",     // #11 — small but reliable
-  "meta-llama/llama-3.1-8b-instruct:free",  // #12 — last resort, smallest
+  "nvidia/nemotron-3-ultra-550b-a55b:free",     // #1  — 550B NVIDIA flagship
+  "openai/gpt-oss-120b:free",                    // #2  — OpenAI 120B OSS
+  "nvidia/nemotron-3-super-120b-a12b:free",      // #3  — NVIDIA 120B
+  "moonshotai/kimi-k2.6:free",                   // #4  — Kimi K2.6 (262k ctx)
+  "nousresearch/hermes-3-llama-3.1-405b:free",   // #5  — Hermes 405B
+  "meta-llama/llama-3.3-70b-instruct:free",      // #6  — Llama 70B
+  "qwen/qwen3-next-80b-a3b-instruct:free",        // #7  — Qwen3 80B
+  "google/gemma-4-31b-it:free",                  // #8  — Gemma 4 31B ✅
+  "google/gemma-4-26b-a4b-it:free",              // #9  — Gemma 4 26B
+  "openai/gpt-oss-20b:free",                     // #10 — OpenAI 20B OSS ✅
+  "nvidia/nemotron-3-nano-30b-a3b:free",          // #11 — NVIDIA 30B
+  "z-ai/glm-4.5-air:free",                       // #12 — GLM 4.5 Air
 ];
 
 const VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free";
@@ -112,7 +112,8 @@ export async function aiComplete(system: string, user: string, maxTokens = 900):
         await sleep(150);
         continue;
       }
-      if (err?.status === 402 || err?.status === 503) continue;
+      // 404 = model no longer free; 402 = payment needed; 503 = provider down — skip all
+      if (err?.status === 404 || err?.status === 402 || err?.status === 503) continue;
       throw err;
     }
   }
@@ -193,7 +194,8 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
         await sleep(150);
         continue;
       }
-      if (err?.status === 402 || err?.status === 503) {
+      // 404 = model no longer free; 402 = payment needed; 503 = provider down — skip all
+      if (err?.status === 404 || err?.status === 402 || err?.status === 503) {
         lastErr = err; continue;
       }
       // Model doesn't support json_object → fall through to Attempt 2
@@ -219,7 +221,8 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
         await sleep(150);
         continue;
       }
-      if (err?.status === 402 || err?.status === 503) continue;
+      // 404 = model no longer free; 402 = payment needed; 503 = provider down — skip all
+      if (err?.status === 404 || err?.status === 402 || err?.status === 503) continue;
       throw err;
     }
   }
