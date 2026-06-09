@@ -1,4 +1,6 @@
 {
-  "buildCommand": "pnpm install && pnpm build",
-  "installCommand": "pnpm install"
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "artifacts/zuri-ai/dist",
+  "framework": "vite"
 }
