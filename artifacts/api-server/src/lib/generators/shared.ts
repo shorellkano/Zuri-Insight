@@ -116,7 +116,10 @@ Avoid: ${cultural.taboos.join(", ")}`);
     if (fallbackParts.length > 0) {
       sections.push(`BRAND CONTEXT (early stage - no DNA built yet):
 ${fallbackParts.join("\n")}
-Write content that feels authentic to a real ${brand?.industry ?? "business"} based in ${brand?.country ?? "Nigeria"}. Avoid generic filler. Be specific and grounded. Only reference services and products explicitly listed above.`);
+CRITICAL: Only reference services and products explicitly described above. Do NOT invent offerings, features, or capabilities that are not stated. Do NOT make assumptions about what this business does based on the industry name alone. If the description is vague, keep content high-level and factual.`);
+    } else {
+      sections.push(`BRAND CONTEXT: No brand description has been provided yet.
+CRITICAL: You have almost no information about this brand. Do NOT invent specific services, products, prices, campaigns, or offerings. Do NOT make assumptions from the industry name. Write only general, factual content using the brand name. Keep every claim vague until the user adds a brand brief.`);
     }
 
     // Cultural intelligence without mandating language style (that is controlled by rule 6 above)

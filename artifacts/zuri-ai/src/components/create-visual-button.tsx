@@ -31,7 +31,15 @@ function studioPath(format: VisualFormat, platform: string, hook?: string, capti
     const desc = encodeURIComponent((script || caption || hook || "").slice(0, 400));
     return `${base}/ugc-video?description=${desc}`;
   }
-  // Reel, feed post, or anything else → quote card
+  if (fmt.includes("static") || fmt.includes("feed") || fmt.includes("announcement") || fmt.includes("post")) {
+    const topic = encodeURIComponent(text.slice(0, 200));
+    return `${base}/announcement?topic=${topic}`;
+  }
+  if (fmt.includes("product") || fmt.includes("showcase") || fmt.includes("promo")) {
+    const topic = encodeURIComponent(text.slice(0, 200));
+    return `${base}/product-showcase?topic=${topic}`;
+  }
+  // Reel or anything unrecognised → quote card
   const quote = encodeURIComponent(text.slice(0, 200));
   return `${base}/quote-card?quote=${quote}`;
 }

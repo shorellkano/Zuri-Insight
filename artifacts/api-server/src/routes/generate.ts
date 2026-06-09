@@ -18,7 +18,10 @@ const router: IRouter = Router();
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function stripEmDashes(text: string): string {
-  return text.replace(/\u2014/g, " - ");
+  return text
+    .replace(/\u2014/g, " - ")
+    .replace(/\u2013/g, " - ")
+    .replace(/--/g, " - ");
 }
 
 function stripEmDashesDeep<T>(val: T): T {
