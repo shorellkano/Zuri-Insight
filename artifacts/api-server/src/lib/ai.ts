@@ -83,6 +83,8 @@ function logCooldownStatus(): void {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+const AI_REQUEST_TIMEOUT_MS = 25_000; // 25s per model attempt — skip slow models fast
+
 export async function aiComplete(system: string, user: string, maxTokens = 900): Promise<string> {
   const client = getClient();
   let lastErr: any;
@@ -101,7 +103,7 @@ export async function aiComplete(system: string, user: string, maxTokens = 900):
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-      });
+      }, { timeout: AI_REQUEST_TIMEOUT_MS });
       const content = response.choices[0]?.message?.content;
       if (!content) throw new Error("Empty response from AI");
       return content;
@@ -184,7 +186,7 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-      });
+      }, { timeout: AI_REQUEST_TIMEOUT_MS });
       const raw = response.choices[0]?.message?.content ?? "";
       if (raw) return extractJson<T>(raw);
     } catch (err: any) {
@@ -211,7 +213,7 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
           { role: "system", content: system },
           { role: "user", content: user },
         ],
-      });
+      }, { timeout: AI_REQUEST_TIMEOUT_MS });
       const raw = response.choices[0]?.message?.content ?? "";
       if (raw) return extractJson<T>(raw);
     } catch (err: any) {
