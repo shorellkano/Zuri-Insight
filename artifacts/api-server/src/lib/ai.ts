@@ -1,21 +1,22 @@
 import OpenAI from "openai";
 
 // ─── Model Registry ───────────────────────────────────────────────────────────
-// Ordered: reliable models first (lighter global usage), heavy-hitters last.
-// The cooldown system means exhausted models get skipped rather than retried.
+// Ordered: highest quality / largest models first for best output.
+// The cooldown system skips rate-limited models automatically, so we always
+// fall back to the next one rather than blocking.
 const FREE_MODELS = [
-  "deepseek/deepseek-r1:free",
-  "deepseek/deepseek-chat-v3-0324:free",
-  "microsoft/phi-4:free",
-  "mistralai/mistral-7b-instruct:free",
-  "meta-llama/llama-3.1-8b-instruct:free",
-  "qwen/qwen3-14b:free",
-  "qwen/qwen3-235b-a22b:free",
-  "mistralai/mistral-small-3.2-24b-instruct:free",
-  "google/gemma-3-27b-it:free",
-  "google/gemma-4-31b-it:free",
-  "nousresearch/hermes-3-llama-3.1-405b:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
+  "deepseek/deepseek-r1:free",              // #1 — best reasoning
+  "qwen/qwen3-235b-a22b:free",              // #2 — largest Qwen, very capable
+  "meta-llama/llama-3.3-70b-instruct:free", // #3 — strong all-rounder
+  "nousresearch/hermes-3-llama-3.1-405b:free", // #4 — huge, excellent instruction-following
+  "mistralai/mistral-small-3.2-24b-instruct:free", // #5 — solid mid-tier
+  "google/gemma-4-31b-it:free",             // #6 — latest Google model
+  "google/gemma-3-27b-it:free",             // #7 — previous Google gen
+  "qwen/qwen3-14b:free",                    // #8 — lighter Qwen
+  "deepseek/deepseek-chat-v3-0324:free",    // #9 — fast DeepSeek chat
+  "microsoft/phi-4:free",                   // #10 — compact Microsoft model
+  "mistralai/mistral-7b-instruct:free",     // #11 — small but reliable
+  "meta-llama/llama-3.1-8b-instruct:free",  // #12 — last resort, smallest
 ];
 
 const VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free";
