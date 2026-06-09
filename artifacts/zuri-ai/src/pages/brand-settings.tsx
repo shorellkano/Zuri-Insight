@@ -10,10 +10,34 @@ import { useToast } from "@/hooks/use-toast";
 const API_BASE = "/api";
 
 const INDUSTRIES = [
-  "Fashion & Beauty", "Food & Beverage", "Technology", "Fintech",
-  "Health & Wellness", "Education", "Real Estate", "Entertainment",
-  "Media & Publishing", "E-commerce & Retail", "Agriculture", "Logistics",
-  "Travel & Hospitality", "Professional Services", "Non-profit", "Other",
+  "Agriculture & Farming",
+  "Automotive & Transport",
+  "Beauty & Personal Care",
+  "Church & Religious Organisation",
+  "Cleaning & Home Services",
+  "Construction & Engineering",
+  "Consulting & Professional Services",
+  "Domestic Staffing & Caregiving",
+  "Education & Training",
+  "Entertainment & Events",
+  "Fashion & Apparel",
+  "Fintech & Payments",
+  "Food & Beverage",
+  "Government & Public Sector",
+  "Health & Wellness",
+  "Healthcare & Medical",
+  "Interior Design & Decor",
+  "Legal Services",
+  "Logistics & Courier",
+  "Manufacturing & Production",
+  "Media & Publishing",
+  "Non-profit & NGO",
+  "Real Estate & Property",
+  "Retail & E-commerce",
+  "Security Services",
+  "Technology & SaaS",
+  "Travel & Hospitality",
+  "Other",
 ];
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {

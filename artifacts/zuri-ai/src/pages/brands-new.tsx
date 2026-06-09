@@ -13,9 +13,34 @@ type SetupPath = "website" | "social" | null;
 const STEPS = ["Brand Basics", "Your Market", "Social Handles", "Brand Brief", "Build DNA"];
 
 const INDUSTRIES = [
-  "Fashion & Apparel", "Beauty & Cosmetics", "Food & Beverage", "Fintech & Payments",
-  "Health & Wellness", "Real Estate", "Education & Training", "Technology & SaaS",
-  "Retail & Ecommerce", "Entertainment", "Other",
+  "Agriculture & Farming",
+  "Automotive & Transport",
+  "Beauty & Personal Care",
+  "Church & Religious Organisation",
+  "Cleaning & Home Services",
+  "Construction & Engineering",
+  "Consulting & Professional Services",
+  "Domestic Staffing & Caregiving",
+  "Education & Training",
+  "Entertainment & Events",
+  "Fashion & Apparel",
+  "Fintech & Payments",
+  "Food & Beverage",
+  "Government & Public Sector",
+  "Health & Wellness",
+  "Healthcare & Medical",
+  "Interior Design & Decor",
+  "Legal Services",
+  "Logistics & Courier",
+  "Manufacturing & Production",
+  "Media & Publishing",
+  "Non-profit & NGO",
+  "Real Estate & Property",
+  "Retail & E-commerce",
+  "Security Services",
+  "Technology & SaaS",
+  "Travel & Hospitality",
+  "Other",
 ];
 
 const CONTINENTS = [

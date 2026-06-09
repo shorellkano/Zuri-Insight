@@ -82,6 +82,14 @@ Writing Style: ${dna.writingStyle}
 Key Messages: ${dna.keyMessages?.join(" | ") ?? ""}
 USPs: ${dna.uniqueSellingPoints?.join(", ") ?? ""}`);
 
+    // Always include the owner's own brand brief as the highest-authority anchor.
+    // The DNA is an AI interpretation — the brief is the owner's exact words.
+    if (brand?.brandBrief?.trim()) {
+      sections.push(`BRAND OWNER'S OWN DESCRIPTION (highest authority — overrides any assumption):
+${brand.brandBrief.trim()}
+Use this as the definitive reference for what this brand does, its services, and its identity. Never invent anything not supported by this description or the DNA above.`);
+    }
+
     try {
       const culturalCtx = JSON.parse(dna.culturalContext ?? "{}");
       if (culturalCtx.trust_signals || culturalCtx.buying_triggers) {
