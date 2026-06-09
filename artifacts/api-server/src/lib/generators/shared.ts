@@ -82,12 +82,13 @@ Writing Style: ${dna.writingStyle}
 Key Messages: ${dna.keyMessages?.join(" | ") ?? ""}
 USPs: ${dna.uniqueSellingPoints?.join(", ") ?? ""}`);
 
-    // Always include the owner's own brand brief as the highest-authority anchor.
-    // The DNA is an AI interpretation — the brief is the owner's exact words.
+    // Include the owner's brand brief as supplementary context when available.
+    // The DNA (built from the crawled website) is the primary source. The brief
+    // adds extra specificity or fills gaps the website didn't cover.
     if (brand?.brandBrief?.trim()) {
-      sections.push(`BRAND OWNER'S OWN DESCRIPTION (highest authority — overrides any assumption):
+      sections.push(`SUPPLEMENTARY BRAND NOTES (from brand owner — use to fill gaps and add specificity):
 ${brand.brandBrief.trim()}
-Use this as the definitive reference for what this brand does, its services, and its identity. Never invent anything not supported by this description or the DNA above.`);
+Use this alongside the DNA above to add precision. Do not contradict the DNA. Do not invent anything not supported by either source.`);
     }
 
     try {
