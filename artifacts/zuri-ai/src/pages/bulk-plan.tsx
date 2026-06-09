@@ -318,7 +318,39 @@ export default function BulkPlan() {
             <span>Platforms: <strong>{plan?.platforms?.join(", ")}</strong></span>
           </div>
 
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          {/* ── Mobile: card list ── */}
+          <div className="md:hidden space-y-2">
+            {items.map(item => (
+              <div
+                key={item.id}
+                className={cn(
+                  "bg-card border border-border rounded-xl p-3 flex items-start gap-3",
+                  item.calendarEvent && "border-amber-200 bg-amber-50/40"
+                )}
+              >
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn("px-2 py-0.5 rounded text-xs font-semibold capitalize shrink-0", PLATFORM_COLORS[item.platform] ?? "bg-muted text-foreground")}>
+                      {item.platform}
+                    </span>
+                    <span className="text-xs text-muted-foreground capitalize shrink-0">{item.postType?.replace("_", " ")}</span>
+                    <span className="text-xs font-mono text-muted-foreground shrink-0">{item.suggestedDate}</span>
+                  </div>
+                  <p className="text-xs font-medium text-foreground leading-snug">{item.contentTheme}</p>
+                  <p className="text-xs text-muted-foreground leading-snug line-clamp-2">{item.contentAngle}</p>
+                  {item.calendarEvent && (
+                    <span className="text-[10px] text-amber-700 font-medium">{item.calendarEvent}</span>
+                  )}
+                </div>
+                <button onClick={() => deleteItem(item.id)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors shrink-0 mt-0.5">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Desktop: table ── */}
+          <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_auto] gap-0 border-b border-border bg-muted/50">
               {["Date", "Platform", "Type", "Theme", "Angle", ""].map(h => (
                 <div key={h} className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</div>
