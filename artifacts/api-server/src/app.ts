@@ -13,9 +13,8 @@ const __dirname = path.dirname(__filename);
 
 const app: Express = express();
 
-app.use( 
-
-pinoHttpAny({
+app.use(
+  pinoHttpAny({
     logger,
     serializers: {
       req(req: any) {
@@ -24,7 +23,7 @@ pinoHttpAny({
           method: req.method,
           url: req.url?.split("?")[0],
         };
-    }, })
+      },
       res(res: any) {
         return {
           statusCode: res.statusCode,

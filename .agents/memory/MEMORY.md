@@ -1,0 +1,3 @@
+- [lib/db package resolution](lib-db-resolution.md) — `lib/db/package.json` must have `main`+`exports` pointing to `./src/index.ts` or esbuild fails to resolve `@workspace/db`.
+- [Production routing fix](production-routing.md) — api-server artifact must NOT declare `paths=["/api"]`; zuri-ai artifact's `paths=["/"]` covers all routes including `/api/*` in production.
+- [AI rate limit strategy](ai-rate-limits.md) — Free OpenRouter models hit daily limits fast; per-model cooldown tracking + 12-model pool + template fallbacks are all required for reliability.
