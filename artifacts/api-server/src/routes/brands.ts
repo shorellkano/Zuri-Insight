@@ -179,6 +179,9 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
 
   const [existing] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, params.data.brandId));
 
+  // Cultural context needed in both try and catch (fallback) paths
+  const cultural = getCulturalContext(brand.country ?? "NG");
+
   try {
     // 1. Crawl website
     const websiteText = brand.websiteUrl ? await crawlWebsite(brand.websiteUrl) : "";
@@ -198,9 +201,6 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
         socialData[platform] = await crawlPage(url);
       }
     }
-
-    // 3. Get cultural context for the brand's country
-    const cultural = getCulturalContext(brand.country ?? "NG");
 
     // 3b. Brand brief (always available - written by the brand owner)
     const brandBrief = brand.brandBrief ?? "";
@@ -342,7 +342,59 @@ Return ONLY this JSON (no markdown fences, no explanation):
     const errorMessage = err?.message ?? "DNA build failed";
     console.error("DNA build error:", errorMessage);
 
-    // Save build_status='failed' to DB so the client knows the build failed
+    // When AI models are rate-limited, build a template DNA so the brand is still usable.
+    // This is better than leaving the brand stuck with no DNA at all.
+    if ((err as any)?.isRateLimit) {
+      console.log("[DNA] Rate limit hit — using template fallback DNA for brand:", brand.name);
+      try {
+        const fallbackDna = {
+          formality: 6, energy: 7, humor: 4, boldness: 7,
+          language_register: { primary: brand.language ?? "English", markers: [], avoid: [] },
+          content_themes: ["brand story", "product showcase", "community", "lifestyle"],
+          audience_profile: { age_range: "25-45", gender: "mixed", income: "middle", interests: ["quality", "value"], pain_points: ["trust", "value for money"] },
+          visual_identity: { colors: ["brand colors"], style: "modern", mood: "confident" },
+          cultural_context: {
+            primary_market: cultural.name,
+            trust_signals: cultural.trust_signals,
+            buying_triggers: cultural.buying_triggers,
+            festive_peaks: cultural.festive_peaks,
+            taboos: cultural.taboos,
+            payment_refs: cultural.payment_refs,
+          },
+          power_words: ["authentic", "quality", "community", "trusted"],
+          taglines_found: [],
+          brand_summary: `${brand.name} is a ${brand.industry ?? "brand"} serving the ${cultural.name} market. DNA was auto-generated from a template — you can rebuild it later for AI-powered analysis.`,
+        };
+        const templateValues = {
+          brandId: params.data.brandId,
+          buildStatus: "complete",
+          errorMessage: null,
+          toneOfVoice: fallbackDna.brand_summary,
+          coreValues: fallbackDna.power_words,
+          targetAudience: JSON.stringify(fallbackDna.audience_profile),
+          uniqueSellingPoints: fallbackDna.content_themes,
+          culturalContext: JSON.stringify(fallbackDna.cultural_context),
+          brandPersonality: `Formality: ${fallbackDna.formality}/10, Energy: ${fallbackDna.energy}/10, Boldness: ${fallbackDna.boldness}/10`,
+          keyMessages: fallbackDna.taglines_found,
+          writingStyle: JSON.stringify(fallbackDna.language_register),
+          builtAt: new Date(),
+        };
+        let dna;
+        if (existing) {
+          [dna] = await db.update(brandDnaTable).set(templateValues).where(eq(brandDnaTable.brandId, params.data.brandId)).returning();
+        } else {
+          [dna] = await db.insert(brandDnaTable).values(templateValues).returning();
+        }
+        await db.update(brandsTable).set({ dnaBuilt: true }).where(eq(brandsTable.id, params.data.brandId));
+        res.json({ ...dna, dnaResult: fallbackDna, isTemplateFallback: true });
+      } catch (fallbackErr) {
+        console.error("Failed to save template DNA:", fallbackErr);
+        res.status(503).json({ error: "AI models are temporarily busy. Please try again in a few minutes." });
+      }
+      return;
+    }
+
+    // Non-rate-limit errors — save failed state
     try {
       const failedValues = {
         brandId: params.data.brandId,
@@ -367,8 +419,7 @@ Return ONLY this JSON (no markdown fences, no explanation):
       console.error("Failed to save error status to DB:", dbErr);
     }
 
-    const statusCode = (err as any)?.isRateLimit ? 429 : 500;
-    res.status(statusCode).json({ error: errorMessage });
+    res.status(500).json({ error: errorMessage });
   }
 });
 
