@@ -1,4 +1,4 @@
-import { eq, desc, and, or, isNull } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db, brandsTable, brandDnaTable, voiceExamplesTable, lessonsTable } from "@workspace/db";
 import { getCulturalContext } from "../cultural/profiles.js";
 
@@ -41,15 +41,24 @@ export async function buildSystemPrompt(
     return typeMatch && (platformMatch || !platform);
   });
 
-  // 5. Build the complete system prompt
+  // 5. Determine language style preference
+  const languageStyle = (brand as any)?.languageStyle ?? "standard";
+  const usesStandardEnglish = languageStyle === "standard";
+
+  // 6. Build the complete system prompt
   const sections: string[] = [];
 
   // Absolute rules - always first
   sections.push(`ABSOLUTE RULES - NEVER BREAK:
 1. Never fabricate stats, testimonials, or story details.
-2. Use only documented, real examples the user has provided.
-3. Be concise - remove every word that does not earn its place.
-4. NEVER use the em dash character \u2014 (—). This character is completely banned. Use a hyphen (-) or rewrite the sentence. Check every sentence before responding.`);
+2. ONLY write about the specific services and products documented in the Brand DNA below. If it is not explicitly stated in the Brand DNA or Brand Identity, do NOT reference it. Never invent products, offerings, or capabilities.
+3. Return ONLY the requested content in each field. Never include your reasoning, instructions, analysis, or thinking inside caption or content fields.
+4. Be concise - remove every word that does not earn its place.
+5. NEVER use the em dash character \u2014 (—). This character is completely banned. Use a hyphen (-) or rewrite the sentence.
+6. ${usesStandardEnglish
+    ? "LANGUAGE: Write in standard professional English only. Do NOT use Pidgin, slang, street language, or local dialect of any kind. The brand communicates in clean, polished English."
+    : "LANGUAGE: You may incorporate culturally relevant local language, Pidgin, or market-specific phrases where they feel natural and authentic to the brand's voice."
+  }`);
 
   // Brand identity
   if (brand) {
@@ -57,7 +66,7 @@ export async function buildSystemPrompt(
 Name: ${brand.name}
 Industry: ${brand.industry ?? "Unknown"}
 Country: ${brand.country ?? "Nigeria"} | City: ${brand.city ?? "Unknown"}
-Language: ${brand.language ?? "English"}
+Language Style: ${usesStandardEnglish ? "Standard professional English" : "Local/Pidgin allowed"}
 Target Market: ${brand.targetMarket ?? cultural.name}`);
   }
 
@@ -107,12 +116,11 @@ Avoid: ${cultural.taboos.join(", ")}`);
     if (fallbackParts.length > 0) {
       sections.push(`BRAND CONTEXT (early stage - no DNA built yet):
 ${fallbackParts.join("\n")}
-Write content that feels authentic to a real ${brand?.industry ?? "business"} based in ${brand?.country ?? "Nigeria"}. Avoid generic filler. Be specific and grounded.`);
+Write content that feels authentic to a real ${brand?.industry ?? "business"} based in ${brand?.country ?? "Nigeria"}. Avoid generic filler. Be specific and grounded. Only reference services and products explicitly listed above.`);
     }
 
-    // Always include cultural intelligence when DNA is missing
+    // Cultural intelligence without mandating language style (that is controlled by rule 6 above)
     sections.push(`CULTURAL INTELLIGENCE (${cultural.name}):
-${cultural.language_notes}
 Trust Signals: ${cultural.trust_signals.join(", ")}
 Buying Triggers: ${cultural.buying_triggers.join(", ")}
 Key Platforms: ${cultural.platforms.join(", ")}

@@ -21,6 +21,7 @@ export const brandsTable = pgTable("brands", {
   tiktokHandle: text("tiktok_handle"),
   youtubeHandle: text("youtube_handle"),
   whatsappHandle: text("whatsapp_handle"),
+  languageStyle: text("language_style").default("standard"),
   dnaBuilt: boolean("dna_built").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

@@ -65,6 +65,7 @@ export default function BrandSettings() {
     websiteUrl: "",
     industry: "",
     brandBrief: "",
+    languageStyle: "standard" as "standard" | "local",
     instagramHandle: "",
     twitterHandle: "",
     tiktokHandle: "",
@@ -79,6 +80,7 @@ export default function BrandSettings() {
         websiteUrl: brand.websiteUrl ?? "",
         industry: brand.industry ?? "",
         brandBrief: (brand as any).brandBrief ?? "",
+        languageStyle: ((brand as any).languageStyle ?? "standard") as "standard" | "local",
         instagramHandle: (brand as any).instagramHandle ?? "",
         twitterHandle: (brand as any).twitterHandle ?? "",
         tiktokHandle: (brand as any).tiktokHandle ?? "",
@@ -265,6 +267,7 @@ export default function BrandSettings() {
         websiteUrl: form.websiteUrl || undefined,
         industry: form.industry || undefined,
         brandBrief: form.brandBrief || undefined,
+        languageStyle: form.languageStyle,
         instagramHandle: form.instagramHandle || undefined,
         twitterHandle: form.twitterHandle || undefined,
         tiktokHandle: form.tiktokHandle || undefined,
@@ -492,6 +495,27 @@ export default function BrandSettings() {
               <option value="">Select industry...</option>
               {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
             </select>
+          </Field>
+
+          <Field label="Caption Language Style" hint="Controls how Zuri writes captions for this brand.">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => set("languageStyle", "standard")}
+                className={`flex flex-col gap-1 px-4 py-3 rounded-xl border-2 text-left transition-all ${form.languageStyle === "standard" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+              >
+                <span className="text-sm font-semibold text-foreground">Standard English</span>
+                <span className="text-xs text-muted-foreground">Professional, polished English only. No Pidgin or local slang.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => set("languageStyle", "local")}
+                className={`flex flex-col gap-1 px-4 py-3 rounded-xl border-2 text-left transition-all ${form.languageStyle === "local" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+              >
+                <span className="text-sm font-semibold text-foreground">Local Language</span>
+                <span className="text-xs text-muted-foreground">Can include Pidgin, local phrases, and street language.</span>
+              </button>
+            </div>
           </Field>
         </div>
 

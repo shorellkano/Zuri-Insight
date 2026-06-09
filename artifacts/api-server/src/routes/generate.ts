@@ -394,10 +394,12 @@ router.post("/generate/quick-plan", async (req, res): Promise<void> => {
   }
 
   // Load brand info for STYLE hints only (not to override brand name when URL is provided)
+  let brandLanguageStyle = "standard";
   if (brandId) {
     const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
     const [dna] = await db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId));
     if (brand) {
+      brandLanguageStyle = (brand as any).languageStyle ?? "standard";
       // Only use brand name if no website URL was provided
       if (!urlToCrawl) {
         brandName = brand.name;
@@ -421,15 +423,21 @@ router.post("/generate/quick-plan", async (req, res): Promise<void> => {
   try {
     if (!hasAI()) throw new Error("no-ai");
 
-    const system = `You are an expert social media strategist specializing in African and Nigerian markets.
+    const langRule = brandLanguageStyle === "local"
+      ? "You may use culturally relevant local language, Pidgin, or market-specific phrases where natural."
+      : "Write in standard professional English only. Do NOT use Pidgin, slang, or local dialect.";
+
+    const system = `You are an expert social media strategist specializing in African markets.
 Your job is to create highly specific, ready-to-post content plans that feel authentic to the brand.
 CRITICAL RULES:
-- Read the website content carefully and extract the REAL brand name, products, and unique selling points
+- Read the website/brand content carefully and extract the REAL brand name, products, and unique selling points
+- ONLY write about the brand's actual documented products/services. NEVER invent or assume products.
 - Every caption must reference the brand's actual products/services - NEVER write generic captions
 - Captions must be conversational, punchy, and ready to copy-paste
 - Include relevant emojis in captions (1-3 max)
-- Use Nigerian/African market language where appropriate (e.g., "Oga", "sharp", "level up")
-- NEVER use em dashes. Use commas or full stops instead.
+- ${langRule}
+- NEVER use em dashes (—). Use hyphens (-), commas, or full stops instead.
+- Return ONLY the caption text in caption fields — no reasoning, no meta-commentary, no instructions.
 - Return ONLY valid JSON. No markdown, no explanation outside the JSON.`;
 
     const contextSection = websiteContent
