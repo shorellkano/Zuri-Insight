@@ -191,9 +191,15 @@ router.post("/bulk-plan-items/:itemId/generate", async (req, res): Promise<void>
   const voice = dna ? `Brand voice: ${dna.toneOfVoice ?? "professional and engaging"}. Core values: ${(dna.coreValues ?? []).slice(0, 3).join(", ")}.` : "";
   const tip = platformTips[item.platform ?? ""] ?? "Write an engaging social media post.";
 
+  const isCarousel = (item.postType ?? "").toLowerCase().includes("carousel");
+  const carouselRule = isCarousel
+    ? `\nCARROUSEL CAPTION RULE: This is a Carousel post but only the caption is being produced — no actual slides exist. NEVER write "swipe", "swipe through", "slide 1 of X", "check out slide", or reference numbered tips/slides. Write a punchy standalone paragraph that hooks the reader on the topic without promising slides they can't see.`
+    : "";
+
   const system = `You are an expert African marketing copywriter writing for ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
 ${voice}
 Write authentic, culturally relevant content for African audiences.
+NEVER use em dashes (—). Use hyphens (-), commas, or full stops instead.${carouselRule}
 Return ONLY the caption text - no labels, no explanation, no quotes wrapping it.`;
 
   const user = `Write a ${item.platform} caption for this planned post:
