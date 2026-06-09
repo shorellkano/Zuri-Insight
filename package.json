@@ -2,9 +2,9 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  
+  "packageManager": "pnpm@10.26.1",
   "scripts": {
-    "build": "cd artifacts/zuri-ai && npm install && npm run build",
+    "build": "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/zuri-ai run build && pnpm --filter @workspace/api-server run build",
     "start": "NODE_ENV=production node --enable-source-maps artifacts/api-server/dist/index.mjs",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts/\" --if-present run typecheck"
