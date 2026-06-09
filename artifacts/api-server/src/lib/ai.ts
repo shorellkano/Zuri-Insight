@@ -70,6 +70,23 @@ function isRateLimited(err: any): boolean {
   );
 }
 
+// Timeout or connection errors — skip this model and try the next one
+function isTimeoutOrConnectionError(err: any): boolean {
+  const name = String(err?.name ?? "").toLowerCase();
+  const msg  = String(err?.message ?? "").toLowerCase();
+  return (
+    name.includes("timeout") ||
+    name.includes("connection") ||
+    msg.includes("timeout") ||
+    msg.includes("timed out") ||
+    msg.includes("econnreset") ||
+    msg.includes("econnrefused") ||
+    msg.includes("etimedout") ||
+    err?.code === "ETIMEDOUT" ||
+    err?.code === "ECONNRESET"
+  );
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -112,6 +129,11 @@ export async function aiComplete(system: string, user: string, maxTokens = 900):
       if (isRateLimited(err)) {
         markModelRateLimited(model);
         await sleep(150);
+        continue;
+      }
+      // Timeout / connection drop — skip this model silently, try the next
+      if (isTimeoutOrConnectionError(err)) {
+        console.warn(`[AI] ${model} timed out — skipping to next model`);
         continue;
       }
       // 404 = model no longer free; 402 = payment needed; 503 = provider down — skip all
@@ -196,6 +218,10 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
         await sleep(150);
         continue;
       }
+      if (isTimeoutOrConnectionError(err)) {
+        console.warn(`[AI] ${model} timed out on JSON attempt 1 — skipping`);
+        lastErr = err; continue;
+      }
       // 404 = model no longer free; 402 = payment needed; 503 = provider down — skip all
       if (err?.status === 404 || err?.status === 402 || err?.status === 503) {
         lastErr = err; continue;
@@ -221,6 +247,10 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
       if (isRateLimited(err)) {
         markModelRateLimited(model);
         await sleep(150);
+        continue;
+      }
+      if (isTimeoutOrConnectionError(err)) {
+        console.warn(`[AI] ${model} timed out on JSON attempt 2 — skipping`);
         continue;
       }
       // 404 = model no longer free; 402 = payment needed; 503 = provider down — skip all
