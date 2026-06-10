@@ -640,11 +640,11 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
       { icon: "★", label: "EXCELLENCE" },
     ];
     const badgesHtml = badges.map(b =>
-      `<div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:28px;height:28px;border-radius:50%;border:1.5px solid ${onPrimary}55;display:flex;align-items:center;justify-content:center;color:${onPrimary};font-size:13px;">${b.icon}</div>
-        <span style="color:${onPrimary};font-size:${fz}px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:${FONT_STACK};">${b.label}</span>
+      `<div style="display:flex;align-items:center;gap:9px;">
+        <div style="width:32px;height:32px;border-radius:50%;border:2px solid ${onPrimary}77;display:flex;align-items:center;justify-content:center;color:${onPrimary};font-size:15px;">${b.icon}</div>
+        <span style="color:${onPrimary};font-size:${fz}px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${FONT_STACK};">${b.label}</span>
       </div>`
-    ).join(`<div style="width:1px;height:26px;background:${onPrimary}33;"></div>`);
+    ).join(`<div style="width:1px;height:28px;background:${onPrimary}44;"></div>`);
     const websiteHtml = websiteUrl
       ? `<div style="display:flex;align-items:center;gap:7px;">
           <span style="color:${onPrimary};font-size:18px;">🌐</span>
@@ -699,7 +699,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
       ${showBrandName ? `<div style="margin-bottom:22px;flex-shrink:0;">${logoEl}</div>` : ""}
       <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
       <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0 0 14px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};">${headline}</h1>
-      <p style="font-size:13.5px;color:#3a3a3a;line-height:1.72;margin:0 0 20px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
+      <p style="font-size:16px;color:#3a3a3a;line-height:1.72;margin:0 0 20px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
       <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
       <div style="flex-shrink:0;margin-top:14px;">
         ${calloutStripHtml}
@@ -710,14 +710,14 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
       <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
     </div>
   </div>
-  ${footerBar(44, 84, 11.5)}
+  ${footerBar(44, 92, 14)}
 </div>`;
   }
 
   // ── SQUARE: "Agency Impact" — text-left + photo-right + full-width footer bar ─
   const textW = 460;
-  const footerH = 84;
-  const mainH = 1080 - footerH; // 996px
+  const footerH = 92;
+  const mainH = 1080 - footerH;
   const hFz = hl > 70 ? 48 : hl > 50 ? 56 : hl > 35 ? 64 : 72;
 
   return `${ANN_FONT_IMPORT}<div style="width:1080px;height:1080px;font-family:${B_FONT};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
@@ -728,7 +728,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
       ${showBrandName ? `<div style="margin-bottom:22px;flex-shrink:0;">${logoEl}</div>` : ""}
       <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
       <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0 0 12px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};">${headline}</h1>
-      <p style="font-size:13.5px;color:#3a3a3a;line-height:1.72;margin:0 0 18px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
+      <p style="font-size:16px;color:#3a3a3a;line-height:1.72;margin:0 0 18px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
       <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
       <div style="flex-shrink:0;margin-top:12px;">
         ${calloutStripHtml}
