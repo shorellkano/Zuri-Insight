@@ -361,17 +361,20 @@ function buildDNAFluxPrompt(opts: {
   };
   const subjectCtx = subjectMap[ctx.industry ?? ""] ?? "confident Nigerian professional, modern setting";
 
-  // ── Assemble photography-first prompt ──
-  // Format: [scene description], [subject context], [city], [lighting], [camera], [quality tags]
+  // ── Strip "photograph of" prefix from the AI scene so we can lead with person ──
+  const sceneEnv = scene.replace(/^photograph of\s*/i, "").trim();
+
+  // ── Assemble: PERSON FIRST so FLUX renders the subject, not the background ──
+  // Format: "professional photograph of [person], [scene/action], [city], [lighting], [camera], [quality]"
   const parts = [
-    scene,
-    subjectCtx,
+    `professional photograph of ${subjectCtx}`,
+    sceneEnv,
     city,
     lighting,
-    `${primaryColorName} accent colors in scene`,
+    `wearing or near ${primaryColorName} colored items`,
     camera,
-    "photorealistic, ultra detailed, 8k uhd, sharp focus, natural skin tones, professional stock photography, magazine editorial quality",
-    "no text, no watermark, no logos",
+    "looking at camera, sharp focus, photorealistic, 8k uhd, natural skin tones, magazine editorial quality, professional stock photography",
+    "no text, no watermark, no logos, no overlay",
   ].filter(Boolean);
 
   return parts.join(", ");
@@ -403,8 +406,11 @@ async function resolvePhotoUrl(query: string, w: number, h: number, fluxPrompt?:
   // 1. Try FLUX.1 AI image generation (already returns base64)
   if (hasImageAI() && fluxPrompt) {
     try {
-      const fluxW = w <= 768 ? 768 : w <= 1024 ? 1024 : 1440;
-      const fluxH = h <= 768 ? 768 : h <= 1024 ? 1024 : h <= 1440 ? 1440 : 1024;
+      // Always portrait orientation for person photography — FLUX renders people
+      // far better in 3:4 portrait than square/landscape. Banner canvases are the exception.
+      const isWide = w > h * 1.3;
+      const fluxW = isWide ? 1024 : 768;
+      const fluxH = isWide ? 576  : 1024;
       const dataUrl = await generateImage({ prompt: fluxPrompt, width: fluxW, height: fluxH, steps: 4 });
       console.log(`[ImageAI] FLUX generated ${fluxW}x${fluxH} image`);
       return dataUrl;
