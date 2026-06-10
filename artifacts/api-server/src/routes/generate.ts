@@ -442,7 +442,8 @@ CRITICAL RULES:
 - NEVER use em dashes (—). Use hyphens (-), commas, or full stops instead.
 - Return ONLY the caption text in caption fields — no reasoning, no meta-commentary, no instructions.
 - Return ONLY valid JSON. No markdown, no explanation outside the JSON.
-- CAROUSEL RULE: Never write captions that say "swipe", "swipe through", "slide 1", "check out slide", or reference a numbered list of slides. Captions are standalone text only — no actual slides are produced. Write carousel captions as a punchy paragraph that teases the topic without promising slides.`;
+- CAROUSEL RULE: Never write captions that say "swipe", "swipe through", "slide 1", "check out slide", or reference a numbered list of slides. Captions are standalone text only — no actual slides are produced. Write carousel captions as a punchy paragraph that teases the topic without promising slides.
+- NUMBERED LIST RULE: Never write "X steps", "X tips", "X ways", "X things" (e.g. "five practical steps", "3 tips") in a caption UNLESS you fully write out every single item in that list within the same caption. If you cannot fit all the items, do not reference a specific count — say "some steps" or "a few tips" instead.`;
 
     const contextSection = websiteContent
       ? `SCANNED WEBSITE (${urlToCrawl}):\n${websiteContent.slice(0, 4500)}\n\nFrom this content, identify: the real brand name, their key products/services, target audience, and unique value proposition. Use these to create hyper-specific content.`

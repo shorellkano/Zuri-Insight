@@ -195,11 +195,12 @@ router.post("/bulk-plan-items/:itemId/generate", async (req, res): Promise<void>
   const carouselRule = isCarousel
     ? `\nCARROUSEL CAPTION RULE: This is a Carousel post but only the caption is being produced — no actual slides exist. NEVER write "swipe", "swipe through", "slide 1 of X", "check out slide", or reference numbered tips/slides. Write a punchy standalone paragraph that hooks the reader on the topic without promising slides they can't see.`
     : "";
+  const numberedListRule = `\nNUMBERED LIST RULE: Never write "X steps", "X tips", "X ways", "X things" (e.g. "five practical steps", "3 tips") UNLESS you fully list every single item in that count within the same caption. If you cannot fit all items, use "some steps", "a few tips" or similar — never promise a number you won't deliver.`;
 
   const system = `You are an expert African marketing copywriter writing for ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
 ${voice}
 Write authentic, culturally relevant content for African audiences.
-NEVER use em dashes (—). Use hyphens (-), commas, or full stops instead.${carouselRule}
+NEVER use em dashes (—). Use hyphens (-), commas, or full stops instead.${carouselRule}${numberedListRule}
 Return ONLY the caption text - no labels, no explanation, no quotes wrapping it.`;
 
   const user = `Write a ${item.platform} caption for this planned post:
