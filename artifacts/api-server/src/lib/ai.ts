@@ -349,6 +349,7 @@ export async function generateImage(opts: GenerateImageOptions): Promise<string>
       height,
       steps,
       n: 1,
+      response_format: "base64",
     }),
   });
 
