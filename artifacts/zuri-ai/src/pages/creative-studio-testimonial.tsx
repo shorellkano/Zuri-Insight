@@ -12,7 +12,10 @@ export default function CreativeStudioTestimonial() {
   const { activeBrandId } = useBrand();
   const { toast } = useToast();
 
-  const [testimonialText, setTestimonialText] = useState("");
+  const [testimonialText, setTestimonialText] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("testimonial") ?? p.get("quote") ?? p.get("topic") ?? "";
+  });
   const [customerName, setCustomerName] = useState("");
   const [customerRole, setCustomerRole] = useState("");
   const [rating, setRating] = useState(5);

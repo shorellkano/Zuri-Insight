@@ -551,6 +551,7 @@ export default function BulkPlan() {
                         <CreateVisualButton
                           format={item.postType?.replace("_", " ") ?? "post"}
                           platform={item.platform}
+                          angle={item.contentAngle}
                           caption={caption}
                         />
                       )}

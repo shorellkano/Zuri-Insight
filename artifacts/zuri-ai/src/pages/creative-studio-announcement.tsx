@@ -14,7 +14,10 @@ export default function CreativeStudioAnnouncement() {
   const { data: brands } = useListBrands();
   const { toast } = useToast();
 
-  const [eventDetails, setEventDetails] = useState("");
+  const [eventDetails, setEventDetails] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("topic") ?? "";
+  });
   const [ctaText, setCtaText] = useState("");
   const [format, setFormat] = useState("square");
   const [showBrandName, setShowBrandName] = useState(true);

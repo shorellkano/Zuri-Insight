@@ -12,8 +12,15 @@ export default function CreativeStudioProductShowcase() {
   const { activeBrandId } = useBrand();
   const { toast } = useToast();
 
-  const [productName, setProductName] = useState("");
-  const [productDescription, setProductDescription] = useState("");
+  const [productName, setProductName] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    const topic = p.get("topic") ?? "";
+    return topic ? topic.split(/[.\n]/)[0].slice(0, 80) : "";
+  });
+  const [productDescription, setProductDescription] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("topic") ?? "";
+  });
   const [price, setPrice] = useState("");
   const [ctaText, setCtaText] = useState("");
   const [format, setFormat] = useState("square");
