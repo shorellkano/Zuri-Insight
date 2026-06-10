@@ -1,21 +1,39 @@
 import { db, scheduledPostsTable, socialConnectionsTable } from "@workspace/db";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, lte, lt } from "drizzle-orm";
 import { publishToInstagram, InstagramPublishError } from "./instagramPublish";
 import { decryptToken } from "./tokenCrypto";
 import { uploadImageForInstagram } from "./objectStorage";
 import { logger } from "./logger";
 
 const POLL_INTERVAL_MS = 60_000;
+const STUCK_PUBLISHING_MINUTES = 10;
 const TOKEN_EXPIRED_CODE = "190";
 
 let running = false;
 
-async function processDuePosts() {
-  const now = new Date();
+async function recoverStuckPosts() {
+  const cutoff = new Date(Date.now() - STUCK_PUBLISHING_MINUTES * 60 * 1000);
+  const recovered = await db
+    .update(scheduledPostsTable)
+    .set({ status: "failed", errorMessage: "Post was stuck in 'publishing' state (server restart or crash). Please reschedule." })
+    .where(
+      and(
+        eq(scheduledPostsTable.status, "publishing"),
+        lt(scheduledPostsTable.scheduledFor, cutoff),
+      ),
+    )
+    .returning({ id: scheduledPostsTable.id });
 
-  const duePosts = await db
-    .select()
-    .from(scheduledPostsTable)
+  if (recovered.length > 0) {
+    logger.warn({ count: recovered.length }, "Scheduler: marked stuck 'publishing' posts as failed");
+  }
+}
+
+async function claimDuePosts(): Promise<(typeof scheduledPostsTable.$inferSelect)[]> {
+  const now = new Date();
+  return db
+    .update(scheduledPostsTable)
+    .set({ status: "publishing" })
     .where(
       and(
         eq(scheduledPostsTable.status, "scheduled"),
@@ -23,13 +41,16 @@ async function processDuePosts() {
         eq(scheduledPostsTable.platform, "instagram"),
       ),
     )
-    .limit(20);
+    .returning();
+}
 
-  if (!duePosts.length) return;
+async function processDuePosts() {
+  const claimed = await claimDuePosts();
+  if (!claimed.length) return;
 
-  logger.info({ count: duePosts.length }, "Scheduler: processing due Instagram posts");
+  logger.info({ count: claimed.length }, "Scheduler: claimed and processing due Instagram posts");
 
-  for (const post of duePosts) {
+  for (const post of claimed) {
     await processPost(post);
   }
 }
@@ -64,7 +85,7 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
 
     const rawMedia = (post.mediaUrls as string[] | null)?.[0];
     if (!rawMedia) {
-      await markFailed(post.id, "No image URL found for this post. Attach an image when scheduling.");
+      await markFailed(post.id, "No image found for this post. Attach an image when scheduling.");
       return;
     }
 
@@ -72,7 +93,7 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
     if (rawMedia.startsWith("data:")) {
       try {
         imageUrl = await uploadImageForInstagram(rawMedia);
-        logger.info({ postId: post.id }, "Scheduler: uploaded creative image to storage");
+        logger.info({ postId: post.id }, "Scheduler: uploaded base64 creative to object storage");
       } catch (uploadErr: any) {
         await markFailed(
           post.id,
@@ -88,7 +109,7 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
     try {
       accessToken = decryptToken(conn.accessToken);
     } catch {
-      await markFailed(post.id, "Failed to decrypt Instagram access token. Please reconnect in Settings > Social.");
+      await markFailed(post.id, "Failed to decrypt access token. Please reconnect Instagram in Settings > Social.");
       return;
     }
 
@@ -109,14 +130,14 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
       })
       .where(eq(scheduledPostsTable.id, post.id));
 
-    logger.info({ postId: post.id, igPostId: postId }, "Scheduler: Instagram post published");
+    logger.info({ postId: post.id, igPostId: postId }, "Scheduler: Instagram post published successfully");
   } catch (err: any) {
     const message =
       err instanceof InstagramPublishError
         ? `Instagram API error: ${err.message}`
         : `Unexpected error: ${err?.message ?? "Unknown error"}`;
 
-    logger.error({ err, postId: post.id }, `Scheduler: failed to publish post — ${message}`);
+    logger.error({ err, postId: post.id }, `Scheduler: failed to publish — ${message}`);
 
     if (err instanceof InstagramPublishError && err.code === TOKEN_EXPIRED_CODE) {
       await db
@@ -128,7 +149,7 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
             eq(socialConnectionsTable.platform, "instagram"),
           ),
         );
-      logger.warn({ postId: post.id }, "Scheduler: marked Instagram token as expired");
+      logger.warn({ postId: post.id }, "Scheduler: marked Instagram token as expired (code 190)");
     }
 
     await markFailed(post.id, message);
@@ -142,9 +163,11 @@ async function markFailed(postId: string, errorMessage: string) {
     .where(eq(scheduledPostsTable.id, postId));
 }
 
-export function startScheduler() {
+export async function startScheduler() {
   if (running) return;
   running = true;
+
+  await recoverStuckPosts();
 
   logger.info("Scheduler: started (60s interval)");
 
