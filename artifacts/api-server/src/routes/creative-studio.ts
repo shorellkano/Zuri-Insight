@@ -296,124 +296,82 @@ function hexToColorName(hex: string): string {
 }
 
 /**
- * Build a rich FLUX image generation prompt from the full brand DNA context.
- * The result is a photorealistic, brand-aware scene description.
+ * Build a FLUX.1-dev prompt using photography-first language.
+ * FLUX responds to camera/lighting/subject descriptions, not abstract brand concepts.
  */
 function buildDNAFluxPrompt(opts: {
-  scene: string;
+  scene: string;          // AI-generated scene: "photograph of [subject] doing [action] in [place]"
   ctx: BrandImageContext;
   mood?: string;
   aspectHint?: string;
   postType?: string;
 }): string {
-  const { scene, ctx, mood, aspectHint = "square format", postType } = opts;
+  const { scene, ctx, aspectHint = "square format" } = opts;
 
-  // ── Location / cultural setting ──
-  const locationParts: string[] = [];
-  if (ctx.city) locationParts.push(ctx.city);
-  if (ctx.country) locationParts.push(ctx.country);
-  const locationStr = locationParts.length
-    ? `in ${locationParts.join(", ")}`
-    : "in an African urban setting";
+  // ── Location ──
+  const city = ctx.city ?? ctx.country ?? "Lagos, Nigeria";
 
-  // ── Industry environment ──
-  const industryEnv: Record<string, string> = {
-    "Food & Beverage": "warm restaurant ambiance, beautiful food plating, rich textures, dining atmosphere",
-    "Health & Wellness": "bright wellness studio, natural light, clean energetic lifestyle environment",
-    "Healthcare & Medical": "modern clinic or hospital setting, professional medical environment, clean and bright",
-    "Beauty & Personal Care": "elegant beauty salon or studio, soft flattering lighting, luxury cosmetic products",
-    "Fashion & Apparel": "high-fashion editorial setting, stylish clothing display, aspirational style",
-    "Technology & SaaS": "modern tech office, sleek digital devices, professional contemporary workspace",
-    "Real Estate & Property": "luxury interior or architectural photography, aspirational living space",
-    "Education & Training": "bright classroom or learning environment, engaged students, academic setting",
-    "Entertainment & Events": "vibrant event venue, dynamic atmosphere, colorful celebration",
-    "Travel & Hospitality": "luxury hotel or tropical destination, premium travel experience",
-    "Agriculture & Farming": "lush farmland, golden hour light, sustainable and productive farm",
-    "Retail & E-commerce": "beautiful commercial product display, clean retail photography",
-    "Fintech & Payments": "modern finance office, digital payment interface, professional business setting",
-    "Logistics & Courier": "professional delivery and logistics, urban operations, efficient and modern",
-    "Construction & Engineering": "modern architecture or construction site, engineering excellence",
-    "Non-profit & NGO": "community empowerment scene, hopeful African community, volunteers and impact",
-    "Church & Religious Organisation": "uplifting community gathering, spiritual atmosphere, light and hope",
-    "Domestic Staffing & Caregiving": "warm home environment, professional caregiving, domestic setting",
+  // ── Lighting from design style (no bokeh — sharp focus is required for SDXL) ──
+  const lightingMap: Record<string, string> = {
+    "bold":         "dramatic studio lighting, strong key light, deep crisp shadows, sharp",
+    "minimal":      "bright even window light, clean white tones, bright airy, sharp focus",
+    "professional": "professional soft-box lighting, even exposure, crisp sharp detail",
+    "warm":         "warm golden afternoon sunlight, inviting glow, sharp focus, vivid",
+    "luxury":       "moody cinematic lighting, rich shadows, sharp detail, premium feel",
+    "playful":      "bright cheerful natural sunlight, vivid saturated colors, sharp",
+    "modern":       "cool blue-white studio light, sleek contemporary, sharp clinical detail",
   };
-  const envCtx = industryEnv[ctx.industry ?? ""] ?? "professional African business environment";
+  const lighting = lightingMap[ctx.designStyle ?? "professional"] ?? "professional soft-box lighting, even exposure, crisp detail";
 
-  // ── Brand color lighting ──
-  const colorNames = ctx.colors.slice(0, 2).map(hexToColorName).filter(Boolean);
-  const colorStr = colorNames.length
-    ? `with ${colorNames.join(" and ")} color tones and accents`
-    : "";
-
-  // ── Brand personality / energy ──
-  let personalityStr = "";
-  if (ctx.brandPersonality) {
-    const energyMatch = ctx.brandPersonality.match(/Energy:\s*(\d+)/i);
-    const boldnessMatch = ctx.brandPersonality.match(/Boldness:\s*(\d+)/i);
-    const formalityMatch = ctx.brandPersonality.match(/Formality:\s*(\d+)/i);
-    const energy = energyMatch ? parseInt(energyMatch[1]) : 5;
-    const boldness = boldnessMatch ? parseInt(boldnessMatch[1]) : 5;
-    const formality = formalityMatch ? parseInt(formalityMatch[1]) : 5;
-    if (energy >= 7) personalityStr = "dynamic, high-energy";
-    else if (energy <= 3) personalityStr = "calm, serene";
-    if (boldness >= 7) personalityStr += personalityStr ? ", bold and striking" : "bold and striking";
-    if (formality >= 7) personalityStr += personalityStr ? ", formal and refined" : "formal and refined";
-    else if (formality <= 3) personalityStr += personalityStr ? ", casual and approachable" : "casual and approachable";
-  }
-
-  // ── Target audience visual representation ──
-  let audienceStr = "";
-  if (ctx.targetAudience) {
-    try {
-      const ta = JSON.parse(ctx.targetAudience);
-      if (ta.age_range) audienceStr = `targeting ${ta.age_range} demographic`;
-      if (ta.gender && ta.gender !== "all") audienceStr += ` ${ta.gender}`;
-    } catch { /* not valid JSON, try plain text */ }
-    if (!audienceStr && ctx.targetAudience.length < 80) {
-      audienceStr = `for ${ctx.targetAudience}`;
-    }
-  }
-
-  // ── Design style → photography style ──
-  const styleMap: Record<string, string> = {
-    "bold": "bold dramatic lighting, high contrast, vibrant",
-    "minimal": "clean minimalist composition, soft natural light, airy",
-    "professional": "polished professional photography, clean composition",
-    "warm": "warm golden tones, soft inviting light, cozy",
-    "luxury": "luxury editorial style, rich textures, premium feel",
-    "playful": "bright cheerful colors, fun dynamic composition",
-    "modern": "sleek modern aesthetics, contemporary clean style",
+  // ── Camera specs for realism ──
+  const cameraMap: Record<string, string> = {
+    "bold":         "Sony A7 III, 35mm f/1.4, slightly underexposed",
+    "minimal":      "Canon EOS R5, 50mm f/2.0, overexposed +1 stop",
+    "professional": "Canon 5D Mark IV, 85mm f/2.0, clean background",
+    "warm":         "Nikon D850, 85mm f/1.8, warm color grade",
+    "luxury":       "Hasselblad X2D, 90mm f/2.2, medium format detail",
+    "playful":      "Canon EOS R6, 35mm f/2.0, vibrant color grade",
+    "modern":       "Sony A9 II, 70mm f/1.8, sharp and clinical",
   };
-  const styleStr = styleMap[ctx.designStyle ?? "professional"] ?? "polished professional photography";
+  const camera = cameraMap[ctx.designStyle ?? "professional"] ?? "Canon 5D Mark IV, 85mm f/2.0";
 
-  // ── Tone of voice → visual mood ──
-  let toneStr = mood ?? "";
-  if (!toneStr && ctx.toneOfVoice) {
-    const tone = ctx.toneOfVoice.toLowerCase();
-    if (tone.includes("premium") || tone.includes("luxury")) toneStr = "premium luxury";
-    else if (tone.includes("playful") || tone.includes("fun")) toneStr = "cheerful vibrant";
-    else if (tone.includes("empow") || tone.includes("inspir")) toneStr = "empowering inspiring";
-    else if (tone.includes("trust") || tone.includes("reliable")) toneStr = "trustworthy warm";
-    else if (tone.includes("bold") || tone.includes("energetic")) toneStr = "bold energetic";
-    else toneStr = "professional confident";
-  }
+  // ── Brand accent color for clothing/props ──
+  const primaryColorName = hexToColorName(ctx.colors[0] ?? "#0097A7");
 
-  // ── Core values / USP context ──
-  const valuesStr = ctx.coreValues?.slice(0, 2).join(", ") ?? "";
+  // ── Subject context from industry ──
+  const subjectMap: Record<string, string> = {
+    "Food & Beverage":              "West African chef or food vendor, delicious food presentation",
+    "Health & Wellness":            "fit African woman doing wellness activity, healthy lifestyle",
+    "Healthcare & Medical":         "Nigerian medical professional in scrubs, modern clinic",
+    "Beauty & Personal Care":       "stylish African woman in beauty salon, cosmetics and skincare",
+    "Fashion & Apparel":            "confident Nigerian model in fashionable outfit, editorial pose",
+    "Technology & SaaS":            "young African tech professional at laptop, modern office",
+    "Real Estate & Property":       "elegant Nigerian professional in luxury interior, modern home",
+    "Education & Training":         "engaged Nigerian students in bright classroom, learning",
+    "Entertainment & Events":       "joyful African crowd at vibrant event, celebration energy",
+    "Travel & Hospitality":         "smiling Nigerian guest at premium hotel, luxury travel",
+    "Agriculture & Farming":        "Nigerian farmer with fresh produce, golden farmland",
+    "Retail & E-commerce":          "happy Nigerian customer shopping, beautiful retail display",
+    "Fintech & Payments":           "confident Nigerian professional with smartphone, fintech",
+    "Logistics & Courier":          "professional Nigerian delivery worker, urban cityscape",
+    "Construction & Engineering":   "Nigerian engineer at modern construction site, hard hat",
+    "Non-profit & NGO":             "smiling Nigerian community members, empowerment scene",
+    "Church & Religious Organisation": "joyful Nigerian congregation, uplifting atmosphere",
+    "Domestic Staffing & Caregiving": "smiling Nigerian caregiver in uniform caring for family, warm home",
+  };
+  const subjectCtx = subjectMap[ctx.industry ?? ""] ?? "confident Nigerian professional, modern setting";
 
-  // ── Assemble the final prompt ──
+  // ── Assemble photography-first prompt ──
+  // Format: [scene description], [subject context], [city], [lighting], [camera], [quality tags]
   const parts = [
-    `${toneStr ? toneStr + " mood, " : ""}${scene}`,
-    locationStr,
-    envCtx,
-    colorStr,
-    styleStr,
-    personalityStr,
-    audienceStr,
-    valuesStr ? `evoking ${valuesStr}` : "",
-    aspectHint,
-    "photorealistic, ultra high quality, professional marketing photography, 4k resolution, sharp focus, beautiful composition, cinematic lighting, magazine quality",
-    "No text overlays, no logos, no watermarks, no graphic design elements",
+    scene,
+    subjectCtx,
+    city,
+    lighting,
+    `${primaryColorName} accent colors in scene`,
+    camera,
+    "photorealistic, ultra detailed, 8k uhd, sharp focus, natural skin tones, professional stock photography, magazine editorial quality",
+    "no text, no watermark, no logos",
   ].filter(Boolean);
 
   return parts.join(", ");
@@ -566,7 +524,7 @@ Extract and generate announcement copy. Return JSON:
     { "emoji": "single emoji", "label": "2-4 word service/benefit label" }
   ],
   "callout": "string (1 punchy sentence, 10-18 words — the single most compelling reason to act)",
-  "imageScene": "string (10-15 words: a specific photorealistic scene for this brand — real person, setting, warm lighting, no text)"
+  "imageScene": "string: start with 'photograph of' then describe a specific realistic scene — African person, action, indoor/outdoor setting, lighting. Example: 'photograph of smiling Nigerian woman in teal uniform caring for toddler, bright Lagos home, warm natural light'"
 }
 Rules: features must be 3-5 items extracted from the announcement. Never use em dashes.`, "{}");
       if (result.headline) headline = result.headline;
@@ -758,7 +716,7 @@ Write product showcase copy. Return JSON:
   "headline": "string (punchy hook, max 8 words)",
   "tagline": "string (value prop, max 12 words)",
   "cta": "string (max 3 words)",
-  "imageScene": "string (10-15 words: a specific photorealistic scene showing this product in context — place, lighting, setting, no text)"
+  "imageScene": "string: start with 'photograph of' then describe a realistic scene — the product in use by an African person, setting, lighting. Example: 'photograph of Nigerian woman holding skincare product, bright vanity mirror, Lagos apartment'"
 }
 Never use em dashes.`, "{}");
       if (result.headline) headline = result.headline;
@@ -858,7 +816,7 @@ Write an Instagram/TikTok story cover. Return JSON:
 {
   "hookText": "string (bold hook, max 6 words, ALL CAPS format works great)",
   "subText": "string (call to action, max 5 words)",
-  "imageScene": "string (10-15 words: a specific vertical lifestyle scene for this brand — person, setting, mood, location, no text)"
+  "imageScene": "string: start with 'photograph of' then describe a vertical lifestyle scene — African person, action, setting, lighting. Example: 'photograph of confident Nigerian woman in Lagos rooftop, golden hour light, looking at camera'"
 }
 Never use em dashes.`, "{}");
       if (result.hookText) hookText = result.hookText;
@@ -1122,7 +1080,7 @@ Return JSON:
   "headline": "string (5-9 words, bold hook - the first thing they read)",
   "tagline": "string (8-14 words, value proposition)",
   "cta": "string (2-4 words, action-driven)",
-  "imageScene": "string (10-15 words: a specific photorealistic scene for this ad — product in use, location, lighting, mood — no text)"
+  "imageScene": "string: start with 'photograph of' then describe the ad scene — African person using the product/service, setting, lighting, emotion. Example: 'photograph of smiling Nigerian family in clean modern home, teal caregiver helping with meal, warm afternoon light'"
 }`,
         `Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.city ?? brand.country ?? "Nigeria"}).
 Offer / product: ${offerText || "their product or service"}.

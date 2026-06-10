@@ -327,14 +327,30 @@ export interface GenerateImageOptions {
 }
 
 /**
- * Generate an image using Together AI FLUX.1-schnell-Free.
+ * Generate an image using Together AI.
+ * Uses stabilityai/stable-diffusion-xl-base-1.0 (SDXL) for high-quality
+ * photorealistic images of people and real-world settings.
  * Returns a base64 data URL (data:image/png;base64,...).
  */
 export async function generateImage(opts: GenerateImageOptions): Promise<string> {
   const apiKey = process.env.TOGETHER_API_KEY;
   if (!apiKey) throw new Error("TOGETHER_API_KEY is not set");
 
-  const { prompt, width = 1024, height = 1024, steps = 4 } = opts;
+  const { prompt } = opts;
+
+  // FLUX.1-schnell: designed for crisp, sharp images. Optimal at 4 steps.
+  // Resolution must be multiples of 32, max 1440 on any side.
+  const rawW = opts.width ?? 1024;
+  const rawH = opts.height ?? 1024;
+  let width = rawW, height = rawH;
+  // Snap to multiples of 32
+  width = Math.round(width / 32) * 32;
+  height = Math.round(height / 32) * 32;
+  // Cap at 1440
+  if (width > 1440) { const s = 1440 / width; width = 1440; height = Math.round(height * s / 32) * 32; }
+  if (height > 1440) { const s = 1440 / height; height = 1440; width = Math.round(width * s / 32) * 32; }
+
+  const steps = opts.steps ?? 4;
 
   const response = await fetch("https://api.together.xyz/v1/images/generations", {
     method: "POST",
