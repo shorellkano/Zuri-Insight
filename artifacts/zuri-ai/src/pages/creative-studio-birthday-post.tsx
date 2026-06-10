@@ -209,8 +209,8 @@ export default function CreativeStudioBirthdayPost() {
         </div>
       ) : (
         <>
-          <div ref={containerRef} className="bg-card border border-border rounded-2xl overflow-hidden relative" style={{ aspectRatio: "1/1" }}>
-            <div style={{ width: 1080, height: 1080, transform: `scale(${previewScale})`, transformOrigin: "top left" }} dangerouslySetInnerHTML={{ __html: html }} />
+          <div ref={containerRef} className="bg-card border border-border rounded-2xl overflow-hidden relative w-full" style={{ aspectRatio: "1/1" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, width: 1080, height: 1080, transform: `scale(${previewScale})`, transformOrigin: "top left" }} dangerouslySetInnerHTML={{ __html: html }} />
           </div>
           {generatedMessage && (
             <div className="bg-muted/40 rounded-xl p-4">
