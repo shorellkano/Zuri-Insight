@@ -2,6 +2,7 @@ import { useState, ReactNode } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { BrandIdentityPanel } from "@/components/brand-identity-panel";
 
 interface StudioPageShellProps {
   title: string;
@@ -48,6 +49,7 @@ export function StudioPageShell({ title, settings, preview }: StudioPageShellPro
           open ? "w-[320px] xl:w-[360px]" : "w-0"
         )}>
           <div className="p-4 xl:p-5 space-y-5 min-w-[320px] xl:min-w-[360px]">
+            <BrandIdentityPanel />
             {settings}
           </div>
         </div>
