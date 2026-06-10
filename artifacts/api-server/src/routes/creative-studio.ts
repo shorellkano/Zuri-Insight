@@ -150,44 +150,39 @@ function buildSlideHtml({ headline, body, cta, brandName, colors, style, slideNu
   colors: string[]; style: string; slideNumber: number; total: number; showBrandName?: boolean; logoUrl?: string | null;
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
-  const bgColor = bg;
-  const textColor = text;
-  const hs = headline.length > 45 ? 50 : headline.length > 30 ? 62 : 72;
+  const hs = headline.length > 45 ? 52 : headline.length > 30 ? 64 : 76;
   const isFirst = slideNumber === 1;
-  const isLast = slideNumber === total;
 
-  let brandTag = "";
-  if (showBrandName) {
-    brandTag = logoUrl
-      ? `<img src="${logoUrl}" alt="${brandName}" style="height:38px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`
-      : `<span style="color:${primary};font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`;
-  }
+  const brandTag = showBrandName
+    ? (logoUrl
+        ? `<img src="${logoUrl}" alt="${brandName}" style="height:40px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`
+        : `<span style="font-size:16px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:${primary};font-family:${FONT_STACK};">${brandName}</span>`)
+    : "";
 
-  const accentBar = `<div style="position:absolute;left:0;top:0;bottom:0;width:22px;background:linear-gradient(180deg,${primary} 0%,${primary}88 100%);"></div>`;
-  const bgCircle = isFirst
-    ? `<div style="position:absolute;top:-160px;right:-160px;width:560px;height:560px;border-radius:50%;background:${primary};opacity:0.10;"></div>`
-    : `<div style="position:absolute;bottom:-120px;right:-120px;width:420px;height:420px;border-radius:50%;background:${primary};opacity:0.08;"></div>`;
+  const accentBar = `<div style="position:absolute;left:0;top:0;bottom:0;width:20px;background:linear-gradient(180deg,${primary} 0%,${primary}80 100%);"></div>`;
+  const bgDecor = isFirst
+    ? `<div style="position:absolute;top:-160px;right:-160px;width:540px;height:540px;border-radius:50%;background:${primary};opacity:0.09;"></div>`
+    : `<div style="position:absolute;bottom:-120px;right:-120px;width:400px;height:400px;border-radius:50%;background:${primary};opacity:0.07;"></div>`;
 
   const progressDots = Array.from({ length: total }, (_, i) =>
-    `<div style="width:${i === slideNumber - 1 ? '32px' : '10px'};height:10px;border-radius:5px;background:${i === slideNumber - 1 ? primary : text + '30'};transition:all 0.3s;"></div>`
+    `<div style="width:${i === slideNumber - 1 ? "30px" : "9px"};height:9px;border-radius:5px;background:${i === slideNumber - 1 ? primary : text + "28"};"></div>`
   ).join("");
 
-  return `<div style="width:1080px;height:1080px;background:${bgColor};display:flex;flex-direction:column;font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;box-sizing:border-box;position:relative;overflow:hidden;">
-  ${accentBar}
-  ${bgCircle}
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:60px 64px 0 88px;position:relative;">
+  return `${FONT_IMPORT}<div style="width:1080px;height:1080px;background:${bg};display:flex;flex-direction:column;font-family:${FONT_STACK};box-sizing:border-box;position:relative;overflow:hidden;">
+  ${accentBar}${bgDecor}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:56px 60px 0 86px;position:relative;">
     ${brandTag || "<span></span>"}
-    <div style="padding:10px 24px;background:${primary}22;border:1.5px solid ${primary}55;border-radius:100px;">
-      <span style="color:${primary};font-size:16px;font-weight:700;">${slideNumber} of ${total}</span>
+    <div style="padding:9px 22px;background:${primary}20;border:1.5px solid ${primary}50;border-radius:100px;">
+      <span style="color:${primary};font-size:16px;font-weight:700;font-family:${FONT_STACK};">${slideNumber}/${total}</span>
     </div>
   </div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:40px 64px 40px 88px;position:relative;gap:30px;">
-    ${isFirst ? `<div style="display:inline-flex;align-items:center;gap:10px;padding:8px 20px;background:${primary};border-radius:100px;width:fit-content;margin-bottom:4px;"><span style="color:#fff;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">START HERE</span></div>` : ""}
-    <h2 style="color:${textColor};font-size:${hs}px;font-weight:900;line-height:1.12;margin:0;letter-spacing:-1.5px;">${headline}</h2>
-    <p style="color:${textColor}CC;font-size:26px;line-height:1.65;margin:0;max-width:860px;">${body}</p>
-    ${cta ? `<div style="margin-top:8px;padding:20px 44px;background:${primary};display:inline-block;border-radius:14px;"><span style="color:#fff;font-size:22px;font-weight:700;">${cta} &#8594;</span></div>` : ""}
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:36px 60px 36px 86px;position:relative;gap:28px;">
+    ${isFirst ? `<div style="display:inline-flex;align-items:center;padding:8px 22px;background:${primary};border-radius:100px;width:fit-content;"><span style="color:#fff;font-size:15px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-family:${FONT_STACK};">START HERE</span></div>` : ""}
+    <h2 style="color:${text};font-size:${hs}px;font-weight:900;line-height:1.1;margin:0;letter-spacing:-1px;font-family:${FONT_STACK};">${headline}</h2>
+    <p style="color:${text}BB;font-size:27px;line-height:1.65;margin:0;max-width:860px;font-family:${FONT_STACK};">${body}</p>
+    ${cta ? `<div style="padding:18px 42px;background:${primary};display:inline-block;border-radius:100px;"><span style="color:#fff;font-size:22px;font-weight:700;font-family:${FONT_STACK};">${cta} &#8594;</span></div>` : ""}
   </div>
-  <div style="padding:0 64px 52px 88px;display:flex;align-items:center;gap:8px;position:relative;">
+  <div style="padding:0 60px 50px 86px;display:flex;align-items:center;gap:8px;position:relative;">
     ${progressDots}
   </div>
 </div>`;
@@ -199,41 +194,40 @@ function buildQuoteCardHtml({ quoteText, attribution, brandName, colors, backgro
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
-  const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const gradientBg = backgroundStyle === "gradient"
-    ? `background:linear-gradient(145deg,${bg} 0%,${bg} 55%,${primary}44 100%)`
+    ? `background:linear-gradient(145deg,${bg} 0%,${bg} 55%,${primary}40 100%)`
     : backgroundStyle === "brand"
     ? `background:${primary}`
     : `background:${bg}`;
   const textOnBrand = backgroundStyle === "brand" ? "#fff" : text;
-
-  let brandBlock = "";
-  if (showBrandName) {
-    if (logoUrl) {
-      brandBlock = `<img src="${logoUrl}" alt="${brandName}" style="height:38px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`;
-    } else {
-      brandBlock = `<span style="color:${backgroundStyle === "brand" ? "#fff" : primary};font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`;
-    }
-  }
-
-  const qs = quoteText.length > 140 ? 34 : quoteText.length > 80 ? 42 : 50;
   const accentOnBrand = backgroundStyle === "brand" ? "#fff" : primary;
-  const circleOpacity = backgroundStyle === "brand" ? "0.15" : "0.12";
-  return `<div style="${dims};${gradientBg};display:flex;flex-direction:column;font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-  <div style="position:absolute;top:-180px;right:-180px;width:600px;height:600px;border-radius:50%;background:${accentOnBrand};opacity:${circleOpacity};"></div>
-  <div style="position:absolute;bottom:-100px;left:-100px;width:380px;height:380px;border-radius:50%;background:${accentOnBrand};opacity:${circleOpacity};"></div>
+
+  const brandBlock = showBrandName
+    ? (logoUrl
+        ? `<img src="${logoUrl}" alt="${brandName}" style="height:38px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`
+        : `<span style="font-size:16px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:${backgroundStyle === "brand" ? "#fff" : primary};font-family:${FONT_STACK};">${brandName}</span>`)
+    : "";
+
+  const qs = quoteText.length > 140 ? 36 : quoteText.length > 80 ? 44 : 52;
+  return `${FONT_IMPORT}<div style="${dims};${gradientBg};display:flex;flex-direction:column;font-family:${FONT_STACK};box-sizing:border-box;overflow:hidden;position:relative;">
+  <div style="position:absolute;top:-180px;right:-180px;width:600px;height:600px;border-radius:50%;background:${accentOnBrand};opacity:0.10;"></div>
+  <div style="position:absolute;bottom:-100px;left:-100px;width:380px;height:380px;border-radius:50%;background:${accentOnBrand};opacity:0.08;"></div>
   <div style="position:absolute;left:0;top:0;bottom:0;width:18px;background:${accentOnBrand};opacity:0.9;"></div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:80px 80px 60px 108px;position:relative;gap:32px;">
-    <div style="font-size:160px;color:${accentOnBrand};line-height:0.55;font-family:Georgia,serif;opacity:0.35;">"</div>
-    <p style="color:${textOnBrand};font-size:${qs}px;font-weight:700;line-height:1.45;margin:0;letter-spacing:-0.5px;">${quoteText}"</p>
-    ${attribution ? `<div style="display:flex;align-items:center;gap:16px;margin-top:8px;">
-      <div style="width:40px;height:3px;background:${accentOnBrand};border-radius:2px;opacity:0.7;"></div>
-      <p style="color:${textOnBrand}99;font-size:22px;font-weight:600;margin:0;">${attribution}</p>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:80px 80px 60px 110px;position:relative;gap:28px;">
+    <div style="font-size:140px;color:${accentOnBrand};line-height:0.5;font-family:Georgia,serif;opacity:0.30;">&ldquo;</div>
+    <p style="color:${textOnBrand};font-size:${qs}px;font-weight:700;line-height:1.45;margin:0;letter-spacing:-0.3px;">${quoteText}&rdquo;</p>
+    ${attribution ? `<div style="display:flex;align-items:center;gap:16px;margin-top:4px;">
+      <div style="width:36px;height:3px;background:${accentOnBrand};border-radius:2px;opacity:0.7;"></div>
+      <p style="color:${textOnBrand}AA;font-size:22px;font-weight:600;margin:0;font-family:${FONT_STACK};">${attribution}</p>
     </div>` : ""}
   </div>
-  ${brandBlock ? `<div style="padding:32px 80px 56px 108px;position:relative;display:flex;align-items:center;">${brandBlock}</div>` : ""}
+  ${brandBlock ? `<div style="padding:28px 80px 52px 110px;position:relative;display:flex;align-items:center;">${brandBlock}</div>` : ""}
 </div>`;
 }
+
+// ─── Shared design constants ──────────────────────────────────────────────────
+const FONT_STACK = `'Poppins','Trebuchet MS','Segoe UI',system-ui,sans-serif`;
+const FONT_IMPORT = `<style>@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');</style>`;
 
 // ─── Shared brand mark helper ─────────────────────────────────────────────────
 function brandMark({ showBrandName, logoUrl, brandName, primary, dark = true }: {
@@ -360,49 +354,82 @@ Never use em dashes.`, "{}");
 
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h);
-  const html = buildAnnouncementHtml({ headline, subtext, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
+  const html = buildAnnouncementHtml({ headline, subtext, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
   res.json({ html, headline, subtext, cta });
 });
 
-function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, smoothFace = false }: {
+function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, smoothFace = false, designStyle = "professional" }: {
   headline: string; subtext: string; cta: string; brandName: string; colors: string[];
   format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
-  logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
+  logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean; designStyle?: string;
 }) {
-  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
-  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
-  const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
+  const primary   = colors[0] ?? "#D97706";
+  const secondary = colors[1] ?? "#1C1917";
   const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const hs = headline.length > 40 ? 72 : headline.length > 22 ? 90 : 108;
-  const barPad = h >= 1900 ? 36 : 28;
-  const logoEl = logoUrl
-    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:54px;max-width:200px;object-fit:contain;filter:brightness(0) invert(1);flex-shrink:0;" />`
-    : `<div style="width:54px;height:54px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="color:#fff;font-size:24px;font-weight:900;">${brandName.slice(0,1)}</span></div>`;
+  const dims = `width:1080px;height:${h}px`;
+  const isStory = format === "story";
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
+  const hl = headline.length;
+  const hs = hl > 50 ? (isStory ? 72 : 60) : hl > 35 ? (isStory ? 90 : 74) : hl > 20 ? (isStory ? 110 : 90) : (isStory ? 130 : 108);
+  const padH = isStory ? 80 : 64;
+  const sText = isStory ? 36 : 28;
+  const ctHtml = contactSnippet(contactInfo, "rgba(255,255,255,0.75)", isStory ? 24 : 18);
 
-  const isTop = logoPosition.startsWith("top");
-  const ctHtml = contactSnippet(contactInfo);
-  const hasContact = !!ctHtml;
-  const headlineTop = isTop && showBrandName ? 160 : 64;
-  const floatLogoHtml = showBrandName && isTop
-    ? `<div style="position:absolute;top:52px;${logoPosition.endsWith("right") ? "right" : "left"}:52px;z-index:10;">${logoEl}</div>`
-    : "";
-  const brandTextEl = `<div><p style="font-size:${h >= 1900 ? 28 : 22}px;font-weight:700;color:#ffffff;margin:0;">${brandName}</p>${cta ? `<p style="font-size:${h >= 1900 ? 22 : 18}px;font-weight:500;color:#ffffffCC;margin:4px 0 0;">${cta}</p>` : ""}</div>`;
-  const barLeftContent = !isTop && showBrandName ? `${logoEl}${brandTextEl}` : showBrandName ? brandTextEl : "";
-  const showBar = showBrandName || hasContact;
-  const barJustify = barLeftContent && hasContact ? "space-between" : barLeftContent ? logoJustify(logoPosition) : "center";
-  const barHtml = showBar
-    ? `<div style="position:absolute;bottom:0;left:0;right:0;background:${secondary};padding:${barPad}px 52px;display:flex;align-items:center;justify-content:${barJustify};gap:22px;">${barLeftContent}${ctHtml}</div>`
+  const logoElt = showBrandName
+    ? (logoUrl
+        ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:${isStory ? 54 : 42}px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);" />`
+        : `<div style="display:flex;align-items:center;gap:10px;">
+             <div style="width:${isStory ? 50 : 40}px;height:${isStory ? 50 : 40}px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+               <span style="color:#fff;font-size:${isStory ? 22 : 18}px;font-weight:900;font-family:${FONT_STACK};">${brandName.charAt(0).toUpperCase()}</span>
+             </div>
+             <span style="color:#fff;font-size:${isStory ? 20 : 17}px;font-weight:700;font-family:${FONT_STACK};">${brandName}</span>
+           </div>`)
     : "";
 
-  return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
-  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0.15) 45%,rgba(0,0,0,0.0) 70%);"></div>
-  ${floatLogoHtml}
-  <div style="position:absolute;top:${headlineTop}px;left:64px;right:64px;">
-    <h1 style="font-family:'Arial Black','Impact',system-ui,sans-serif;font-size:${hs}px;font-weight:900;color:#ffffff;text-transform:uppercase;line-height:1.05;margin:0;text-shadow:2px 4px 24px rgba(0,0,0,0.6);">${headline}</h1>
-    ${subtext ? `<p style="font-size:${h >= 1900 ? 34 : 27}px;font-weight:500;color:#ffffffCC;margin:${h >= 1900 ? 32 : 22}px 0 0;line-height:1.5;text-shadow:1px 2px 10px rgba(0,0,0,0.5);max-width:840px;">${subtext}</p>` : ""}
+  // ── MINIMAL: editorial split panel ──────────────────────────────────────────
+  if (designStyle === "minimal") {
+    const panelW = isStory ? 1080 : 460;
+    const pPad = isStory ? 90 : 68;
+    return `${FONT_IMPORT}<div style="${dims};overflow:hidden;font-family:${FONT_STACK};display:flex;flex-direction:${isStory ? "column-reverse" : "row"};">
+  ${!isStory ? `<div style="flex:1;overflow:hidden;"><img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;${smoothStyle}" /></div>` : ""}
+  <div style="${isStory ? "" : `width:${panelW}px;flex-shrink:0;`}background:${secondary};padding:${pPad}px ${padH}px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;">
+    <div style="position:absolute;bottom:-140px;right:-100px;width:400px;height:400px;border-radius:50%;background:${primary};opacity:0.10;"></div>
+    <div style="width:52px;height:5px;background:${primary};margin-bottom:${isStory ? 30 : 22}px;border-radius:3px;"></div>
+    <h1 style="font-size:${hs}px;font-weight:900;color:#fff;line-height:1.05;margin:0 0 ${isStory ? 26 : 16}px;letter-spacing:-0.5px;">${headline}</h1>
+    <p style="font-size:${sText}px;font-weight:400;color:rgba(255,255,255,0.78);line-height:1.6;margin:0 0 ${isStory ? 44 : 34}px;">${subtext}</p>
+    ${cta ? `<div style="display:inline-flex;align-self:flex-start;background:${primary};color:#fff;padding:${isStory ? "18px 44px" : "13px 32px"};border-radius:100px;font-weight:700;font-size:${isStory ? 26 : 20}px;">${cta}</div>` : ""}
+    ${ctHtml ? `<div style="margin-top:${isStory ? 30 : 22}px;">${ctHtml}</div>` : ""}
+    ${logoElt ? `<div style="position:absolute;${isStory ? "bottom:60px" : `bottom:${padH}px`};left:${padH}px;">${logoElt}</div>` : ""}
   </div>
-  ${barHtml}
+  ${isStory ? `<div style="flex:1;overflow:hidden;"><img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;${smoothStyle}" /></div>` : ""}
+</div>`;
+  }
+
+  // ── BOLD: brand color sweep from left ───────────────────────────────────────
+  // ── PROFESSIONAL (default): brand-colored gradient from bottom ──────────────
+  const overlay = designStyle === "bold"
+    ? `linear-gradient(110deg,${secondary}F8 0%,${secondary}C0 38%,${primary}60 68%,transparent 100%)`
+    : `linear-gradient(to top,${secondary}F5 0%,${secondary}CC 22%,${secondary}80 48%,rgba(0,0,0,0.08) 72%,transparent 100%)`;
+
+  const topLogo = logoElt
+    ? `<div style="position:absolute;top:${isStory ? 72 : 48}px;left:${padH}px;z-index:10;background:rgba(0,0,0,0.25);padding:${isStory ? "14px 22px" : "10px 18px"};border-radius:100px;">${logoElt}</div>`
+    : "";
+
+  const ctaHtml = cta
+    ? `<div style="display:inline-flex;align-self:flex-start;background:${primary};color:#fff;padding:${isStory ? "18px 46px" : "13px 36px"};border-radius:100px;font-weight:700;font-size:${isStory ? 28 : 21}px;margin-top:${isStory ? 38 : 24}px;">${cta}</div>`
+    : "";
+
+  return `${FONT_IMPORT}<div style="${dims};position:relative;overflow:hidden;font-family:${FONT_STACK};box-sizing:border-box;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
+  <div style="position:absolute;inset:0;background:${overlay};"></div>
+  ${topLogo}
+  <div style="position:absolute;bottom:${isStory ? 140 : 86}px;left:${padH}px;right:${padH}px;">
+    <div style="width:52px;height:5px;background:${primary};margin-bottom:${isStory ? 26 : 18}px;border-radius:3px;"></div>
+    <h1 style="font-size:${hs}px;font-weight:900;color:#fff;line-height:1.05;margin:0;letter-spacing:-0.5px;">${headline}</h1>
+    <p style="font-size:${sText}px;font-weight:400;color:rgba(255,255,255,0.83);margin:${isStory ? 24 : 16}px 0 0;line-height:1.58;max-width:880px;">${subtext}</p>
+    ${ctaHtml}
+    ${ctHtml ? `<div style="margin-top:${isStory ? 28 : 18}px;">${ctHtml}</div>` : ""}
+  </div>
 </div>`;
 }
 
@@ -451,44 +478,44 @@ function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, 
   brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
   logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
-  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
-  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
-  const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
+  const primary   = colors[0] ?? "#D97706";
+  const secondary = colors[1] ?? "#1C1917";
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
   const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const dims = `width:1080px;height:${h}px`;
   const cardH = Math.round(h * 0.40);
   const hs = headline.length > 35 ? 52 : headline.length > 22 ? 64 : 76;
   const isTop = logoPosition.startsWith("top");
   const cardAlign = logoJustify(logoPosition);
 
-  // Card logo (no invert — white card bg)
   const logoEl = logoUrl
     ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:38px;max-width:160px;object-fit:contain;" />`
-    : `<span style="font-size:14px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:${primary};">${brandName}</span>`;
+    : `<span style="font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${primary};font-family:${FONT_STACK};">${brandName}</span>`;
 
-  // Floating logo for top positions (inverted over photo)
   const logoElInv = logoUrl
     ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:40px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`
-    : `<span style="font-size:14px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fff;">${brandName}</span>`;
+    : `<span style="font-size:15px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#fff;font-family:${FONT_STACK};">${brandName}</span>`;
+
   const floatLogoHtml = showBrandName && isTop
-    ? `<div style="position:absolute;top:52px;${logoPosition.endsWith("right") ? "right" : "left"}:52px;z-index:10;background:rgba(0,0,0,0.32);padding:10px 18px;border-radius:10px;">${logoElInv}</div>`
+    ? `<div style="position:absolute;top:52px;${logoPosition.endsWith("right") ? "right" : "left"}:52px;z-index:10;background:rgba(0,0,0,0.28);padding:10px 20px;border-radius:100px;">${logoElInv}</div>`
     : "";
 
   const cardLogoEl = showBrandName && !isTop
-    ? `<div style="display:flex;justify-content:${cardAlign};margin-bottom:12px;">${logoEl}</div>`
+    ? `<div style="display:flex;justify-content:${cardAlign};margin-bottom:14px;">${logoEl}</div>`
     : "";
   const ctHtml = contactSnippet(contactInfo, "#666", 16);
 
-  return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;background:#f5f5f5;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:${h - cardH + 80}px;object-fit:cover;object-position:center top;${smoothStyle}" />
-  <div style="position:absolute;top:0;left:0;right:0;height:${h - cardH + 80}px;background:linear-gradient(to bottom,rgba(0,0,0,0) 35%,rgba(0,0,0,0.15) 65%,rgba(245,245,245,1) 100%);"></div>
+  return `${FONT_IMPORT}<div style="${dims};position:relative;overflow:hidden;font-family:${FONT_STACK};box-sizing:border-box;background:#f3f3f3;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:${h - cardH + 90}px;object-fit:cover;object-position:center top;${smoothStyle}" />
+  <div style="position:absolute;top:0;left:0;right:0;height:${h - cardH + 90}px;background:linear-gradient(to bottom,rgba(0,0,0,0) 30%,rgba(0,0,0,0.10) 60%,rgba(243,243,243,1) 100%);"></div>
   ${floatLogoHtml}
-  <div style="position:absolute;bottom:0;left:0;right:0;height:${cardH}px;background:#ffffff;border-radius:28px 28px 0 0;padding:${Math.round(cardH * 0.10)}px 52px ${Math.round(cardH * 0.12)}px;border-top:8px solid ${primary};">
+  <div style="position:absolute;bottom:0;left:0;right:0;height:${cardH}px;background:#ffffff;border-radius:28px 28px 0 0;padding:${Math.round(cardH * 0.09)}px 52px ${Math.round(cardH * 0.11)}px;border-top:7px solid ${primary};">
     ${cardLogoEl}
-    <h1 style="font-size:${hs}px;font-weight:900;color:${secondary};margin:0 0 10px;line-height:1.1;letter-spacing:-1px;">${headline}</h1>
-    <p style="font-size:22px;color:#555;margin:0 0 18px;line-height:1.5;">${tagline}</p>
+    <h1 style="font-size:${hs}px;font-weight:900;color:${secondary};margin:0 0 10px;line-height:1.1;letter-spacing:-0.5px;font-family:${FONT_STACK};">${headline}</h1>
+    <p style="font-size:23px;color:#555;margin:0 0 20px;line-height:1.5;font-family:${FONT_STACK};">${tagline}</p>
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-      ${price ? `<div style="padding:10px 24px;background:${primary}1A;border:2px solid ${primary};border-radius:100px;"><span style="font-size:22px;font-weight:900;color:${primary};">${price}</span></div>` : ""}
-      <div style="padding:14px 36px;background:${primary};border-radius:100px;flex:1;text-align:center;min-width:160px;"><span style="font-size:20px;font-weight:700;color:#fff;">${cta} &#8594;</span></div>
+      ${price ? `<div style="padding:10px 26px;background:${primary}18;border:2px solid ${primary};border-radius:100px;"><span style="font-size:24px;font-weight:900;color:${primary};font-family:${FONT_STACK};">${price}</span></div>` : ""}
+      <div style="padding:16px 36px;background:${primary};border-radius:100px;flex:1;text-align:center;min-width:160px;"><span style="font-size:21px;font-weight:700;color:#fff;font-family:${FONT_STACK};">${cta} &#8594;</span></div>
     </div>
     ${ctHtml ? `<div style="margin-top:18px;">${ctHtml}</div>` : ""}
   </div>
@@ -536,30 +563,40 @@ function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showB
   mood: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
   logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
-  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
-  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
+  const primary   = colors[0] ?? "#D97706";
+  const secondary = colors[1] ?? "#1C1917";
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
   const hs = hookText.length > 22 ? 100 : hookText.length > 12 ? 120 : 144;
-  const logoEl = logoUrl
-    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:44px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);" />`
-    : `<span style="font-size:18px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fff;">${brandName}</span>`;
 
-  const barHtml = brandBar({ showBrandName, logoEl, logoPosition, bg: secondary, ci: contactInfo, padH: 72, padV: 28 });
-  const hasBottomBar = (!logoPosition.startsWith("top") && showBrandName) || !!(contactInfo.website || contactInfo.instagram || contactInfo.phone);
+  const logoEl = logoUrl
+    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:46px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);" />`
+    : `<span style="font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#fff;font-family:${FONT_STACK};">${brandName}</span>`;
+
+  const topLogoHtml = showBrandName && logoPosition.startsWith("top")
+    ? `<div style="position:absolute;top:72px;${logoPosition.endsWith("right") ? "right" : "left"}:72px;z-index:10;background:rgba(0,0,0,0.25);padding:14px 22px;border-radius:100px;">${logoEl}</div>`
+    : "";
+
+  const bottomBarHtml = (!logoPosition.startsWith("top") && showBrandName) || !!(contactInfo.website || contactInfo.instagram || contactInfo.phone)
+    ? `<div style="position:absolute;bottom:0;left:0;right:0;background:${secondary};padding:28px 72px;display:flex;align-items:center;justify-content:${showBrandName && !logoPosition.startsWith("top") ? logoJustify(logoPosition) : "center"};gap:20px;">${showBrandName && !logoPosition.startsWith("top") ? logoEl : ""}${contactSnippet(contactInfo, "#ffffffCC", 22)}</div>`
+    : "";
+
+  const hasBottomBar = !!bottomBarHtml;
   const ctaBottom = hasBottomBar ? 180 : 100;
 
-  return `<div style="width:1080px;height:1920px;position:relative;overflow:hidden;font-family:'Arial Black',system-ui,sans-serif;box-sizing:border-box;">
+  return `${FONT_IMPORT}<div style="width:1080px;height:1920px;position:relative;overflow:hidden;font-family:${FONT_STACK};box-sizing:border-box;">
   <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
-  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.50) 0%,rgba(0,0,0,0.05) 35%,rgba(0,0,0,0.0) 50%,rgba(0,0,0,0.65) 100%);"></div>
-  ${barHtml}
-  <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;justify-content:center;padding:80px 72px;">
-    <div style="width:64px;height:7px;background:${primary};border-radius:4px;margin-bottom:40px;"></div>
-    <h1 style="font-size:${hs}px;font-weight:900;color:#ffffff;text-transform:uppercase;line-height:1.0;margin:0;text-shadow:2px 4px 24px rgba(0,0,0,0.55);">${hookText}</h1>
+  <div style="position:absolute;inset:0;background:linear-gradient(to top,${secondary}E8 0%,${secondary}99 28%,rgba(0,0,0,0.10) 55%,transparent 100%);"></div>
+  ${topLogoHtml}
+  ${bottomBarHtml}
+  <div style="position:absolute;bottom:${ctaBottom + 120}px;left:0;right:0;padding:0 72px;">
+    <div style="width:64px;height:6px;background:${primary};border-radius:4px;margin-bottom:36px;"></div>
+    <h1 style="font-size:${hs}px;font-weight:900;color:#fff;line-height:1.0;margin:0;letter-spacing:-1px;">${hookText}</h1>
   </div>
   <div style="position:absolute;bottom:${ctaBottom}px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:16px;">
-    <div style="width:44px;height:44px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;">
+    <div style="width:48px;height:48px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;">
       <span style="color:#fff;font-size:22px;">&#9654;</span>
     </div>
-    <span style="color:#ffffffCC;font-size:26px;font-weight:500;text-shadow:1px 2px 8px rgba(0,0,0,0.5);">${subText}</span>
+    <span style="color:rgba(255,255,255,0.88);font-size:28px;font-weight:500;font-family:${FONT_STACK};">${subText}</span>
   </div>
 </div>`;
 }
@@ -625,16 +662,16 @@ function buildBirthdayPostHtml({ personName, personRole, message, brandName, col
 </div>`;
   }
 
-  return `<div style="width:1080px;height:1080px;position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;text-align:center;">
+  return `${FONT_IMPORT}<div style="width:1080px;height:1080px;position:relative;overflow:hidden;font-family:${FONT_STACK};box-sizing:border-box;text-align:center;">
   <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
-  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.54);"></div>
-  <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px;gap:22px;">
+  <div style="position:absolute;inset:0;background:linear-gradient(to top,${secondary}F5 0%,${secondary}CC 30%,${secondary}80 60%,rgba(0,0,0,0.15) 100%);"></div>
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px;gap:20px;">
     <div style="font-size:72px;line-height:1;">&#127881;</div>
-    <p style="color:${primary};font-size:20px;font-weight:900;letter-spacing:6px;text-transform:uppercase;margin:0;">HAPPY BIRTHDAY</p>
-    <h1 style="font-size:${nameFz}px;font-weight:900;color:#ffffff;line-height:1.0;margin:0;letter-spacing:-2px;">${personName}</h1>
-    ${personRole ? `<p style="color:${primary};font-size:21px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0;">${personRole}</p>` : ""}
-    <div style="width:72px;height:3px;background:${primary};border-radius:2px;margin:4px 0;"></div>
-    <p style="color:#ffffffCC;font-size:24px;line-height:1.6;margin:0;max-width:780px;">${message}</p>
+    <p style="color:${primary};font-size:19px;font-weight:900;letter-spacing:5px;text-transform:uppercase;margin:0;font-family:${FONT_STACK};">HAPPY BIRTHDAY</p>
+    <h1 style="font-size:${nameFz}px;font-weight:900;color:#ffffff;line-height:1.0;margin:0;letter-spacing:-1.5px;font-family:${FONT_STACK};">${personName}</h1>
+    ${personRole ? `<p style="color:${primary};font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0;font-family:${FONT_STACK};">${personRole}</p>` : ""}
+    <div style="width:64px;height:3px;background:${primary};border-radius:2px;margin:2px 0;"></div>
+    <p style="color:rgba(255,255,255,0.88);font-size:24px;line-height:1.6;margin:0;max-width:780px;font-family:${FONT_STACK};">${message}</p>
   </div>
   ${barHtml}
 </div>`;
@@ -660,32 +697,36 @@ function buildTestimonialHtml({ testimonialText, customerName, customerRole, rat
   brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
   logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
-  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
-  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
-  const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
-  const stars = Array.from({ length: 5 }, (_, i) => `<span style="color:${i < rating ? primary : "#ffffff40"};font-size:36px;">&#9733;</span>`).join("");
-  const logoEl = logoUrl
-    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:36px;max-width:140px;object-fit:contain;filter:brightness(0) invert(1);" />`
-    : `<span style="font-size:15px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fff;opacity:0.8;">${brandName}</span>`;
-  const initials = customerName ? customerName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() : "";
-  const ts = testimonialText.length > 150 ? 30 : testimonialText.length > 90 ? 36 : 42;
-  const barHtml = brandBar({ showBrandName, logoEl, logoPosition, bg: secondary, ci: contactInfo, padH: 90, padV: 28 });
+  const primary   = colors[0] ?? "#D97706";
+  const secondary = colors[1] ?? "#1C1917";
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
+  const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const dims = `width:1080px;height:${h}px`;
+  const stars = Array.from({ length: 5 }, (_, i) => `<span style="color:${i < rating ? primary : "#ffffff38"};font-size:38px;">&#9733;</span>`).join("");
 
-  return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;">
+  const logoEl = logoUrl
+    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:38px;max-width:140px;object-fit:contain;filter:brightness(0) invert(1);" />`
+    : `<span style="font-size:15px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#ffffffCC;font-family:${FONT_STACK};">${brandName}</span>`;
+
+  const initials = customerName ? customerName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() : "";
+  const ts = testimonialText.length > 150 ? 32 : testimonialText.length > 90 ? 38 : 44;
+  const barHtml = brandBar({ showBrandName, logoEl, logoPosition, bg: secondary, ci: contactInfo, padH: 80, padV: 28 });
+
+  return `${FONT_IMPORT}<div style="${dims};position:relative;overflow:hidden;font-family:${FONT_STACK};box-sizing:border-box;">
   <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
-  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.70);"></div>
+  <div style="position:absolute;inset:0;background:linear-gradient(to top,${secondary}F8 0%,${secondary}E0 30%,${secondary}90 60%,rgba(0,0,0,0.20) 100%);"></div>
   <div style="position:absolute;top:0;left:0;right:0;height:6px;background:${primary};"></div>
-  <div style="position:absolute;inset:6px 0 0 0;display:flex;flex-direction:column;justify-content:center;padding:80px 90px;gap:28px;">
-    <div style="display:flex;gap:4px;">${stars}</div>
-    <div style="font-size:110px;color:${primary};line-height:0.55;opacity:0.45;font-family:Georgia,serif;">"</div>
-    <p style="color:#ffffff;font-size:${ts}px;font-weight:600;line-height:1.55;margin:0;">${testimonialText}"</p>
+  <div style="position:absolute;inset:6px 0 0 0;display:flex;flex-direction:column;justify-content:center;padding:80px 86px;gap:24px;">
+    <div style="display:flex;gap:3px;">${stars}</div>
+    <div style="font-size:100px;color:${primary};line-height:0.5;opacity:0.50;font-family:Georgia,serif;">&ldquo;</div>
+    <p style="color:#ffffff;font-size:${ts}px;font-weight:600;line-height:1.55;margin:0;font-family:${FONT_STACK};">${testimonialText}&rdquo;</p>
     ${customerName ? `<div style="display:flex;align-items:center;gap:20px;margin-top:8px;">
       <div style="width:64px;height:64px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <span style="color:#fff;font-size:24px;font-weight:700;">${initials}</span>
+        <span style="color:#fff;font-size:24px;font-weight:700;font-family:${FONT_STACK};">${initials}</span>
       </div>
       <div>
-        <p style="color:#ffffff;font-size:24px;font-weight:700;margin:0;">${customerName}</p>
-        ${customerRole ? `<p style="color:#ffffff88;font-size:20px;margin:4px 0 0;">${customerRole}</p>` : ""}
+        <p style="color:#fff;font-size:24px;font-weight:700;margin:0;font-family:${FONT_STACK};">${customerName}</p>
+        ${customerRole ? `<p style="color:rgba(255,255,255,0.65);font-size:20px;margin:4px 0 0;font-family:${FONT_STACK};">${customerRole}</p>` : ""}
       </div>
     </div>` : ""}
   </div>
