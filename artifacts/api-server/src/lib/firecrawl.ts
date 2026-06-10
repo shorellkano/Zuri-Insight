@@ -99,3 +99,57 @@ export async function crawlPage(url: string): Promise<string> {
     return "";
   }
 }
+
+// ─── Brand Asset Detection ─────────────────────────────────────────────────────
+// Scrapes a brand's website for logo and primary colors.
+// Used during DNA build + on-demand from brand settings.
+
+export async function crawlBrandAssets(url: string): Promise<{ logoUrl: string | null; colors: string[] }> {
+  if (!getFirecrawlKey()) return { logoUrl: null, colors: [] };
+  try {
+    const data = await firecrawlPost("/scrape", {
+      url,
+      formats: ["metadata", "html"],
+      onlyMainContent: false,
+    }, SCRAPE_TIMEOUT_MS);
+
+    const metadata: Record<string, any> = data?.data?.metadata ?? data?.metadata ?? {};
+    const html: string = data?.data?.html ?? data?.html ?? "";
+
+    // Extract logo: prefer og:image over favicon
+    let logoUrl: string | null = null;
+    for (const key of ["ogImage", "og_image", "favicon"]) {
+      const val = metadata[key];
+      if (val && typeof val === "string" && val.startsWith("http")) {
+        logoUrl = val;
+        break;
+      }
+    }
+
+    const colors = extractBrandColors(html);
+    return { logoUrl, colors };
+  } catch {
+    return { logoUrl: null, colors: [] };
+  }
+}
+
+function extractBrandColors(html: string): string[] {
+  const hexPattern = /#([0-9a-fA-F]{6})\b/g;
+  const counts = new Map<string, number>();
+  let m: RegExpExecArray | null;
+  while ((m = hexPattern.exec(html)) !== null) {
+    const r = parseInt(m[1].slice(0, 2), 16);
+    const g = parseInt(m[1].slice(2, 4), 16);
+    const b = parseInt(m[1].slice(4, 6), 16);
+    if (r > 230 && g > 230 && b > 230) continue; // near white
+    if (r < 25 && g < 25 && b < 25) continue;    // near black
+    const spread = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
+    if (spread < 18) continue; // near gray/neutral
+    const hex = `#${m[1].toUpperCase()}`;
+    counts.set(hex, (counts.get(hex) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([hex]) => hex);
+}

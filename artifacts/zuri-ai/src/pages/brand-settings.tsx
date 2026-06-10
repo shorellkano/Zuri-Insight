@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { BrandSubNav } from "@/components/brand-sub-nav";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, CheckCircle2, Settings, Upload, X, ImageIcon, Sparkles, Film, Image } from "lucide-react";
+import { Loader2, CheckCircle2, Settings, Upload, X, ImageIcon, Sparkles, Film, Image, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const API_BASE = "/api";
@@ -84,6 +84,11 @@ export default function BrandSettings() {
   const [logoPasteMode, setLogoPasteMode] = useState(false);
   const [logoPasteUrl, setLogoPasteUrl] = useState("");
 
+  const [brandColors, setBrandColors] = useState<string[]>([]);
+  const [colorsSaving, setColorsSaving] = useState(false);
+  const [detectingAssets, setDetectingAssets] = useState(false);
+  const [detectedLogo, setDetectedLogo] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     name: "",
     websiteUrl: "",
@@ -118,7 +123,11 @@ export default function BrandSettings() {
     if (!brandId) return;
     fetch(`${API_BASE}/brands/${brandId}/visual-prefs`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.logoUrl) setLogoUrl(d.logoUrl); })
+      .then(d => {
+        if (!d) return;
+        if (d.logoUrl) setLogoUrl(d.logoUrl);
+        if (d.brandColors?.length) setBrandColors(d.brandColors);
+      })
       .catch(() => {});
   }, [brandId]);
 
@@ -168,6 +177,48 @@ export default function BrandSettings() {
       toast({ title: "Could not save logo URL.", variant: "destructive" });
     } finally {
       setLogoUploading(false);
+    }
+  }
+
+  async function saveBrandColors() {
+    if (!brandId) return;
+    setColorsSaving(true);
+    try {
+      await fetch(`${API_BASE}/brands/${brandId}/visual-prefs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandColors }),
+      });
+      toast({ title: "Brand colors saved!" });
+    } catch {
+      toast({ title: "Could not save brand colors.", variant: "destructive" });
+    } finally {
+      setColorsSaving(false);
+    }
+  }
+
+  async function detectAssets() {
+    if (!brandId) return;
+    setDetectingAssets(true);
+    try {
+      const r = await fetch(`${API_BASE}/brands/${brandId}/detect-assets`, { method: "POST" });
+      if (!r.ok) throw new Error("Detection failed");
+      const data = await r.json();
+      const { logoUrl: foundLogo, colors: foundColors } = data as { logoUrl: string | null; colors: string[] };
+      if (foundColors?.length) {
+        setBrandColors(foundColors);
+        toast({ title: "Brand colors detected!", description: "Review them below and click Save Colors to apply." });
+      }
+      if (foundLogo && !logoUrl) {
+        setDetectedLogo(foundLogo);
+      }
+      if (!foundColors?.length && !foundLogo) {
+        toast({ title: "No colors detected", description: "Try adding your brand colors manually below.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Detection failed. Please check your website URL.", variant: "destructive" });
+    } finally {
+      setDetectingAssets(false);
     }
   }
 
@@ -627,6 +678,117 @@ export default function BrandSettings() {
                   Paste logo URL instead
                 </button>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Brand Colors ─────────────────────────────────────── */}
+        <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 space-y-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Brand Colors</h2>
+              <p className="text-xs text-muted-foreground mt-1">Zuri will use these colors on all your posts, carousels, and creative assets.</p>
+            </div>
+            {form.websiteUrl && (
+              <button
+                onClick={detectAssets}
+                disabled={detectingAssets}
+                className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors shrink-0"
+              >
+                {detectingAssets ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {detectingAssets ? "Detecting…" : "Auto-detect from website"}
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-3 items-end">
+            {brandColors.map((color, i) => (
+              <div key={i} className="flex flex-col items-center gap-1.5">
+                <div className="relative group">
+                  <label
+                    className="block h-12 w-12 rounded-xl cursor-pointer shadow-sm border-2 border-border hover:border-primary/50 transition-colors overflow-hidden"
+                    style={{ backgroundColor: color }}
+                  >
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={e => {
+                        const next = [...brandColors];
+                        next[i] = e.target.value;
+                        setBrandColors(next);
+                      }}
+                      className="opacity-0 w-full h-full cursor-pointer"
+                    />
+                  </label>
+                  <button
+                    onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
+                    className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {i === 0 ? "Primary" : i === 1 ? "Secondary" : i === 2 ? "Accent" : `Color ${i + 1}`}
+                </span>
+              </div>
+            ))}
+            {brandColors.length < 5 && (
+              <div className="flex flex-col items-center gap-1.5">
+                <button
+                  onClick={() => setBrandColors([...brandColors, "#6366F1"])}
+                  className="h-12 w-12 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
+                <span className="text-xs text-muted-foreground">Add</span>
+              </div>
+            )}
+          </div>
+
+          {brandColors.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">
+              No colors set yet. Click <strong>Add</strong> to pick colors manually, or use <strong>Auto-detect</strong> to pull them from your website.
+            </p>
+          )}
+
+          {brandColors.length > 0 && (
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                onClick={saveBrandColors}
+                disabled={colorsSaving}
+                className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {colorsSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                Save Colors
+              </button>
+              <p className="text-xs text-muted-foreground">Click a swatch to change its color</p>
+            </div>
+          )}
+
+          {detectedLogo && !logoUrl && (
+            <div className="p-4 bg-muted/40 rounded-xl border border-border flex items-center gap-4 flex-wrap">
+              <div className="h-14 w-14 rounded-lg border border-border bg-background flex items-center justify-center overflow-hidden shrink-0">
+                <img src={detectedLogo} alt="Detected logo" className="h-full w-full object-contain" onError={() => setDetectedLogo(null)} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Logo detected from your website</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Would you like to use this as your brand logo?</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => { saveLogoUrl(detectedLogo); setDetectedLogo(null); }}
+                  disabled={logoUploading}
+                  className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  Use as Logo
+                </button>
+                <button
+                  onClick={() => setDetectedLogo(null)}
+                  className="px-3 py-1.5 border border-border rounded-lg text-xs text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           )}
         </div>

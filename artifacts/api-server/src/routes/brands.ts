@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
-import { db, brandsTable, brandDnaTable, contentTable } from "@workspace/db";
+import { db, brandsTable, brandDnaTable, contentTable, brandVisualPrefsTable } from "@workspace/db";
 import {
   CreateBrandBody,
   UpdateBrandBody,
@@ -11,7 +11,7 @@ import {
   BuildBrandDnaParams,
   ListBrandContentParams,
 } from "@workspace/api-zod";
-import { crawlWebsite, crawlPage } from "../lib/firecrawl.js";
+import { crawlWebsite, crawlPage, crawlBrandAssets } from "../lib/firecrawl.js";
 import { aiJSON, aiVision, hasAI } from "../lib/ai.js";
 import { getCulturalContext } from "../lib/cultural/profiles.js";
 
@@ -183,8 +183,11 @@ router.post("/brands/:brandId/dna", async (req, res): Promise<void> => {
   const cultural = getCulturalContext(brand.country ?? "NG");
 
   try {
-    // 1. Crawl website
-    const websiteText = brand.websiteUrl ? await crawlWebsite(brand.websiteUrl) : "";
+    // 1. Crawl website + detect brand assets (colors, logo) concurrently
+    const [websiteText, detectedAssets] = await Promise.all([
+      brand.websiteUrl ? crawlWebsite(brand.websiteUrl) : Promise.resolve(""),
+      brand.websiteUrl ? crawlBrandAssets(brand.websiteUrl) : Promise.resolve({ logoUrl: null as string | null, colors: [] as string[] }),
+    ]);
 
     // 2. Crawl social profiles using crawlPage() for each handle
     const socialData: Record<string, string> = {};
@@ -337,7 +340,30 @@ Return ONLY this JSON (no markdown fences, no explanation):
 
     await db.update(brandsTable).set({ dnaBuilt: true }).where(eq(brandsTable.id, params.data.brandId));
 
-    res.json({ ...dna, dnaResult });
+    // Auto-save detected brand assets (colors, logo) to visual prefs — only if not already set by user
+    if (detectedAssets.logoUrl || detectedAssets.colors.length > 0) {
+      try {
+        const [existingPrefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, params.data.brandId));
+        const newColors = existingPrefs?.brandColors?.length ? existingPrefs.brandColors : detectedAssets.colors;
+        const newLogo = existingPrefs?.logoUrl ?? detectedAssets.logoUrl;
+        if (existingPrefs) {
+          await db.update(brandVisualPrefsTable)
+            .set({ brandColors: newColors, logoUrl: newLogo, updatedAt: new Date() })
+            .where(eq(brandVisualPrefsTable.brandId, params.data.brandId));
+        } else {
+          await db.insert(brandVisualPrefsTable).values({
+            brandId: params.data.brandId,
+            brandColors: newColors,
+            logoUrl: newLogo,
+            includeLogo: newLogo ? "always" : "ask",
+          });
+        }
+      } catch (e) {
+        console.warn("Could not auto-save brand assets:", e);
+      }
+    }
+
+    res.json({ ...dna, dnaResult, detectedAssets });
   } catch (err: any) {
     const errorMessage = err?.message ?? "DNA build failed";
     console.error("DNA build error:", errorMessage);
@@ -421,6 +447,16 @@ Return ONLY this JSON (no markdown fences, no explanation):
 
     res.status(500).json({ error: errorMessage });
   }
+});
+
+// ─── On-demand Brand Asset Detection ─────────────────────────────────────────
+router.post("/brands/:brandId/detect-assets", async (req, res): Promise<void> => {
+  const { brandId } = req.params;
+  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
+  if (!brand.websiteUrl) { res.status(400).json({ error: "Brand has no website URL set" }); return; }
+  const assets = await crawlBrandAssets(brand.websiteUrl);
+  res.json(assets);
 });
 
 router.get("/brands/:brandId/content", async (req, res): Promise<void> => {
