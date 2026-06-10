@@ -72,6 +72,36 @@ export default function BulkPlan() {
   const [expandedCaption, setExpandedCaption] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
+  const STORAGE_KEY = "zuri_bulk_plan_results";
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved.plan && Array.isArray(saved.items) && saved.items.length > 0) {
+        setPlan(saved.plan);
+        setItems(saved.items);
+        setGeneratedItems(saved.generatedItems ?? {});
+        setFailedItems(new Set(saved.failedItems ?? []));
+        setPlanNote(saved.planNote ?? null);
+        setStep("results");
+      }
+    } catch { }
+  }, []);
+
+  useEffect(() => {
+    if (step === "results" && items.length > 0) {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          plan, items, generatedItems,
+          failedItems: Array.from(failedItems),
+          planNote,
+        }));
+      } catch { }
+    }
+  }, [step, generatedItems, items]);
+
   function setPeriodPreset(p: "week" | "month") {
     setPeriod(p);
     const start = new Date();
@@ -420,7 +450,7 @@ export default function BulkPlan() {
 
           <div className="flex items-center gap-3 flex-wrap">
             <button
-              onClick={() => { setStep("setup"); setPlan(null); setItems([]); }}
+              onClick={() => { sessionStorage.removeItem(STORAGE_KEY); setStep("setup"); setPlan(null); setItems([]); }}
               className="px-5 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-muted transition-colors"
             >
               Start over
@@ -590,7 +620,7 @@ export default function BulkPlan() {
 
           <div className="flex items-center gap-3 flex-wrap pt-2">
             <button
-              onClick={() => { setStep("setup"); setPlan(null); setItems([]); setGeneratedItems({}); setFailedItems(new Set()); }}
+              onClick={() => { sessionStorage.removeItem(STORAGE_KEY); setStep("setup"); setPlan(null); setItems([]); setGeneratedItems({}); setFailedItems(new Set()); }}
               className="px-5 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-muted transition-colors"
             >
               Plan a new period

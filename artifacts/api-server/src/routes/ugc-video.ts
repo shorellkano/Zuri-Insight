@@ -1,11 +1,21 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, brandsTable, generatedDesignsTable } from "@workspace/db";
+import { db, brandsTable, brandVisualPrefsTable, generatedDesignsTable } from "@workspace/db";
 import { aiJSON, hasAI } from "../lib/ai.js";
-import { buildSystemPrompt } from "../lib/generators/shared.js";
 import { generateUGCVideo, pollVideoStatus, hasHiggsfield } from "../lib/higgsfield.js";
 
 const router: IRouter = Router();
+
+function africanCharacterDesc(country?: string | null): string {
+  const c = (country ?? "Nigeria").toLowerCase();
+  if (c.includes("south africa")) return "South African Black";
+  if (c.includes("ghana"))  return "Ghanaian, dark-skinned African";
+  if (c.includes("kenya"))  return "Kenyan, dark-skinned African";
+  if (c.includes("egypt") || c.includes("morocco") || c.includes("tunisia")) return "North African, brown-skinned";
+  if (c.includes("ethiopia")) return "Ethiopian, dark-skinned African";
+  if (c.includes("tanzania") || c.includes("uganda") || c.includes("rwanda")) return "East African, dark-skinned";
+  return "Nigerian, dark-skinned Black African";
+}
 
 router.post("/generate/ugc-video", async (req, res): Promise<void> => {
   const {
@@ -28,7 +38,7 @@ router.post("/generate/ugc-video", async (req, res): Promise<void> => {
   }
   if (!hasHiggsfield()) {
     res.status(503).json({
-      error: "HIGGSFIELD_API_KEY not configured",
+      error: "HIGGSFIELD_API_KEY not configured — please add it in Secrets to enable video generation.",
       code: "missing_key",
     });
     return;
@@ -40,28 +50,46 @@ router.post("/generate/ugc-video", async (req, res): Promise<void> => {
     return;
   }
 
+  const [prefs] = await db.select().from(brandVisualPrefsTable)
+    .where(eq(brandVisualPrefsTable.brandId, brandId))
+    .catch(() => [undefined]);
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const primaryColor = colors[0] ?? "#D97706";
+
+  const charDesc = africanCharacterDesc(brand.country);
+
   let prompt = productDescription;
 
   try {
     if (hasAI()) {
-      const system = `You are a UGC video creative director specialising in African and emerging-market brands. Write concise, vivid prompts for AI video generation.`;
+      const system = `You are a UGC video creative director specialising in African and emerging-market brands.
+Write concise, vivid prompts for AI video generation (Higgsfield AI).
 
-      const user = `Write a Higgsfield AI video generation prompt for this brand and product.
-Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
-Style: ${style}.
-Product/service: ${productDescription}.
-Target platform: ${platform}.
-Aspect ratio: ${aspectRatio}.
+CRITICAL RULES:
+1. Characters MUST reflect the local African market. Always explicitly specify dark-skinned African characters matching the brand's country. NEVER default to Caucasian or light-skinned models.
+2. Include brand primary color (${primaryColor}) in the visual styling — clothing accents, product packaging, environment decor, or color grading.
+3. Keep the prompt under 180 words, specific, and cinematic.`;
 
-The video should feel authentic and native to ${platform}. Keep the prompt under 200 words.
-Be specific about visual style, setting, mood, and pacing.
-Return only the prompt text - no explanation, no labels.`;
+      const user = `Write a Higgsfield AI video generation prompt for this brand.
 
-      const result = await aiJSON<{ prompt: string }>(system, user + `\n\nReturn JSON: { "prompt": "<your prompt here>" }`, 300);
+Brand: ${brand.name}
+Industry: ${brand.industry ?? "business"}
+Country: ${brand.country ?? "Nigeria"}
+Style requested: ${style}
+Product/service: ${productDescription}
+Platform: ${platform} (${aspectRatio})
+
+CHARACTER REQUIREMENT: The main person/model MUST be described as a "${charDesc}" individual. State this explicitly near the start of the prompt so Higgsfield applies it.
+
+COLOUR: Weave in brand colour ${primaryColor} through their clothing, accessories, background elements or product packaging.
+
+Return JSON: { "prompt": "<your Higgsfield prompt here>" }`;
+
+      const result = await aiJSON<{ prompt: string }>(system, user, 300);
       prompt = result?.prompt ?? productDescription;
     }
   } catch {
-    prompt = productDescription;
+    prompt = `${productDescription}. African ${charDesc} person in a vibrant authentic setting. Style: ${style}. Platform: ${platform}.`;
   }
 
   try {
@@ -81,7 +109,7 @@ Return only the prompt text - no explanation, no labels.`;
       title: `UGC Video - ${productDescription.slice(0, 50)}`,
       promptUsed: prompt,
       imageUrls: [],
-    });
+    }).catch(() => {});
 
     res.json({ jobId: job.jobId, status: job.status, promptUsed: prompt });
   } catch (err: any) {

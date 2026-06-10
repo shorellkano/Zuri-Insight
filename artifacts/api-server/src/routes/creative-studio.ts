@@ -693,4 +693,166 @@ function buildTestimonialHtml({ testimonialText, customerName, customerRole, rat
 </div>`;
 }
 
+// ─── Ad Creative Generation ───────────────────────────────────────────────────
+
+router.post("/generate/ad-creative", async (req, res): Promise<void> => {
+  const {
+    brandId, platform = "meta", adFormat = "feed",
+    headline, tagline, cta, offerText,
+    showBrandName = true, customPhotoDataUrl,
+  } = req.body;
+
+  if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
+
+  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
+
+  const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const logoUrl = prefs?.logoUrl ?? null;
+
+  let finalHeadline = headline || "";
+  let finalTagline  = tagline  || "";
+  let finalCta      = cta      || "Learn More";
+  let imageQuery    = industryPhotoQuery(brand.industry, offerText || brand.name);
+
+  try {
+    if (hasAI()) {
+      const result = await aiJSON<{ headline: string; tagline: string; cta: string; imageQuery: string }>(
+        `You are a high-converting ad copywriter for African brands on digital platforms.
+Write short, punchy ad copy that stops the scroll.
+Platform: ${platform}. Format: ${adFormat}.
+NEVER use em dashes.
+
+Return JSON:
+{
+  "headline": "string (5-9 words, bold hook - the first thing they read)",
+  "tagline": "string (8-14 words, value proposition)",
+  "cta": "string (2-4 words, action-driven)",
+  "imageQuery": "string (5-8 keywords for an Unsplash lifestyle photo matching this brand)"
+}`,
+        `Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
+Offer / product: ${offerText || "their product or service"}.
+${headline ? `Existing headline: ${headline} (improve it slightly)` : "Write a fresh headline."}`,
+        350,
+      );
+      if (result?.headline) finalHeadline = result.headline;
+      if (result?.tagline)  finalTagline  = result.tagline;
+      if (result?.cta)      finalCta      = cta || result.cta;
+      if (result?.imageQuery) imageQuery  = result.imageQuery;
+    }
+  } catch { /* fall through to defaults */ }
+
+  const isStory  = adFormat === "story";
+  const isBanner = adFormat === "banner";
+  const w = isBanner ? 1200 : 1080;
+  const h = isStory  ? 1920 : isBanner ? 628 : 1080;
+
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h);
+  const html = buildAdCreativeHtml({
+    headline: finalHeadline, tagline: finalTagline, cta: finalCta,
+    brandName: brand.name, colors, adFormat, showBrandName, logoUrl, photoUrl, platform,
+  });
+
+  await db.insert(generatedDesignsTable).values({
+    brandId,
+    userId: (req as any).user?.id ?? brandId,
+    designType: "ad_creative",
+    platform,
+    title: `${platform.toUpperCase()} Ad - ${finalHeadline.slice(0, 50)}`,
+    promptUsed: offerText || "",
+    imageUrls: [],
+  }).catch(() => {});
+
+  res.json({ html, headline: finalHeadline, tagline: finalTagline, cta: finalCta });
+});
+
+function buildAdCreativeHtml({ headline, tagline, cta, brandName, colors, adFormat, showBrandName, logoUrl, photoUrl, platform }: {
+  headline: string; tagline: string; cta: string;
+  brandName: string; colors: string[]; adFormat: string;
+  showBrandName: boolean; logoUrl?: string | null; photoUrl: string; platform: string;
+}) {
+  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const isStory  = adFormat === "story";
+  const isBanner = adFormat === "banner";
+
+  const dims     = isStory ? "width:1080px;height:1920px" : isBanner ? "width:1200px;height:628px" : "width:1080px;height:1080px";
+  const w        = isBanner ? 1200 : 1080;
+  const h        = isStory  ? 1920 : isBanner ? 628 : 1080;
+
+  const hs = headline.length > 40 ? 56 : headline.length > 24 ? 72 : 88;
+  const ts = h === 1920 ? 38 : 28;
+
+  const logoEl = logoUrl
+    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:${isStory ? 44 : 36}px;max-width:150px;object-fit:contain;filter:brightness(0) invert(1);" />`
+    : `<span style="font-size:${isStory ? 16 : 13}px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fff;">${brandName}</span>`;
+
+  const platformLabel = { meta: "Facebook / Instagram", tiktok: "TikTok", google: "Google Display", snapchat: "Snapchat" }[platform] ?? platform;
+
+  // ── Banner layout: split panel ──────────────────────────────────────────────
+  if (isBanner) {
+    const panelW = Math.round(w * 0.42);
+    return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;display:flex;">
+  <div style="width:${panelW}px;flex-shrink:0;background:${secondary};display:flex;flex-direction:column;justify-content:center;padding:40px 44px;gap:18px;">
+    ${showBrandName ? `<div style="margin-bottom:4px;">${logoEl}</div>` : ""}
+    <h1 style="font-size:${headline.length > 30 ? 36 : 46}px;font-weight:900;color:#ffffff;margin:0;line-height:1.1;letter-spacing:-1px;">${headline}</h1>
+    <p style="font-size:22px;color:#ffffffBB;margin:0;line-height:1.4;">${tagline}</p>
+    <div style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:${primary};border-radius:100px;margin-top:4px;width:fit-content;">
+      <span style="font-size:20px;font-weight:700;color:#fff;">${cta} &#8594;</span>
+    </div>
+    <p style="font-size:13px;color:#ffffff55;margin:0;">Sponsored</p>
+  </div>
+  <div style="flex:1;position:relative;overflow:hidden;">
+    <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;" />
+    <div style="position:absolute;inset:0;background:linear-gradient(to right,${secondary}40 0%,transparent 40%);"></div>
+  </div>
+</div>`;
+  }
+
+  // ── Story / Reel layout (9:16) ───────────────────────────────────────────────
+  if (isStory) {
+    return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0) 25%,rgba(0,0,0,0) 45%,rgba(0,0,0,0.75) 75%,rgba(0,0,0,0.92) 100%);"></div>
+  <div style="position:absolute;top:0;left:0;right:0;height:6px;background:${primary};"></div>
+  ${showBrandName ? `<div style="position:absolute;top:52px;left:52px;display:flex;align-items:center;gap:12px;">
+    <div style="width:52px;height:52px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;overflow:hidden;">
+      ${logoUrl ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="font-size:20px;font-weight:800;color:#fff;">${brandName[0]}</span>`}
+    </div>
+    <div>
+      <p style="color:#fff;font-size:22px;font-weight:700;margin:0;line-height:1;">${brandName}</p>
+      <p style="color:#ffffffAA;font-size:16px;margin:2px 0 0;">Sponsored</p>
+    </div>
+  </div>` : ""}
+  <div style="position:absolute;bottom:180px;left:64px;right:64px;">
+    <h1 style="font-size:${hs}px;font-weight:900;color:#ffffff;margin:0 0 24px;line-height:1.05;text-shadow:2px 4px 20px rgba(0,0,0,0.6);">${headline}</h1>
+    <p style="font-size:${ts}px;color:#ffffffCC;margin:0 0 32px;line-height:1.5;">${tagline}</p>
+    <div style="display:inline-flex;align-items:center;gap:10px;padding:20px 40px;background:${primary};border-radius:100px;">
+      <span style="font-size:28px;font-weight:700;color:#fff;">${cta} &#8594;</span>
+    </div>
+  </div>
+</div>`;
+  }
+
+  // ── Feed / Square (1:1 default) ──────────────────────────────────────────────
+  const cardH = Math.round(h * 0.38);
+  return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:${h - cardH + 60}px;object-fit:cover;object-position:center;" />
+  <div style="position:absolute;top:0;left:0;right:0;height:${h - cardH + 60}px;background:linear-gradient(to bottom,rgba(0,0,0,0) 30%,rgba(245,245,245,1) 100%);"></div>
+  ${showBrandName ? `<div style="position:absolute;top:36px;left:36px;background:rgba(0,0,0,0.48);padding:8px 16px;border-radius:8px;display:flex;align-items:center;gap:10px;">
+    ${logoEl}
+  </div>` : ""}
+  <div style="position:absolute;top:36px;right:36px;background:rgba(0,0,0,0.48);padding:6px 14px;border-radius:6px;">
+    <span style="font-size:18px;font-weight:600;color:#ffffffAA;">Sponsored</span>
+  </div>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:${cardH}px;background:#ffffff;border-radius:24px 24px 0 0;padding:36px 48px 32px;border-top:6px solid ${primary};">
+    <h1 style="font-size:${hs}px;font-weight:900;color:${secondary};margin:0 0 12px;line-height:1.1;">${headline}</h1>
+    <p style="font-size:${ts}px;color:#555;margin:0 0 22px;line-height:1.4;">${tagline}</p>
+    <div style="display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:${primary};border-radius:100px;">
+      <span style="font-size:22px;font-weight:700;color:#fff;">${cta} &#8594;</span>
+    </div>
+  </div>
+</div>`;
+}
+
 export default router;

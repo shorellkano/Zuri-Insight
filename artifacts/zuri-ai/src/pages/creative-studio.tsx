@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { LayoutGrid, Quote, Megaphone, ShoppingBag, Smartphone, Cake, ArrowRight, Palette, Settings2, Video, Star } from "lucide-react";
+import { LayoutGrid, Quote, Megaphone, ShoppingBag, Smartphone, Cake, ArrowRight, Palette, Settings2, Video, Star, Zap } from "lucide-react";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
 import { VisualPrefsSheet } from "@/components/visual-prefs-sheet";
@@ -75,6 +75,15 @@ const designTypes = [
     color: "text-amber-700 bg-amber-100",
     platforms: ["Instagram", "TikTok", "YouTube"],
     badge: "Higgsfield AI",
+  },
+  {
+    href: "/generate/creative-studio/ad-creative",
+    icon: Zap,
+    label: "Ad Creative",
+    desc: "On-brand paid ad visuals for Meta, TikTok, Google Display and Snapchat",
+    color: "text-red-700 bg-red-100",
+    platforms: ["Meta", "TikTok", "Google", "Snapchat"],
+    badge: "New",
   },
 ];
 

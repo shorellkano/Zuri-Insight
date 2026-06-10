@@ -38,6 +38,7 @@ import CreativeStudioProductShowcase from "@/pages/creative-studio-product-showc
 import CreativeStudioStoryCover from "@/pages/creative-studio-story-cover";
 import CreativeStudioBirthdayPost from "@/pages/creative-studio-birthday-post";
 import CreativeStudioTestimonial from "@/pages/creative-studio-testimonial";
+import CreativeStudioAdCreatives from "@/pages/creative-studio-ad-creatives";
 import ContentCalendar from "@/pages/content-calendar";
 import BulkPlan from "@/pages/bulk-plan";
 import BrandCalendarPage from "@/pages/brand-calendar-page";
@@ -107,6 +108,7 @@ function Router() {
       <Route path="/generate/creative-studio/story-cover"><Wrap><CreativeStudioStoryCover /></Wrap></Route>
       <Route path="/generate/creative-studio/birthday-post"><Wrap><CreativeStudioBirthdayPost /></Wrap></Route>
       <Route path="/generate/creative-studio/testimonial"><Wrap><CreativeStudioTestimonial /></Wrap></Route>
+      <Route path="/generate/creative-studio/ad-creative"><Wrap><CreativeStudioAdCreatives /></Wrap></Route>
       <Route path="/generate/creative-studio"><Wrap><CreativeStudio /></Wrap></Route>
       <Route path="/generate/bulk-plan"><Wrap><BulkPlan /></Wrap></Route>
       <Route path="/generate"><Wrap><GenerateHub /></Wrap></Route>
