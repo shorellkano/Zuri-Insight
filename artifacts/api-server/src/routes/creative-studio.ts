@@ -242,9 +242,52 @@ function brandMark({ showBrandName, logoUrl, brandName, primary, dark = true }: 
   if (!showBrandName) return "";
   if (logoUrl) {
     const f = dark ? "filter:brightness(0) invert(1);" : "";
-    return `<img src="${logoUrl}" alt="${brandName}" style="height:36px;max-width:160px;object-fit:contain;${f}" />`;
+    return `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:36px;max-width:160px;object-fit:contain;${f}" />`;
   }
   return `<span style="color:${primary};font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`;
+}
+
+// ─── Photo background helpers ──────────────────────────────────────────────────
+// Resolves an Unsplash source URL to a direct CDN URL so html2canvas can use it
+// without CORS redirect issues.
+async function resolvePhotoUrl(query: string, w: number, h: number): Promise<string> {
+  const q = query.trim().replace(/\s+/g, ",");
+  const sourceUrl = `https://source.unsplash.com/featured/${w}x${h}/?${encodeURIComponent(q)}`;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const resp = await fetch(sourceUrl, { redirect: "follow", signal: controller.signal });
+    clearTimeout(timer);
+    const finalUrl = resp.url;
+    if (finalUrl && finalUrl.includes("images.unsplash.com")) return finalUrl;
+  } catch { /* fallthrough to source URL */ }
+  return sourceUrl;
+}
+
+const INDUSTRY_PHOTO_QUERIES: Record<string, string> = {
+  "Food & Beverage": "african restaurant food dining table",
+  "Health & Wellness": "wellness fitness healthy african woman",
+  "Healthcare & Medical": "medical professional clinic healthcare african",
+  "Beauty & Personal Care": "beauty salon skincare african woman cosmetics",
+  "Fashion & Apparel": "fashion boutique style african clothing",
+  "Technology & SaaS": "modern office technology professional business",
+  "Real Estate & Property": "luxury property modern architecture interior",
+  "Education & Training": "education classroom students learning",
+  "Domestic Staffing & Caregiving": "home care professional caregiver indoor",
+  "Entertainment & Events": "event celebration party crowd",
+  "Travel & Hospitality": "hotel hospitality luxury travel",
+  "Church & Religious Organisation": "church community gathering",
+  "Agriculture & Farming": "farming agriculture green fields africa",
+  "Fintech & Payments": "finance mobile payment business professional",
+  "Logistics & Courier": "logistics delivery professional vehicle",
+  "Retail & E-commerce": "retail shopping boutique products store",
+  "Construction & Engineering": "construction engineering modern building",
+  "Non-profit & NGO": "community africa people volunteers",
+};
+
+function industryPhotoQuery(industry: string | null | undefined, context = ""): string {
+  const base = INDUSTRY_PHOTO_QUERIES[industry ?? ""] ?? "african business professional modern";
+  return context ? `${base} ${context}` : base;
 }
 
 // ─── Announcement ─────────────────────────────────────────────────────────────
@@ -257,59 +300,61 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
 
-  let headline = "Big News!", subtext = eventDetails || "Stay tuned for something exciting.", cta = ctaText || "Learn More";
+  let headline = "BIG NEWS IS HERE", subtext = eventDetails || "Stay tuned for something exciting.", cta = ctaText || "Learn More";
+  let imageQuery = industryPhotoQuery(brand.industry, "announcement launch event outdoor");
   try {
     if (hasAI()) {
       const result = await aiJSON(`You are a brand copywriter for African businesses.
 Brand: ${brand.name}. Industry: ${brand.industry || "Business"}.
-Event/Announcement details: ${eventDetails || "General announcement - make something exciting"}
+Event/Announcement details: ${eventDetails || "General announcement — make something exciting"}
 
-Generate announcement copy. Return JSON: { "headline": string (max 8 words, punchy), "subtext": string (max 20 words, supporting detail), "cta": string (max 4 words) }
+Generate announcement copy. Return JSON:
+{
+  "headline": "string (max 8 words, punchy, ALL CAPS friendly)",
+  "subtext": "string (max 18 words, supporting detail)",
+  "cta": "string (max 4 words)",
+  "imageQuery": "string (5-8 keywords for a relevant Unsplash stock photo — describe scene not text)"
+}
 Never use em dashes.`, "{}");
       if (result.headline) headline = result.headline;
       if (result.subtext) subtext = result.subtext;
       if (result.cta) cta = ctaText || result.cta;
+      if (result.imageQuery) imageQuery = result.imageQuery;
     }
   } catch { }
 
-  const html = buildAnnouncementHtml({ headline, subtext, cta, brandName: brand.name, colors, format, showBrandName, logoUrl });
+  const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const photoUrl = await resolvePhotoUrl(imageQuery, w, h);
+  const html = buildAnnouncementHtml({ headline, subtext, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl });
   res.json({ html, headline, subtext, cta });
 });
 
-function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, format, showBrandName, logoUrl }: {
+function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, format, showBrandName, logoUrl, photoUrl }: {
   headline: string; subtext: string; cta: string; brandName: string; colors: string[];
-  format: string; showBrandName: boolean; logoUrl?: string | null;
+  format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
 }) {
-  const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
+  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
-  const w = 1080;
   const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const bm = brandMark({ showBrandName, logoUrl, brandName, primary, dark: true });
-  const hs = headline.length > 38 ? 60 : headline.length > 24 ? 72 : 86;
-
-  const diagSvg = `<svg style="position:absolute;top:0;left:0;width:${w}px;height:${h}px;pointer-events:none;" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-    <polygon points="0,0 520,0 0,${Math.round(h * 0.42)}" fill="${primary}" opacity="0.20"/>
-    <polygon points="0,0 260,0 0,${Math.round(h * 0.22)}" fill="${primary}" opacity="0.18"/>
-  </svg>`;
-
-  return `<div style="${dims};background:${bg};display:flex;flex-direction:column;font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-  ${diagSvg}
-  <div style="position:absolute;bottom:-200px;right:-200px;width:640px;height:640px;border-radius:50%;border:2px solid ${primary};opacity:0.14;"></div>
-  <div style="position:absolute;bottom:-100px;right:-100px;width:380px;height:380px;border-radius:50%;background:${primary};opacity:0.09;"></div>
-  <div style="position:absolute;left:0;top:0;bottom:0;width:20px;background:${primary};"></div>
-  <div style="padding:64px 64px 0 96px;display:flex;justify-content:space-between;align-items:center;position:relative;">
-    ${bm || "<span></span>"}
-    <div style="padding:10px 24px;border:2px solid ${primary};border-radius:100px;">
-      <span style="color:${primary};font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">Announcement</span>
-    </div>
+  const hs = headline.length > 40 ? 72 : headline.length > 22 ? 90 : 108;
+  const barPad = h >= 1900 ? 36 : 28;
+  const logoEl = logoUrl
+    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:54px;max-width:200px;object-fit:contain;filter:brightness(0) invert(1);flex-shrink:0;" />`
+    : `<div style="width:54px;height:54px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="color:#fff;font-size:24px;font-weight:900;">${brandName.slice(0,1)}</span></div>`;
+  return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0.15) 45%,rgba(0,0,0,0.0) 70%);"></div>
+  <div style="position:absolute;top:64px;left:64px;right:64px;">
+    <h1 style="font-family:'Arial Black','Impact',system-ui,sans-serif;font-size:${hs}px;font-weight:900;color:#ffffff;text-transform:uppercase;line-height:1.05;margin:0;text-shadow:2px 4px 24px rgba(0,0,0,0.6);">${headline}</h1>
+    ${subtext ? `<p style="font-size:${h >= 1900 ? 34 : 27}px;font-weight:500;color:#ffffffCC;margin:${h >= 1900 ? 32 : 22}px 0 0;line-height:1.5;text-shadow:1px 2px 10px rgba(0,0,0,0.5);max-width:840px;">${subtext}</p>` : ""}
   </div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:48px 80px 48px 96px;position:relative;gap:32px;">
-    <h1 style="color:${text};font-size:${hs}px;font-weight:900;line-height:1.08;margin:0;letter-spacing:-2px;">${headline}</h1>
-    <p style="color:${text}BB;font-size:27px;line-height:1.7;margin:0;max-width:840px;">${subtext}</p>
-    <div style="padding:22px 48px;background:${primary};border-radius:16px;display:inline-block;margin-top:8px;">
-      <span style="color:#fff;font-size:23px;font-weight:700;">${cta} &#8594;</span>
+  ${showBrandName ? `<div style="position:absolute;bottom:0;left:0;right:0;background:${secondary};padding:${barPad}px 52px;display:flex;align-items:center;gap:22px;">
+    ${logoEl}
+    <div>
+      <p style="font-size:${h >= 1900 ? 28 : 22}px;font-weight:700;color:#ffffff;margin:0;">${brandName}</p>
+      ${cta ? `<p style="font-size:${h >= 1900 ? 22 : 18}px;font-weight:500;color:#ffffffCC;margin:4px 0 0;">${cta}</p>` : ""}
     </div>
-  </div>
+  </div>` : ""}
 </div>`;
 }
 
@@ -325,64 +370,57 @@ router.post("/generate/product-showcase", async (req, res): Promise<void> => {
 
   let headline = `Introducing ${productName}`, tagline = productDescription || "Premium quality, made for you.";
   let cta = ctaText || "Shop Now";
+  let imageQuery = industryPhotoQuery(brand.industry, `${productName} product lifestyle`);
   try {
     if (hasAI()) {
       const result = await aiJSON(`You are a product marketer for African brands.
 Brand: ${brand.name}. Product: ${productName}. ${productDescription ? `Description: ${productDescription}` : ""}
 ${price ? `Price: ${price}` : ""}
 
-Write product showcase copy. Return JSON: { "headline": string (punchy hook, max 8 words), "tagline": string (value prop, max 12 words), "cta": string (max 3 words) }
+Write product showcase copy. Return JSON:
+{
+  "headline": "string (punchy hook, max 8 words)",
+  "tagline": "string (value prop, max 12 words)",
+  "cta": "string (max 3 words)",
+  "imageQuery": "string (5-8 keywords for a relevant Unsplash lifestyle or product photo)"
+}
 Never use em dashes.`, "{}");
       if (result.headline) headline = result.headline;
       if (result.tagline) tagline = result.tagline;
       if (result.cta) cta = ctaText || result.cta;
+      if (result.imageQuery) imageQuery = result.imageQuery;
     }
   } catch { }
 
-  const html = buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName: brand.name, colors, format, showBrandName, logoUrl });
+  const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const photoUrl = await resolvePhotoUrl(imageQuery, w, h);
+  const html = buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl });
   res.json({ html, headline, tagline, cta });
 });
 
-function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName, colors, format, showBrandName, logoUrl }: {
+function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName, colors, format, showBrandName, logoUrl, photoUrl }: {
   productName: string; headline: string; tagline: string; price?: string; cta: string;
-  brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null;
+  brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
 }) {
-  const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
+  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
   const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const hs = headline.length > 35 ? 54 : headline.length > 22 ? 66 : 78;
-  const bm = brandMark({ showBrandName, logoUrl, brandName, primary, dark: false });
-  const bmDark = brandMark({ showBrandName, logoUrl, brandName, primary, dark: true });
+  const cardH = Math.round(h * 0.40);
+  const hs = headline.length > 35 ? 52 : headline.length > 22 ? 64 : 76;
+  const logoEl = logoUrl
+    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:38px;max-width:160px;object-fit:contain;margin-bottom:10px;display:block;" />`
+    : `<span style="font-size:14px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:${primary};margin-bottom:10px;display:block;">${brandName}</span>`;
 
-  return `<div style="${dims};background:${bg};display:flex;flex-direction:row;font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-  <div style="width:340px;flex-shrink:0;background:${primary};display:flex;flex-direction:column;justify-content:space-between;padding:64px 48px;position:relative;overflow:hidden;">
-    <div style="position:absolute;bottom:-80px;left:-80px;width:320px;height:320px;border-radius:50%;background:#fff;opacity:0.08;"></div>
-    <div style="position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:#fff;opacity:0.08;"></div>
-    <div>
-      ${bm || ""}
-    </div>
-    <div style="position:relative;">
-      <p style="color:#fff;font-size:14px;font-weight:700;letter-spacing:4px;text-transform:uppercase;margin:0 0 20px 0;opacity:0.7;">PRODUCT</p>
-      <p style="color:#fff;font-size:32px;font-weight:900;line-height:1.2;margin:0;letter-spacing:-0.5px;">${productName}</p>
-      ${price ? `<div style="margin-top:28px;padding:14px 24px;background:#fff;border-radius:12px;display:inline-block;">
-        <span style="color:${primary};font-size:26px;font-weight:900;">${price}</span>
-      </div>` : ""}
-    </div>
-  </div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:64px 72px;position:relative;overflow:hidden;">
-    <div style="position:absolute;top:-140px;right:-140px;width:460px;height:460px;border-radius:50%;background:${primary};opacity:0.07;"></div>
-    <div style="display:flex;justify-content:flex-end;position:relative;">
-      ${bmDark || ""}
-    </div>
-    <div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;padding:32px 0;">
-      <div style="width:52px;height:5px;background:${primary};border-radius:3px;"></div>
-      <h1 style="color:${text};font-size:${hs}px;font-weight:900;line-height:1.1;margin:0;letter-spacing:-1.5px;">${headline}</h1>
-      <p style="color:${text}99;font-size:24px;line-height:1.6;margin:0;">${tagline}</p>
-    </div>
-    <div style="position:relative;">
-      <div style="padding:20px 44px;background:${primary};border-radius:14px;display:inline-block;">
-        <span style="color:#fff;font-size:22px;font-weight:700;">${cta} &#8594;</span>
-      </div>
+  return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;background:#f5f5f5;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:${h - cardH + 80}px;object-fit:cover;object-position:center top;" />
+  <div style="position:absolute;top:0;left:0;right:0;height:${h - cardH + 80}px;background:linear-gradient(to bottom,rgba(0,0,0,0) 35%,rgba(0,0,0,0.15) 65%,rgba(245,245,245,1) 100%);"></div>
+  <div style="position:absolute;bottom:0;left:0;right:0;height:${cardH}px;background:#ffffff;border-radius:28px 28px 0 0;padding:${Math.round(cardH * 0.10)}px 52px ${Math.round(cardH * 0.12)}px;border-top:8px solid ${primary};">
+    ${showBrandName ? logoEl : ""}
+    <h1 style="font-size:${hs}px;font-weight:900;color:${secondary};margin:0 0 10px;line-height:1.1;letter-spacing:-1px;">${headline}</h1>
+    <p style="font-size:22px;color:#555;margin:0 0 18px;line-height:1.5;">${tagline}</p>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      ${price ? `<div style="padding:10px 24px;background:${primary}1A;border:2px solid ${primary};border-radius:100px;"><span style="font-size:22px;font-weight:900;color:${primary};">${price}</span></div>` : ""}
+      <div style="padding:14px 36px;background:${primary};border-radius:100px;flex:1;text-align:center;min-width:160px;"><span style="font-size:20px;font-weight:700;color:#fff;">${cta} &#8594;</span></div>
     </div>
   </div>
 </div>`;
@@ -398,47 +436,55 @@ router.post("/generate/story-cover", async (req, res): Promise<void> => {
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
 
-  let hookText = topic || "Swipe to see more", subText = "Tap to open";
+  let hookText = "SWIPE FOR MORE", subText = "Tap to open";
+  let imageQuery = industryPhotoQuery(brand.industry, "lifestyle portrait vertical");
   try {
     if (hasAI()) {
       const result = await aiJSON(`You are a social media strategist for African brands.
 Brand: ${brand.name}. Industry: ${brand.industry || "Business"}.
 Mood: ${mood}. ${topic ? `Topic: ${topic}` : "Generate a compelling hook"}
 
-Write an Instagram/TikTok story cover. Return JSON: { "hookText": string (bold hook, max 6 words, all caps works great), "subText": string (call to action, max 5 words) }
+Write an Instagram/TikTok story cover. Return JSON:
+{
+  "hookText": "string (bold hook, max 6 words, ALL CAPS format works great)",
+  "subText": "string (call to action, max 5 words)",
+  "imageQuery": "string (5-8 keywords for a Unsplash vertical/portrait photo)"
+}
 Never use em dashes.`, "{}");
       if (result.hookText) hookText = result.hookText;
       if (result.subText) subText = result.subText;
+      if (result.imageQuery) imageQuery = result.imageQuery;
     }
   } catch { }
 
-  const html = buildStoryCoverHtml({ hookText, subText, brandName: brand.name, colors, mood, showBrandName, logoUrl });
+  const photoUrl = await resolvePhotoUrl(imageQuery, 1080, 1920);
+  const html = buildStoryCoverHtml({ hookText, subText, brandName: brand.name, colors, mood, showBrandName, logoUrl, photoUrl });
   res.json({ html, hookText, subText });
 });
 
-function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showBrandName, logoUrl }: {
+function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showBrandName, logoUrl, photoUrl }: {
   hookText: string; subText: string; brandName: string; colors: string[];
-  mood: string; showBrandName: boolean; logoUrl?: string | null;
+  mood: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
 }) {
-  const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
-  const bgStyle = mood === "minimal"
-    ? `background:${text};`
-    : mood === "gradient"
-    ? `background:linear-gradient(160deg, ${bg} 0%, ${primary}CC 100%);`
-    : `background:${bg};`;
-  const bm = brandMark({ showBrandName, logoUrl, brandName, primary, dark: true });
-  return `<div style="width:1080px;height:1920px;${bgStyle}display:flex;flex-direction:column;font-family:'Inter',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-  <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 70%, ${primary}33 0%, transparent 60%);"></div>
-  ${bm ? `<div style="padding:80px;position:relative;">${bm}</div>` : `<div style="height:80px;"></div>`}
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:80px;position:relative;">
-    <div style="width:80px;height:8px;background:${primary};border-radius:4px;margin-bottom:48px;"></div>
-    <h1 style="color:${text};font-size:${hookText.length > 20 ? '100px' : '130px'};font-weight:900;line-height:1.0;margin:0;letter-spacing:-3px;text-transform:uppercase;">${hookText}</h1>
+  const [primary] = [colors[0] ?? "#D97706"];
+  const hs = hookText.length > 22 ? 100 : hookText.length > 12 ? 120 : 144;
+  const logoEl = logoUrl
+    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:44px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);" />`
+    : `<span style="font-size:18px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fff;">${brandName}</span>`;
+
+  return `<div style="width:1080px;height:1920px;position:relative;overflow:hidden;font-family:'Arial Black',system-ui,sans-serif;box-sizing:border-box;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.50) 0%,rgba(0,0,0,0.05) 35%,rgba(0,0,0,0.0) 50%,rgba(0,0,0,0.65) 100%);"></div>
+  ${showBrandName ? `<div style="position:absolute;top:80px;left:72px;">${logoEl}</div>` : ""}
+  <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;justify-content:center;padding:80px 72px;">
+    <div style="width:64px;height:7px;background:${primary};border-radius:4px;margin-bottom:40px;"></div>
+    <h1 style="font-size:${hs}px;font-weight:900;color:#ffffff;text-transform:uppercase;line-height:1.0;margin:0;text-shadow:2px 4px 24px rgba(0,0,0,0.55);">${hookText}</h1>
   </div>
-  <div style="padding:60px 80px 120px;position:relative;display:flex;align-items:center;gap:20px;">
-    <div style="width:40px;height:40px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;">
-      <span style="color:#fff;font-size:20px;">&#9654;</span>
+  <div style="position:absolute;bottom:100px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:16px;">
+    <div style="width:44px;height:44px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;">
+      <span style="color:#fff;font-size:22px;">&#9654;</span>
     </div>
-    <span style="color:${text}AA;font-size:24px;font-weight:500;">${subText}</span>
+    <span style="color:#ffffffCC;font-size:26px;font-weight:500;text-shadow:1px 2px 8px rgba(0,0,0,0.5);">${subText}</span>
   </div>
 </div>`;
 }
@@ -453,47 +499,45 @@ router.post("/generate/birthday-post", async (req, res): Promise<void> => {
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
 
-  let message = shortMessage || `Wishing you a wonderful birthday filled with joy and laughter!`;
+  let message = shortMessage || "Wishing you a wonderful birthday filled with joy and celebration!";
   try {
     if (hasAI() && !shortMessage) {
       const result = await aiJSON(`You are a warm copywriter for an African business.
 Brand: ${brand.name}. We are celebrating ${personName}${personRole ? `, our ${personRole}` : ""}.
 
-Write a heartfelt birthday message. Return JSON: { "message": string (2 sentences, warm and celebratory, brand-appropriate) }
+Write a heartfelt birthday message. Return JSON: { "message": "string (2 sentences, warm and celebratory, brand-appropriate)" }
 Never use em dashes.`, "{}");
       if (result.message) message = result.message;
     }
   } catch { }
 
-  const html = buildBirthdayPostHtml({ personName, personRole, message, brandName: brand.name, colors, showBrandName, logoUrl });
+  const photoUrl = await resolvePhotoUrl("birthday celebration confetti balloons african joy colorful", 1080, 1080);
+  const html = buildBirthdayPostHtml({ personName, personRole, message, brandName: brand.name, colors, showBrandName, logoUrl, photoUrl });
   res.json({ html, message });
 });
 
-function buildBirthdayPostHtml({ personName, personRole, message, brandName, colors, showBrandName, logoUrl }: {
+function buildBirthdayPostHtml({ personName, personRole, message, brandName, colors, showBrandName, logoUrl, photoUrl }: {
   personName: string; personRole?: string; message: string;
-  brandName: string; colors: string[]; showBrandName: boolean; logoUrl?: string | null;
+  brandName: string; colors: string[]; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
 }) {
-  const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
-  const bm = brandMark({ showBrandName, logoUrl, brandName, primary, dark: true });
-  const dots = Array.from({ length: 12 }, (_, i) => {
-    const angle = (i / 12) * 360; const r = 480;
-    const x = 540 + r * Math.cos((angle * Math.PI) / 180);
-    const y = 540 + r * Math.sin((angle * Math.PI) / 180);
-    return `<circle cx="${x}" cy="${y}" r="8" fill="${primary}" opacity="${0.3 + (i % 3) * 0.2}" />`;
-  }).join("");
-  return `<div style="width:1080px;height:1080px;background:${bg};display:flex;flex-direction:column;font-family:'Inter',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-  <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.4;" viewBox="0 0 1080 1080">${dots}</svg>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px;text-align:center;gap:28px;position:relative;">
-    <div style="font-size:80px;line-height:1;">&#127881;</div>
-    <div>
-      <p style="color:${primary};font-size:22px;font-weight:700;letter-spacing:4px;text-transform:uppercase;margin:0 0 16px 0;">Happy Birthday</p>
-      <h1 style="color:${text};font-size:${personName.length > 12 ? '72px' : '96px'};font-weight:900;line-height:1.0;margin:0;letter-spacing:-2px;">${personName}</h1>
-      ${personRole ? `<p style="color:${primary};font-size:22px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin:16px 0 0 0;">${personRole}</p>` : ""}
-    </div>
-    <div style="width:80px;height:3px;background:${primary};border-radius:2px;"></div>
-    <p style="color:${text}CC;font-size:26px;line-height:1.6;margin:0;max-width:800px;">${message}</p>
+  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const nameFz = personName.length > 14 ? 68 : personName.length > 8 ? 84 : 100;
+  const logoEl = logoUrl
+    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:44px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);" />`
+    : `<span style="font-size:17px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fff;">${brandName}</span>`;
+
+  return `<div style="width:1080px;height:1080px;position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;text-align:center;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.54);"></div>
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px;gap:22px;">
+    <div style="font-size:72px;line-height:1;">&#127881;</div>
+    <p style="color:${primary};font-size:20px;font-weight:900;letter-spacing:6px;text-transform:uppercase;margin:0;">HAPPY BIRTHDAY</p>
+    <h1 style="font-size:${nameFz}px;font-weight:900;color:#ffffff;line-height:1.0;margin:0;letter-spacing:-2px;">${personName}</h1>
+    ${personRole ? `<p style="color:${primary};font-size:21px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0;">${personRole}</p>` : ""}
+    <div style="width:72px;height:3px;background:${primary};border-radius:2px;margin:4px 0;"></div>
+    <p style="color:#ffffffCC;font-size:24px;line-height:1.6;margin:0;max-width:780px;">${message}</p>
   </div>
-  ${bm ? `<div style="padding:40px;display:flex;justify-content:center;position:relative;">${bm}</div>` : ""}
+  ${showBrandName ? `<div style="position:absolute;bottom:0;left:0;right:0;background:${secondary};padding:24px 52px;display:flex;justify-content:center;">${logoEl}</div>` : ""}
 </div>`;
 }
 
@@ -506,36 +550,44 @@ router.post("/generate/testimonial", async (req, res): Promise<void> => {
   const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
-  const html = buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName: brand.name, colors, format, showBrandName, logoUrl });
+  const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const photoUrl = await resolvePhotoUrl(industryPhotoQuery(brand.industry, "professional team satisfied customer"), w, h);
+  const html = buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl });
   res.json({ html });
 });
 
-function buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName, colors, format, showBrandName, logoUrl }: {
+function buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName, colors, format, showBrandName, logoUrl, photoUrl }: {
   testimonialText: string; customerName?: string; customerRole?: string; rating: number;
-  brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null;
+  brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
 }) {
-  const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
+  const [primary] = [colors[0] ?? "#D97706"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
-  const stars = Array.from({ length: 5 }, (_, i) => `<span style="color:${i < rating ? primary : text + '33'};font-size:36px;">&#9733;</span>`).join("");
-  const bm = brandMark({ showBrandName, logoUrl, brandName, primary, dark: true });
-  const initials = customerName ? customerName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : "?";
-  return `<div style="${dims};background:${bg};display:flex;flex-direction:column;justify-content:center;font-family:'Inter',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-  <div style="position:absolute;top:0;left:0;width:100%;height:6px;background:${primary};"></div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:100px;gap:32px;">
+  const stars = Array.from({ length: 5 }, (_, i) => `<span style="color:${i < rating ? primary : "#ffffff40"};font-size:36px;">&#9733;</span>`).join("");
+  const logoEl = logoUrl
+    ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:36px;max-width:140px;object-fit:contain;filter:brightness(0) invert(1);" />`
+    : `<span style="font-size:15px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:#fff;opacity:0.8;">${brandName}</span>`;
+  const initials = customerName ? customerName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() : "";
+  const ts = testimonialText.length > 150 ? 30 : testimonialText.length > 90 ? 36 : 42;
+
+  return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.70);"></div>
+  <div style="position:absolute;top:0;left:0;right:0;height:6px;background:${primary};"></div>
+  <div style="position:absolute;inset:6px 0 0 0;display:flex;flex-direction:column;justify-content:center;padding:80px 90px;gap:28px;">
     <div style="display:flex;gap:4px;">${stars}</div>
-    <div style="font-size:100px;color:${primary};line-height:0.6;opacity:0.3;font-family:Georgia,serif;">"</div>
-    <p style="color:${text};font-size:${testimonialText.length > 120 ? '32px' : '40px'};font-weight:600;line-height:1.5;margin:0;">${testimonialText}"</p>
+    <div style="font-size:110px;color:${primary};line-height:0.55;opacity:0.45;font-family:Georgia,serif;">"</div>
+    <p style="color:#ffffff;font-size:${ts}px;font-weight:600;line-height:1.55;margin:0;">${testimonialText}"</p>
     ${customerName ? `<div style="display:flex;align-items:center;gap:20px;margin-top:8px;">
-      <div style="width:60px;height:60px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <span style="color:#fff;font-size:22px;font-weight:700;">${initials}</span>
+      <div style="width:64px;height:64px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="color:#fff;font-size:24px;font-weight:700;">${initials}</span>
       </div>
       <div>
-        <p style="color:${text};font-size:24px;font-weight:700;margin:0;">${customerName}</p>
-        ${customerRole ? `<p style="color:${text}77;font-size:20px;margin:4px 0 0 0;">${customerRole}</p>` : ""}
+        <p style="color:#ffffff;font-size:24px;font-weight:700;margin:0;">${customerName}</p>
+        ${customerRole ? `<p style="color:#ffffff88;font-size:20px;margin:4px 0 0;">${customerRole}</p>` : ""}
       </div>
     </div>` : ""}
   </div>
-  ${bm ? `<div style="padding:40px 100px;border-top:1px solid ${text}11;">${bm}</div>` : ""}
+  ${showBrandName ? `<div style="position:absolute;bottom:0;left:0;right:0;padding:28px 90px;border-top:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;">${logoEl}</div>` : ""}
 </div>`;
 }
 

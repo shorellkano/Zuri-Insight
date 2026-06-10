@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
 import { Loader2, Download, Calendar, ArrowLeft } from "lucide-react";
@@ -25,7 +25,15 @@ export default function CreativeStudioAnnouncement() {
   const [html, setHtml] = useState<string | null>(null);
   const [generated, setGenerated] = useState<{ headline: string; subtext: string; cta: string } | null>(null);
   const [downloading, setDownloading] = useState(false);
-  const previewRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(1);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([e]) => setPreviewScale(e.contentRect.width / 1080));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   async function generate() {
     if (!activeBrandId) return;
@@ -173,8 +181,8 @@ export default function CreativeStudioAnnouncement() {
             </div>
           ) : (
             <>
-              <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ aspectRatio }}>
-                <div style={{ width: "100%", height: "100%", position: "relative" }} dangerouslySetInnerHTML={{ __html: html }} />
+              <div ref={containerRef} className="bg-card border border-border rounded-2xl overflow-hidden relative" style={{ aspectRatio }}>
+                <div style={{ width: 1080, height: format === "story" ? 1920 : format === "portrait" ? 1350 : 1080, transform: `scale(${previewScale})`, transformOrigin: "top left" }} dangerouslySetInnerHTML={{ __html: html }} />
               </div>
               {generated && (
                 <div className="bg-muted/40 rounded-xl p-4 space-y-1">
