@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useBrand } from "@/context/brand-context";
-import { Loader2, Download, Calendar, ArrowLeft } from "lucide-react";
+import { Loader2, Download, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { PhotoUploadPanel } from "@/components/photo-upload-panel";
+import { StudioPageShell } from "@/components/studio-page-shell";
 
 const API = (path: string) => `/api${path}`;
 
@@ -82,187 +83,112 @@ export default function CreativeStudioTestimonial() {
 
   const aspectRatio = format === "story" ? "9/16" : format === "portrait" ? "4/5" : "1/1";
 
-  return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-4 flex-wrap">
-        <button onClick={() => window.history.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-4 w-4" />Back
-        </button>
-        <div className="flex items-center gap-2 text-sm">
-          <Link href="/generate/creative-studio" className="text-muted-foreground hover:text-foreground transition-colors">Creative Studio</Link>
-          <span className="text-muted-foreground">/</span>
-          <span className="font-medium text-foreground">Testimonial Card</span>
+  const settingsNode = (
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-semibold text-foreground mb-1">Create a Testimonial Card</h2>
+        <p className="text-xs text-muted-foreground">Turn customer reviews into shareable visuals.</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer's review</label>
+        <textarea value={testimonialText} onChange={e => setTestimonialText(e.target.value)} placeholder="e.g. The best service I've ever experienced. My business doubled in 3 months!" rows={4} className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer name <span className="normal-case font-normal">(optional)</span></label>
+          <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Emeka A." className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role / location <span className="normal-case font-normal">(optional)</span></label>
+          <input type="text" value={customerRole} onChange={e => setCustomerRole(e.target.value)} placeholder="e.g. Lagos, Nigeria" className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-6 items-start">
-        <div className="space-y-5 bg-card border border-border rounded-2xl p-6">
-          <div>
-            <h2 className="font-semibold text-foreground mb-1">Create a Testimonial Card</h2>
-            <p className="text-xs text-muted-foreground">Turn customer reviews into shareable visuals.</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer's review</label>
-            <textarea
-              value={testimonialText}
-              onChange={e => setTestimonialText(e.target.value)}
-              placeholder="e.g. The best service I've ever experienced. My business doubled in 3 months!"
-              rows={4}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer name <span className="normal-case font-normal">(optional)</span></label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={e => setCustomerName(e.target.value)}
-                placeholder="e.g. Emeka A."
-                className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role / location <span className="normal-case font-normal">(optional)</span></label>
-              <input
-                type="text"
-                value={customerRole}
-                onChange={e => setCustomerRole(e.target.value)}
-                placeholder="e.g. Lagos, Nigeria"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Star rating</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map(n => (
-                <button
-                  key={n}
-                  onClick={() => setRating(n)}
-                  className="text-2xl transition-transform hover:scale-110"
-                >
-                  <span style={{ color: n <= rating ? "var(--primary)" : "rgba(150,150,150,0.4)" }}>★</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Format</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { value: "square", label: "Square 1:1" },
-                { value: "portrait", label: "Portrait 4:5" },
-                { value: "story", label: "Story 9:16" },
-              ].map(f => (
-                <button
-                  key={f.value}
-                  onClick={() => setFormat(f.value)}
-                  className={cn(
-                    "py-2 rounded-lg border text-xs font-medium transition-all",
-                    format === f.value ? "border-primary bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-foreground/30"
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between py-1">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Show brand on card</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Logo or brand name at the bottom</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowBrandName(v => !v)}
-              className="relative rounded-full transition-colors shrink-0"
-              style={{ width: "40px", height: "22px", background: showBrandName ? "var(--primary)" : "rgba(100,100,100,0.3)" }}
-            >
-              <span
-                className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
-                style={{ transform: showBrandName ? "translateX(20px)" : "translateX(2px)" }}
-              />
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Star rating</label>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map(n => (
+            <button key={n} onClick={() => setRating(n)} className="text-2xl transition-transform hover:scale-110">
+              <span style={{ color: n <= rating ? "var(--primary)" : "rgba(150,150,150,0.4)" }}>★</span>
             </button>
-          </div>
-
-          <PhotoUploadPanel onPhotoChange={setCustomPhotoDataUrl} onSmoothChange={setSmoothFace} />
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Logo position</label>
-            <div className="grid grid-cols-5 gap-1.5">
-              {[
-                { value: "top-left", label: "↖ Top L" },
-                { value: "top-right", label: "↗ Top R" },
-                { value: "bottom-left", label: "↙ Bot L" },
-                { value: "bottom-center", label: "↓ Center" },
-                { value: "bottom-right", label: "↘ Bot R" },
-              ].map(pos => (
-                <button key={pos.value} type="button" onClick={() => setLogoPosition(pos.value)}
-                  className={cn("py-2 rounded-lg border text-xs font-medium transition-all",
-                    logoPosition === pos.value ? "border-primary bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-foreground/30")}>
-                  {pos.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact on post <span className="normal-case font-normal">(optional)</span></label>
-            <div className="space-y-2">
-              <input type="text" value={contactInfo.website} onChange={e => setContactInfo(ci => ({ ...ci, website: e.target.value }))} placeholder="🌐 Website (e.g. yoursite.com)" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-              <input type="text" value={contactInfo.instagram} onChange={e => setContactInfo(ci => ({ ...ci, instagram: e.target.value }))} placeholder="📷 Instagram (@yourbrand)" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-              <input type="text" value={contactInfo.phone} onChange={e => setContactInfo(ci => ({ ...ci, phone: e.target.value }))} placeholder="📞 Phone number" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-            </div>
-          </div>
-
-          <button
-            onClick={generate}
-            disabled={loading || !testimonialText.trim() || !activeBrandId}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Generating...</> : "Generate Testimonial Card"}
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {!html ? (
-            <div className="bg-card border border-dashed border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center gap-3" style={{ aspectRatio }}>
-              <div className="h-16 w-16 rounded-xl bg-muted opacity-30 flex items-center justify-center text-3xl text-muted-foreground">
-                ⭐
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">Your testimonial card will appear here</p>
-              <p className="text-xs text-muted-foreground">Paste a customer review and click Generate</p>
-            </div>
-          ) : (
-            <>
-              <div ref={containerRef} className="bg-card border border-border rounded-2xl overflow-hidden relative" style={{ aspectRatio }}>
-                <div style={{ width: 1080, height: format === "story" ? 1920 : format === "portrait" ? 1350 : 1080, transform: `scale(${previewScale})`, transformOrigin: "top left" }} dangerouslySetInnerHTML={{ __html: html }} />
-              </div>
-              <div className="flex gap-3 flex-wrap">
-                <button
-                  onClick={downloadPng}
-                  disabled={downloading}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-60"
-                >
-                  {downloading ? <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</> : <><Download className="h-4 w-4" />Download PNG</>}
-                </button>
-                <Link href="/calendar" className="flex-1">
-                  <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                    <Calendar className="h-4 w-4" />
-                    Schedule
-                  </button>
-                </Link>
-              </div>
-            </>
-          )}
+          ))}
         </div>
       </div>
+
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Format</label>
+        <div className="grid grid-cols-3 gap-2">
+          {[{ value: "square", label: "Square 1:1" }, { value: "portrait", label: "Portrait 4:5" }, { value: "story", label: "Story 9:16" }].map(f => (
+            <button key={f.value} onClick={() => setFormat(f.value)} className={cn("py-2 rounded-lg border text-xs font-medium transition-all", format === f.value ? "border-primary bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-foreground/30")}>{f.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between py-1">
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Show brand on card</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Logo or brand name at the bottom</p>
+        </div>
+        <button type="button" onClick={() => setShowBrandName(v => !v)} className="relative rounded-full transition-colors shrink-0" style={{ width: "40px", height: "22px", background: showBrandName ? "var(--primary)" : "rgba(100,100,100,0.3)" }}>
+          <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform" style={{ transform: showBrandName ? "translateX(20px)" : "translateX(2px)" }} />
+        </button>
+      </div>
+
+      <PhotoUploadPanel onPhotoChange={setCustomPhotoDataUrl} onSmoothChange={setSmoothFace} />
+
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Logo position</label>
+        <div className="grid grid-cols-5 gap-1.5">
+          {[{ value: "top-left", label: "↖ Top L" }, { value: "top-right", label: "↗ Top R" }, { value: "bottom-left", label: "↙ Bot L" }, { value: "bottom-center", label: "↓ Center" }, { value: "bottom-right", label: "↘ Bot R" }].map(pos => (
+            <button key={pos.value} type="button" onClick={() => setLogoPosition(pos.value)} className={cn("py-2 rounded-lg border text-xs font-medium transition-all", logoPosition === pos.value ? "border-primary bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-foreground/30")}>{pos.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact on post <span className="normal-case font-normal">(optional)</span></label>
+        <div className="space-y-2">
+          <input type="text" value={contactInfo.website} onChange={e => setContactInfo(ci => ({ ...ci, website: e.target.value }))} placeholder="🌐 Website (e.g. yoursite.com)" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <input type="text" value={contactInfo.instagram} onChange={e => setContactInfo(ci => ({ ...ci, instagram: e.target.value }))} placeholder="📷 Instagram (@yourbrand)" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <input type="text" value={contactInfo.phone} onChange={e => setContactInfo(ci => ({ ...ci, phone: e.target.value }))} placeholder="📞 Phone number" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+      </div>
+
+      <button onClick={generate} disabled={loading || !testimonialText.trim() || !activeBrandId} className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+        {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Generating...</> : "Generate Testimonial Card"}
+      </button>
     </div>
   );
+
+  const previewNode = (
+    <div className="space-y-4 max-w-2xl mx-auto">
+      {!html ? (
+        <div className="bg-card border border-dashed border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center gap-3" style={{ aspectRatio }}>
+          <div className="h-16 w-16 rounded-xl bg-muted opacity-30 flex items-center justify-center text-3xl text-muted-foreground">⭐</div>
+          <p className="text-sm font-medium text-muted-foreground">Your testimonial card will appear here</p>
+          <p className="text-xs text-muted-foreground">Paste a customer review and click Generate</p>
+        </div>
+      ) : (
+        <>
+          <div ref={containerRef} className="bg-card border border-border rounded-2xl overflow-hidden relative" style={{ aspectRatio }}>
+            <div style={{ width: 1080, height: format === "story" ? 1920 : format === "portrait" ? 1350 : 1080, transform: `scale(${previewScale})`, transformOrigin: "top left" }} dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <button onClick={downloadPng} disabled={downloading} className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-60">
+              {downloading ? <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</> : <><Download className="h-4 w-4" />Download PNG</>}
+            </button>
+            <Link href="/calendar" className="flex-1">
+              <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
+                <Calendar className="h-4 w-4" />Schedule
+              </button>
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  return <StudioPageShell title="Testimonial Card" settings={settingsNode} preview={previewNode} />;
 }

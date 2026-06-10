@@ -386,22 +386,61 @@ function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, form
            </div>`)
     : "";
 
-  // ── MINIMAL: editorial split panel ──────────────────────────────────────────
+  // ── MINIMAL: light editorial — cream bg, brand-color headline, photo card ────
   if (designStyle === "minimal") {
-    const panelW = isStory ? 1080 : 460;
-    const pPad = isStory ? 90 : 68;
-    return `${FONT_IMPORT}<div style="${dims};overflow:hidden;font-family:${FONT_STACK};display:flex;flex-direction:${isStory ? "column-reverse" : "row"};">
-  ${!isStory ? `<div style="flex:1;overflow:hidden;"><img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;${smoothStyle}" /></div>` : ""}
-  <div style="${isStory ? "" : `width:${panelW}px;flex-shrink:0;`}background:${secondary};padding:${pPad}px ${padH}px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;">
-    <div style="position:absolute;bottom:-140px;right:-100px;width:400px;height:400px;border-radius:50%;background:${primary};opacity:0.10;"></div>
-    <div style="width:52px;height:5px;background:${primary};margin-bottom:${isStory ? 30 : 22}px;border-radius:3px;"></div>
-    <h1 style="font-size:${hs}px;font-weight:900;color:#fff;line-height:1.05;margin:0 0 ${isStory ? 26 : 16}px;letter-spacing:-0.5px;">${headline}</h1>
-    <p style="font-size:${sText}px;font-weight:400;color:rgba(255,255,255,0.78);line-height:1.6;margin:0 0 ${isStory ? 44 : 34}px;">${subtext}</p>
-    ${cta ? `<div style="display:inline-flex;align-self:flex-start;background:${primary};color:#fff;padding:${isStory ? "18px 44px" : "13px 32px"};border-radius:100px;font-weight:700;font-size:${isStory ? 26 : 20}px;">${cta}</div>` : ""}
-    ${ctHtml ? `<div style="margin-top:${isStory ? 30 : 22}px;">${ctHtml}</div>` : ""}
-    ${logoElt ? `<div style="position:absolute;${isStory ? "bottom:60px" : `bottom:${padH}px`};left:${padH}px;">${logoElt}</div>` : ""}
+    const bg = "#FAF8F0";
+    const darkText = "#1a1a1a";
+    const cardW = isStory || format === "portrait" ? (1080 - padH * 2) : 390;
+    const cardH = isStory ? Math.round(h * 0.40) : format === "portrait" ? 520 : 468;
+    const headlineFz = hl > 50 ? (isStory ? 68 : 44) : hl > 35 ? (isStory ? 84 : 56) : hl > 20 ? (isStory ? 104 : 72) : (isStory ? 124 : 92);
+    const ctHtmlLight = contactSnippet(contactInfo, secondary, isStory ? 22 : 17);
+    const logoTopEl = showBrandName
+      ? (logoUrl
+          ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:${isStory ? 50 : 38}px;max-width:180px;object-fit:contain;" />`
+          : `<div style="display:flex;align-items:center;gap:10px;">
+               <div style="width:${isStory ? 44 : 34}px;height:${isStory ? 44 : 34}px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                 <span style="color:#fff;font-size:${isStory ? 20 : 15}px;font-weight:900;font-family:${FONT_STACK};">${brandName.charAt(0).toUpperCase()}</span>
+               </div>
+               <span style="color:${secondary};font-size:${isStory ? 18 : 15}px;font-weight:700;font-family:${FONT_STACK};">${brandName}</span>
+             </div>`)
+      : "";
+
+    if (isStory || format === "portrait") {
+      return `${FONT_IMPORT}<div style="${dims};background:${bg};font-family:${FONT_STACK};position:relative;overflow:hidden;box-sizing:border-box;padding:${padH}px;">
+  <div style="position:absolute;top:-100px;right:-80px;width:440px;height:440px;border-radius:50%;background:${primary};opacity:0.05;pointer-events:none;"></div>
+  <div style="position:absolute;bottom:-80px;left:-60px;width:300px;height:300px;border-radius:50%;background:${secondary};opacity:0.04;pointer-events:none;"></div>
+  ${logoTopEl ? `<div style="margin-bottom:${isStory ? 48 : 36}px;">${logoTopEl}</div>` : ""}
+  <h1 style="font-size:${headlineFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0 0 ${isStory ? 26 : 20}px;letter-spacing:-0.5px;">${headline}</h1>
+  <p style="font-size:${isStory ? 32 : 26}px;color:${darkText};line-height:1.6;margin:0 0 ${isStory ? 44 : 32}px;">${subtext}</p>
+  <div style="border-radius:28px;overflow:hidden;transform:rotate(1.5deg);box-shadow:0 20px 60px rgba(0,0,0,0.10);margin-bottom:${isStory ? 48 : 36}px;width:${cardW}px;">
+    <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:${cardH}px;object-fit:cover;${smoothStyle}" />
   </div>
-  ${isStory ? `<div style="flex:1;overflow:hidden;"><img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;${smoothStyle}" /></div>` : ""}
+  ${cta ? `<div style="display:inline-flex;background:${secondary};color:#fff;padding:${isStory ? "18px 44px" : "14px 36px"};border-radius:100px;font-weight:700;font-size:${isStory ? 28 : 22}px;">${cta}</div>` : ""}
+  ${ctHtmlLight ? `<div style="margin-top:${isStory ? 28 : 20}px;">${ctHtmlLight}</div>` : ""}
+</div>`;
+    }
+
+    // HORIZONTAL layout (square): text left, photo card right
+    const gap = 52;
+    const logoH = showBrandName ? 74 : 0;
+    const textW = 1080 - padH * 2 - cardW - gap;
+    return `${FONT_IMPORT}<div style="${dims};background:${bg};font-family:${FONT_STACK};position:relative;overflow:hidden;box-sizing:border-box;padding:${padH}px;">
+  <div style="position:absolute;top:-120px;right:-80px;width:460px;height:460px;border-radius:50%;background:${primary};opacity:0.05;pointer-events:none;"></div>
+  <div style="position:absolute;bottom:-80px;left:-60px;width:320px;height:320px;border-radius:50%;background:${secondary};opacity:0.04;pointer-events:none;"></div>
+  ${logoTopEl ? `<div style="margin-bottom:24px;">${logoTopEl}</div>` : ""}
+  <div style="display:flex;align-items:center;gap:${gap}px;height:${h - padH * 2 - logoH}px;">
+    <div style="width:${textW}px;display:flex;flex-direction:column;justify-content:center;gap:20px;">
+      <h1 style="font-size:${headlineFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0;letter-spacing:-0.5px;">${headline}</h1>
+      <p style="font-size:${sText}px;color:${darkText};line-height:1.65;margin:0;">${subtext}</p>
+      ${cta ? `<div style="display:inline-flex;align-self:flex-start;background:${secondary};color:#fff;padding:14px 36px;border-radius:100px;font-weight:700;font-size:22px;">${cta}</div>` : ""}
+      ${ctHtmlLight ? ctHtmlLight : ""}
+    </div>
+    <div style="width:${cardW}px;flex-shrink:0;">
+      <div style="border-radius:24px;overflow:hidden;transform:rotate(2deg);box-shadow:0 24px 64px rgba(0,0,0,0.10);">
+        <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:${cardH}px;object-fit:cover;${smoothStyle}" />
+      </div>
+    </div>
+  </div>
 </div>`;
   }
 
