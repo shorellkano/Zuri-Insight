@@ -1,9 +1,12 @@
 import { db, scheduledPostsTable, socialConnectionsTable } from "@workspace/db";
-import { and, eq, lte, sql } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import { publishToInstagram, InstagramPublishError } from "./instagramPublish";
+import { decryptToken } from "./tokenCrypto";
+import { uploadImageForInstagram } from "./objectStorage";
 import { logger } from "./logger";
 
 const POLL_INTERVAL_MS = 60_000;
+const TOKEN_EXPIRED_CODE = "190";
 
 let running = false;
 
@@ -54,20 +57,44 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
       return;
     }
 
-    const imageUrl = (post.mediaUrls as string[] | null)?.[0];
-    if (!imageUrl) {
-      await markFailed(post.id, "No image URL found for this post. Attach an image when scheduling.");
-      return;
-    }
-
     if (!conn.igUserId) {
       await markFailed(post.id, "Instagram user ID missing. Please reconnect in Settings > Social.");
       return;
     }
 
+    const rawMedia = (post.mediaUrls as string[] | null)?.[0];
+    if (!rawMedia) {
+      await markFailed(post.id, "No image URL found for this post. Attach an image when scheduling.");
+      return;
+    }
+
+    let imageUrl: string;
+    if (rawMedia.startsWith("data:")) {
+      try {
+        imageUrl = await uploadImageForInstagram(rawMedia);
+        logger.info({ postId: post.id }, "Scheduler: uploaded creative image to storage");
+      } catch (uploadErr: any) {
+        await markFailed(
+          post.id,
+          `Failed to upload creative image: ${uploadErr?.message ?? "Check object storage configuration."}`,
+        );
+        return;
+      }
+    } else {
+      imageUrl = rawMedia;
+    }
+
+    let accessToken: string;
+    try {
+      accessToken = decryptToken(conn.accessToken);
+    } catch {
+      await markFailed(post.id, "Failed to decrypt Instagram access token. Please reconnect in Settings > Social.");
+      return;
+    }
+
     const { postId } = await publishToInstagram({
       igUserId: conn.igUserId,
-      accessToken: conn.accessToken,
+      accessToken,
       imageUrl,
       caption: post.caption ?? "",
     });
@@ -90,6 +117,20 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
         : `Unexpected error: ${err?.message ?? "Unknown error"}`;
 
     logger.error({ err, postId: post.id }, `Scheduler: failed to publish post — ${message}`);
+
+    if (err instanceof InstagramPublishError && err.code === TOKEN_EXPIRED_CODE) {
+      await db
+        .update(socialConnectionsTable)
+        .set({ tokenExpiresAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(socialConnectionsTable.brandId, post.brandId),
+            eq(socialConnectionsTable.platform, "instagram"),
+          ),
+        );
+      logger.warn({ postId: post.id }, "Scheduler: marked Instagram token as expired");
+    }
+
     await markFailed(post.id, message);
   }
 }

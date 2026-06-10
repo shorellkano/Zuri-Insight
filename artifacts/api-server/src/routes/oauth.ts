@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, socialConnectionsTable } from "@workspace/db";
+import { db, socialConnectionsTable, brandsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { encryptToken, decryptToken, signOAuthState, verifyOAuthState } from "../lib/tokenCrypto";
 
 const router: IRouter = Router();
 
@@ -26,10 +27,25 @@ function getCallbackUrl() {
   return `${getAppUrl()}/api/oauth/instagram/callback`;
 }
 
+async function verifyBrandExists(brandId: string): Promise<boolean> {
+  const [brand] = await db
+    .select({ id: brandsTable.id })
+    .from(brandsTable)
+    .where(eq(brandsTable.id, brandId))
+    .limit(1);
+  return !!brand;
+}
+
 router.get("/oauth/instagram/connect", async (req: Request, res: Response): Promise<void> => {
   const { brandId } = req.query as { brandId?: string };
   if (!brandId) {
     res.status(400).json({ error: "brandId is required" });
+    return;
+  }
+
+  const brandExists = await verifyBrandExists(brandId).catch(() => false);
+  if (!brandExists) {
+    res.status(404).json({ error: "Brand not found" });
     return;
   }
 
@@ -41,11 +57,13 @@ router.get("/oauth/instagram/connect", async (req: Request, res: Response): Prom
     return;
   }
 
+  const signedState = signOAuthState(brandId);
+
   const params = new URLSearchParams({
     client_id: appId,
     redirect_uri: getCallbackUrl(),
     scope: "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
-    state: brandId,
+    state: signedState,
     response_type: "code",
   });
 
@@ -53,16 +71,23 @@ router.get("/oauth/instagram/connect", async (req: Request, res: Response): Prom
 });
 
 router.get("/oauth/instagram/callback", async (req: Request, res: Response): Promise<void> => {
-  const { code, state: brandId, error: fbError } = req.query as Record<string, string>;
+  const { code, state, error: fbError } = req.query as Record<string, string>;
   const appUrl = getAppUrl();
 
   if (fbError || !code) {
-    res.redirect(`${appUrl}/settings/social?error=${encodeURIComponent(fbError ?? "Access denied")}`);
+    res.redirect(`${appUrl}/settings/social?error=${encodeURIComponent(fbError ?? "access_denied")}`);
     return;
   }
 
+  const brandId = state ? verifyOAuthState(state) : null;
   if (!brandId) {
-    res.redirect(`${appUrl}/settings/social?error=missing_brand`);
+    res.redirect(`${appUrl}/settings/social?error=invalid_state`);
+    return;
+  }
+
+  const brandExists = await verifyBrandExists(brandId).catch(() => false);
+  if (!brandExists) {
+    res.redirect(`${appUrl}/settings/social?error=brand_not_found`);
     return;
   }
 
@@ -71,7 +96,6 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
     const appSecret = getAppSecret();
     const callbackUrl = getCallbackUrl();
 
-    // 1. Exchange code for short-lived user token
     const tokenResp = await fetch(
       `${FB_API}/oauth/access_token?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(callbackUrl)}&client_secret=${encodeURIComponent(appSecret)}&code=${encodeURIComponent(code)}`,
     );
@@ -79,7 +103,6 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
     if (tokenData.error) throw new Error(tokenData.error.message ?? "Token exchange failed");
     const shortToken: string = tokenData.access_token;
 
-    // 2. Exchange for long-lived user token (60 days)
     const longTokenResp = await fetch(
       `${FB_API}/oauth/access_token?grant_type=fb_exchange_token&client_id=${encodeURIComponent(appId)}&client_secret=${encodeURIComponent(appSecret)}&fb_exchange_token=${encodeURIComponent(shortToken)}`,
     );
@@ -88,7 +111,6 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
     const userToken: string = longTokenData.access_token;
     const expiresInSec: number = longTokenData.expires_in ?? 5184000;
 
-    // 3. Get Facebook Pages (includes long-lived page access tokens)
     const pagesResp = await fetch(
       `${FB_API}/me/accounts?access_token=${encodeURIComponent(userToken)}`,
     );
@@ -101,7 +123,6 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
       return;
     }
 
-    // 4. Find first page that has an Instagram Business Account
     let igUserId: string | null = null;
     let igUsername: string | null = null;
     let pageId: string | null = null;
@@ -125,16 +146,17 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
       return;
     }
 
-    // 5. Get Instagram username
     const usernameResp = await fetch(
       `${FB_API}/${igUserId}?fields=username&access_token=${encodeURIComponent(pageToken)}`,
     );
     const usernameData = await usernameResp.json() as any;
     igUsername = usernameData.username ?? null;
 
-    // 6. Upsert connection in DB
+    const encryptedToken = encryptToken(pageToken);
+    const tokenExpiresAt = new Date(Date.now() + expiresInSec * 1000);
+
     const existing = await db
-      .select()
+      .select({ id: socialConnectionsTable.id })
       .from(socialConnectionsTable)
       .where(
         and(
@@ -144,13 +166,11 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
       )
       .limit(1);
 
-    const tokenExpiresAt = new Date(Date.now() + expiresInSec * 1000);
-
     if (existing.length > 0) {
       await db
         .update(socialConnectionsTable)
         .set({
-          accessToken: pageToken,
+          accessToken: encryptedToken,
           tokenExpiresAt,
           igUserId,
           igUsername,
@@ -162,7 +182,7 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
       await db.insert(socialConnectionsTable).values({
         brandId,
         platform: "instagram",
-        accessToken: pageToken,
+        accessToken: encryptedToken,
         tokenExpiresAt,
         igUserId,
         igUsername,
@@ -182,6 +202,12 @@ router.get("/oauth/instagram/status", async (req: Request, res: Response): Promi
   const { brandId } = req.query as { brandId?: string };
   if (!brandId) {
     res.status(400).json({ error: "brandId is required" });
+    return;
+  }
+
+  const brandExists = await verifyBrandExists(brandId).catch(() => false);
+  if (!brandExists) {
+    res.status(404).json({ error: "Brand not found" });
     return;
   }
 
@@ -212,6 +238,7 @@ router.get("/oauth/instagram/status", async (req: Request, res: Response): Promi
     username: conn.igUsername,
     expiresAt: conn.tokenExpiresAt,
     connectedAt: conn.createdAt,
+    needsReauth: isExpired,
   });
 });
 
@@ -219,6 +246,12 @@ router.delete("/oauth/instagram/disconnect", async (req: Request, res: Response)
   const { brandId } = req.query as { brandId?: string };
   if (!brandId) {
     res.status(400).json({ error: "brandId is required" });
+    return;
+  }
+
+  const brandExists = await verifyBrandExists(brandId).catch(() => false);
+  if (!brandExists) {
+    res.status(404).json({ error: "Brand not found" });
     return;
   }
 

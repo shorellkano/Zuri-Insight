@@ -53,14 +53,24 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previe
       let mediaUrls: string[] | undefined;
 
       if (platform === "instagram" && previewDataUrl) {
-        const uploadResp = await fetch(API("/schedule/upload-preview-image"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataUrl: previewDataUrl }),
-        });
-        if (uploadResp.ok) {
-          const { url } = await uploadResp.json();
-          if (url) mediaUrls = [url];
+        try {
+          const uploadResp = await fetch(API("/schedule/upload-preview-image"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dataUrl: previewDataUrl }),
+          });
+          if (uploadResp.ok) {
+            const { url } = await uploadResp.json();
+            if (url) {
+              mediaUrls = [url];
+            } else {
+              mediaUrls = [previewDataUrl];
+            }
+          } else {
+            mediaUrls = [previewDataUrl];
+          }
+        } catch {
+          mediaUrls = [previewDataUrl];
         }
       }
 
