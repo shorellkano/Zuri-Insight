@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, brandsTable, brandVisualPrefsTable, generatedDesignsTable } from "@workspace/db";
-import { aiJSON, hasAI } from "../lib/ai.js";
+import { aiJSON, hasAI, generateImage, hasImageAI } from "../lib/ai.js";
 
 const router: IRouter = Router();
 
@@ -242,9 +242,61 @@ function brandMark({ showBrandName, logoUrl, brandName, primary, dark = true }: 
 }
 
 // ─── Photo background helpers ──────────────────────────────────────────────────
-// Resolves an Unsplash source URL to a direct CDN URL so html2canvas can use it
-// without CORS redirect issues.
-async function resolvePhotoUrl(query: string, w: number, h: number): Promise<string> {
+
+/**
+ * Build a FLUX image generation prompt from brand context + scene description.
+ * Returns a rich, detailed prompt optimized for photorealistic output.
+ */
+function buildFluxPrompt(opts: {
+  scene: string;
+  industry?: string | null;
+  brandName?: string;
+  mood?: string;
+  aspectHint?: string;
+}): string {
+  const industryContext: Record<string, string> = {
+    "Food & Beverage": "warm restaurant ambiance, beautiful plating, rich textures",
+    "Health & Wellness": "clean bright studio, natural light, energetic lifestyle",
+    "Healthcare & Medical": "modern clinic, professional medical setting, clean and bright",
+    "Beauty & Personal Care": "elegant beauty studio, soft lighting, luxury cosmetics",
+    "Fashion & Apparel": "high fashion editorial, clean background, stylish clothing",
+    "Technology & SaaS": "modern office, sleek devices, professional workspace",
+    "Real Estate & Property": "luxury interior design, architectural photography, aspirational living",
+    "Education & Training": "bright classroom, learning environment, engaged students",
+    "Entertainment & Events": "vibrant event, colorful celebration, dynamic atmosphere",
+    "Travel & Hospitality": "luxury hotel, tropical destination, premium travel",
+    "Agriculture & Farming": "lush African farmland, golden hour, sustainable agriculture",
+    "Retail & E-commerce": "beautiful product display, clean commercial photography",
+    "Fintech & Payments": "modern finance, digital payment, professional business",
+    "Logistics & Courier": "professional delivery, urban logistics, efficient operations",
+    "Construction & Engineering": "modern architecture, construction excellence, engineering",
+    "Non-profit & NGO": "community empowerment, African people, hope and progress",
+    "Church & Religious Organisation": "uplifting community gathering, light and hope",
+  };
+  const indCtx = industryContext[opts.industry ?? ""] ?? "professional African business setting";
+  const moodStr = opts.mood ? `${opts.mood} mood, ` : "";
+  return `${moodStr}${opts.scene}, ${indCtx}, ${opts.aspectHint ?? "square format"}, photorealistic, ultra high quality, professional photography, 4k, sharp focus, beautiful composition, vibrant colors, cinematic lighting. No text, no logos, no watermarks.`;
+}
+
+/**
+ * Get a photo URL — tries Together AI FLUX first, falls back to Unsplash.
+ */
+async function resolvePhotoUrl(query: string, w: number, h: number, fluxPrompt?: string): Promise<string> {
+  // Try FLUX.1 AI image generation first
+  if (hasImageAI() && fluxPrompt) {
+    try {
+      // FLUX.1-schnell supports specific dimensions; snap to nearest supported size
+      const fluxW = w <= 768 ? 768 : w <= 1024 ? 1024 : 1440;
+      const fluxH = h <= 768 ? 768 : h <= 1024 ? 1024 : h <= 1440 ? 1440 : 1024;
+      const dataUrl = await generateImage({ prompt: fluxPrompt, width: fluxW, height: fluxH, steps: 4 });
+      console.log(`[ImageAI] FLUX generated ${fluxW}x${fluxH} image`);
+      return dataUrl;
+    } catch (err: any) {
+      console.warn(`[ImageAI] FLUX failed, falling back to Unsplash: ${err.message}`);
+    }
+  }
+
+  // Fallback: Unsplash
   const q = query.trim().replace(/\s+/g, ",");
   const sourceUrl = `https://source.unsplash.com/featured/${w}x${h}/?${encodeURIComponent(q)}`;
   try {
@@ -353,7 +405,9 @@ Never use em dashes.`, "{}");
   } catch { }
 
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h);
+  const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
+  const fluxPrompt = buildFluxPrompt({ scene: imageQuery, industry: brand.industry, brandName: brand.name, aspectHint });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h, fluxPrompt);
   const html = buildAnnouncementHtml({ headline, subtext, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
   res.json({ html, headline, subtext, cta });
 });
@@ -507,7 +561,9 @@ Never use em dashes.`, "{}");
   } catch { }
 
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h);
+  const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
+  const fluxPrompt = buildFluxPrompt({ scene: imageQuery, industry: brand.industry, brandName: brand.name, aspectHint });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h, fluxPrompt);
   const html = buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, headline, tagline, cta });
 });
@@ -592,7 +648,8 @@ Never use em dashes.`, "{}");
     }
   } catch { }
 
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, 1080, 1920);
+  const fluxPrompt = buildFluxPrompt({ scene: imageQuery, industry: brand.industry, brandName: brand.name, mood, aspectHint: "portrait 9:16 vertical story format" });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, 1080, 1920, fluxPrompt);
   const html = buildStoryCoverHtml({ hookText, subText, brandName: brand.name, colors, mood, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, hookText, subText });
 });
@@ -662,7 +719,8 @@ Never use em dashes.`, "{}");
     }
   } catch { }
 
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl("birthday celebration confetti balloons african joy colorful", 1080, 1080);
+  const birthdayFluxPrompt = buildFluxPrompt({ scene: "birthday celebration confetti balloons colorful joyful festive party decor bokeh", industry: brand.industry, brandName: brand.name, mood: "joyful celebratory", aspectHint: "square format" });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl("birthday celebration confetti balloons african joy colorful", 1080, 1080, birthdayFluxPrompt);
   const html = buildBirthdayPostHtml({ personName, personRole, message, brandName: brand.name, colors, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, celebrantPhotoDataUrl, smoothFace });
   res.json({ html, message });
 });
@@ -726,7 +784,10 @@ router.post("/generate/testimonial", async (req, res): Promise<void> => {
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, "professional team satisfied customer"), w, h);
+  const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
+  const testimQuery = industryPhotoQuery(brand.industry, "professional team satisfied customer");
+  const testimFluxPrompt = buildFluxPrompt({ scene: testimQuery, industry: brand.industry, brandName: brand.name, mood: "warm trustworthy", aspectHint });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(testimQuery, w, h, testimFluxPrompt);
   const html = buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html });
 });
@@ -828,7 +889,9 @@ ${headline ? `Existing headline: ${headline} (improve it slightly)` : "Write a f
   const w = isBanner ? 1200 : 1080;
   const h = isStory  ? 1920 : isBanner ? 628 : 1080;
 
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h);
+  const adAspectHint = isStory ? "portrait 9:16 vertical format" : isBanner ? "landscape wide banner format" : "square format";
+  const adFluxPrompt = buildFluxPrompt({ scene: imageQuery, industry: brand.industry, brandName: brand.name, mood: "bold impactful advertising", aspectHint: adAspectHint });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h, adFluxPrompt);
   const html = buildAdCreativeHtml({
     headline: finalHeadline, tagline: finalTagline, cta: finalCta,
     brandName: brand.name, colors, adFormat, showBrandName, logoUrl, photoUrl, platform,

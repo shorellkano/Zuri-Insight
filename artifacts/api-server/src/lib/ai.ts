@@ -313,6 +313,59 @@ export function hasAI(): boolean {
   return !!process.env.OPENROUTER_API_KEY;
 }
 
+// ─── Together AI Image Generation (FLUX.1 Schnell) ────────────────────────────
+
+export function hasImageAI(): boolean {
+  return !!process.env.TOGETHER_API_KEY;
+}
+
+export interface GenerateImageOptions {
+  prompt: string;
+  width?: number;
+  height?: number;
+  steps?: number;
+}
+
+/**
+ * Generate an image using Together AI FLUX.1-schnell-Free.
+ * Returns a base64 data URL (data:image/png;base64,...).
+ */
+export async function generateImage(opts: GenerateImageOptions): Promise<string> {
+  const apiKey = process.env.TOGETHER_API_KEY;
+  if (!apiKey) throw new Error("TOGETHER_API_KEY is not set");
+
+  const { prompt, width = 1024, height = 1024, steps = 4 } = opts;
+
+  const response = await fetch("https://api.together.xyz/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "black-forest-labs/FLUX.1-schnell",
+      prompt,
+      width,
+      height,
+      steps,
+      n: 1,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Together AI image generation failed (${response.status}): ${err}`);
+  }
+
+  const data = await response.json() as { data: Array<{ b64_json?: string; url?: string }> };
+  const item = data?.data?.[0];
+  if (!item) throw new Error("Together AI returned no image data");
+
+  if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
+  if (item.url) return item.url;
+  throw new Error("Together AI image: no b64_json or url in response");
+}
+
 /** Expose cooldown state for health/debug endpoint */
 export function getModelStatus(): { model: string; available: boolean; coolingUntil?: number }[] {
   return FREE_MODELS.map(model => {
