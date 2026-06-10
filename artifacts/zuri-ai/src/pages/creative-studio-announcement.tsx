@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useBrand } from "@/context/brand-context";
 import { Loader2, Download, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -29,12 +29,17 @@ export default function CreativeStudioAnnouncement() {
   const [contactInfo, setContactInfo] = useState({ website: "", instagram: "", phone: "" });
   const [customPhotoDataUrl, setCustomPhotoDataUrl] = useState<string | null>(null);
   const [smoothFace, setSmoothFace] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [previewScale, setPreviewScale] = useState(1);
-  useEffect(() => {
-    const el = containerRef.current;
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [containerW, setContainerW] = useState(0);
+  useLayoutEffect(() => {
+    const el = measureRef.current;
     if (!el) return;
-    const obs = new ResizeObserver(([e]) => setPreviewScale(e.contentRect.width / 1080));
+    const update = () => {
+      const w = el.offsetWidth;
+      if (w > 0) setContainerW(w);
+    };
+    update();
+    const obs = new ResizeObserver(update);
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -191,27 +196,28 @@ export default function CreativeStudioAnnouncement() {
   );
 
   const canvasH = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const paddingBottom = format === "story" ? "177.78%" : format === "portrait" ? "125%" : "100%";
+  const previewScale = containerW > 0 ? containerW / 1080 : 0;
+  const previewH = containerW > 0 ? Math.round(containerW * canvasH / 1080) : 420;
 
   const previewNode = (
     <div className="space-y-4 max-w-2xl mx-auto">
-      {!html ? (
-        <div className="bg-card border border-dashed border-border rounded-2xl relative overflow-hidden" style={{ width: "100%", paddingBottom }}>
+      <div
+        ref={measureRef}
+        className="relative w-full overflow-hidden rounded-2xl border border-border bg-card"
+        style={{ height: previewH }}
+      >
+        {!html ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-12 text-center">
-            <div className="h-16 w-16 rounded-xl bg-muted opacity-30 flex items-center justify-center text-3xl text-muted-foreground">
-              📢
-            </div>
+            <div className="h-16 w-16 rounded-xl bg-muted opacity-30 flex items-center justify-center text-3xl text-muted-foreground">📢</div>
             <p className="text-sm font-medium text-muted-foreground">Your announcement will appear here</p>
             <p className="text-xs text-muted-foreground">Describe your announcement and click Generate</p>
           </div>
-        </div>
-      ) : (
+        ) : previewScale > 0 ? (
+          <div style={{ position: "absolute", top: 0, left: 0, width: 1080, height: canvasH, transform: `scale(${previewScale})`, transformOrigin: "top left" }} dangerouslySetInnerHTML={{ __html: html }} />
+        ) : null}
+      </div>
+      {html && (
         <>
-          <div ref={containerRef} className="relative overflow-hidden rounded-2xl border border-border bg-card" style={{ width: "100%", paddingBottom }}>
-            <div className="absolute inset-0">
-              <div style={{ position: "absolute", top: 0, left: 0, width: 1080, height: canvasH, transform: `scale(${previewScale})`, transformOrigin: "top left" }} dangerouslySetInnerHTML={{ __html: html }} />
-            </div>
-          </div>
           {generated && (
             <div className="bg-muted/40 rounded-xl p-4 space-y-1">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Generated copy</p>

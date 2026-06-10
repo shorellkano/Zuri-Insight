@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Upload, Plus, X, Loader2, CheckCircle2, ExternalLink, Palette, Image } from "lucide-react";
 import { useBrand } from "@/context/brand-context";
@@ -284,7 +284,7 @@ export function BrandIdentityPanel() {
 
             {brandColors.length < 5 && (
               <button
-                onClick={() => setBrandColors([...brandColors, "#0D6B8C"])}
+                onClick={() => setBrandColors([...brandColors, brandColors.length === 0 ? "#333333" : "#888888"])}
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" /> Add color

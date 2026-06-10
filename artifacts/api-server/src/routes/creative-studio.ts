@@ -228,6 +228,7 @@ function buildQuoteCardHtml({ quoteText, attribution, brandName, colors, backgro
 // ─── Shared design constants ──────────────────────────────────────────────────
 const FONT_STACK = `'Poppins','Trebuchet MS','Segoe UI',system-ui,sans-serif`;
 const FONT_IMPORT = `<style>@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');</style>`;
+const ANN_FONT_IMPORT = `<style>@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;500;600;700&display=swap');</style>`;
 
 // ─── Shared brand mark helper ─────────────────────────────────────────────────
 function brandMark({ showBrandName, logoUrl, brandName, primary, dark = true }: {
@@ -578,6 +579,8 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   const isPortrait = format === "portrait";
   const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
   const hl = headline.length;
+  const H_FONT = `'Barlow Condensed','Arial Narrow','Impact',sans-serif`;
+  const B_FONT = `'Barlow','Trebuchet MS','Segoe UI',sans-serif`;
 
   const primaryIsLight = isLightColor(primary);
   const onPrimary = primaryIsLight ? "#1a1a1a" : "#ffffff";
@@ -599,10 +602,10 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   const featureBulletsHtml = features.length > 0
     ? features.slice(0, 4).map(f =>
         `<div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;">
-          <div style="width:40px;height:40px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;line-height:1;">${f.emoji}</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:${primary}1A;border:2px solid ${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;line-height:1;">${f.emoji}</div>
           <div style="padding-top:3px;">
-            <p style="margin:0 0 3px;font-size:12.5px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.7px;font-family:${FONT_STACK};">${f.label}</p>
-            ${f.description ? `<p style="margin:0;font-size:11.5px;color:#666;line-height:1.45;font-family:${FONT_STACK};">${f.description}</p>` : ""}
+            <p style="margin:0 0 3px;font-size:14px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.5px;font-family:${H_FONT};">${f.label}</p>
+            ${f.description ? `<p style="margin:0;font-size:11.5px;color:#555;line-height:1.45;font-family:${B_FONT};">${f.description}</p>` : ""}
           </div>
         </div>`
       ).join("")
@@ -612,10 +615,10 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   const featureGridHtml = features.length > 0
     ? features.slice(0, 4).map(f =>
         `<div style="display:flex;align-items:flex-start;gap:16px;min-width:260px;flex:1;">
-          <div style="width:52px;height:52px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;">${f.emoji}</div>
+          <div style="width:50px;height:50px;border-radius:50%;background:${primary}1A;border:2px solid ${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;">${f.emoji}</div>
           <div>
-            <p style="margin:0 0 3px;font-size:18px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.5px;font-family:${FONT_STACK};">${f.label}</p>
-            ${f.description ? `<p style="margin:0;font-size:16px;color:#555;line-height:1.4;font-family:${FONT_STACK};">${f.description}</p>` : ""}
+            <p style="margin:0 0 3px;font-size:19px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.5px;font-family:${H_FONT};">${f.label}</p>
+            ${f.description ? `<p style="margin:0;font-size:16px;color:#555;line-height:1.4;font-family:${B_FONT};">${f.description}</p>` : ""}
           </div>
         </div>`
       ).join("")
@@ -623,8 +626,9 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
 
   // ── CTA button ────────────────────────────────────────────────────────────────
   const ctaButtonHtml = cta
-    ? `<div style="display:inline-flex;align-items:center;gap:10px;background:${primary};color:${onPrimary};padding:13px 28px;border-radius:10px;font-weight:700;font-size:15px;font-family:${FONT_STACK};">
-        <span>${cta}</span><span style="font-size:18px;">&#8594;</span>
+    ? `<div style="width:100%;background:${primary};border-radius:10px;padding:13px 20px;box-sizing:border-box;display:table;table-layout:fixed;">
+        <span style="display:table-cell;vertical-align:middle;color:${onPrimary};font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${H_FONT};">${cta}</span>
+        <span style="display:table-cell;vertical-align:middle;text-align:right;color:${onPrimary};font-size:20px;width:28px;">&#8594;</span>
       </div>`
     : "";
 
@@ -664,15 +668,15 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   if (isStory) {
     const photoH = 840;
     const hFz = hl > 60 ? 50 : hl > 40 ? 60 : hl > 25 ? 70 : 82;
-    return `${FONT_IMPORT}<div style="width:1080px;height:1920px;font-family:${FONT_STACK};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;background:#ffffff;">
+    return `${ANN_FONT_IMPORT}<div style="width:1080px;height:1920px;font-family:${B_FONT};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;background:#ffffff;">
   <div style="width:1080px;height:${photoH}px;overflow:hidden;flex-shrink:0;position:relative;">
     <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
     ${showBrandName ? `<div style="position:absolute;top:44px;left:44px;background:rgba(255,255,255,0.95);padding:10px 20px;border-radius:100px;box-shadow:0 2px 14px rgba(0,0,0,0.13);">${logoEl}</div>` : ""}
   </div>
   <div style="flex:1;padding:44px 52px 0;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
     <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
-    <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.08;margin:0 0 14px;letter-spacing:-1px;flex-shrink:0;font-family:${FONT_STACK};">${headline}</h1>
-    <p style="font-size:23px;color:#3a3a3a;line-height:1.68;margin:0 0 24px;flex-shrink:0;font-family:${FONT_STACK};">${subtext}</p>
+    <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0 0 14px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};">${headline}</h1>
+    <p style="font-size:23px;color:#3a3a3a;line-height:1.68;margin:0 0 24px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
     <div style="flex:1;display:flex;flex-wrap:wrap;gap:20px 40px;overflow:hidden;">${featureGridHtml}</div>
   </div>
   <div style="padding:20px 52px 24px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;">
@@ -689,14 +693,13 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
     const footerH = 84;
     const mainH = 1350 - footerH;
     const hFz = hl > 70 ? 48 : hl > 50 ? 56 : hl > 35 ? 66 : 76;
-    return `${FONT_IMPORT}<div style="width:1080px;height:1350px;font-family:${FONT_STACK};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
+    return `${ANN_FONT_IMPORT}<div style="width:1080px;height:1350px;font-family:${B_FONT};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
   <div style="flex:1;display:flex;overflow:hidden;">
     <div style="width:${textW}px;height:${mainH}px;background:#ffffff;padding:48px 40px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
       ${showBrandName ? `<div style="margin-bottom:22px;flex-shrink:0;">${logoEl}</div>` : ""}
-      <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:12px;flex-shrink:0;"></div>
-      <p style="margin:0 0 8px;font-size:10.5px;font-weight:700;color:${primary};text-transform:uppercase;letter-spacing:2.5px;flex-shrink:0;font-family:${FONT_STACK};">ANNOUNCEMENT</p>
-      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.08;margin:0 0 14px;letter-spacing:-1px;flex-shrink:0;font-family:${FONT_STACK};">${headline}</h1>
-      <p style="font-size:13.5px;color:#3a3a3a;line-height:1.72;margin:0 0 20px;flex-shrink:0;font-family:${FONT_STACK};">${subtext}</p>
+      <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
+      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0 0 14px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};">${headline}</h1>
+      <p style="font-size:13.5px;color:#3a3a3a;line-height:1.72;margin:0 0 20px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
       <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
       <div style="flex-shrink:0;margin-top:14px;">
         ${calloutStripHtml}
@@ -717,16 +720,15 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   const mainH = 1080 - footerH; // 996px
   const hFz = hl > 70 ? 48 : hl > 50 ? 56 : hl > 35 ? 64 : 72;
 
-  return `${FONT_IMPORT}<div style="width:1080px;height:1080px;font-family:${FONT_STACK};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
+  return `${ANN_FONT_IMPORT}<div style="width:1080px;height:1080px;font-family:${B_FONT};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
   <div style="flex:1;display:flex;overflow:hidden;">
 
     <!-- LEFT TEXT PANEL -->
     <div style="width:${textW}px;height:${mainH}px;background:#ffffff;padding:44px 40px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
       ${showBrandName ? `<div style="margin-bottom:22px;flex-shrink:0;">${logoEl}</div>` : ""}
-      <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:12px;flex-shrink:0;"></div>
-      <p style="margin:0 0 8px;font-size:10.5px;font-weight:700;color:${primary};text-transform:uppercase;letter-spacing:2.5px;flex-shrink:0;font-family:${FONT_STACK};">ANNOUNCEMENT</p>
-      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.08;margin:0 0 12px;letter-spacing:-1px;flex-shrink:0;font-family:${FONT_STACK};">${headline}</h1>
-      <p style="font-size:13.5px;color:#3a3a3a;line-height:1.72;margin:0 0 18px;flex-shrink:0;font-family:${FONT_STACK};">${subtext}</p>
+      <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
+      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0 0 12px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};">${headline}</h1>
+      <p style="font-size:13.5px;color:#3a3a3a;line-height:1.72;margin:0 0 18px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
       <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
       <div style="flex-shrink:0;margin-top:12px;">
         ${calloutStripHtml}
