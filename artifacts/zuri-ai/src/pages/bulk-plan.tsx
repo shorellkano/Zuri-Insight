@@ -65,6 +65,7 @@ export default function BulkPlan() {
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [items, setItems] = useState<PlanItem[]>([]);
+  const [planNote, setPlanNote] = useState<string | null>(null);
   const [generatingIndex, setGeneratingIndex] = useState(-1);
   const [generatedItems, setGeneratedItems] = useState<Record<string, string>>({});
   const [failedItems, setFailedItems] = useState<Set<string>>(new Set());
@@ -115,6 +116,7 @@ export default function BulkPlan() {
       if (!r.ok) throw new Error(data.error ?? "Failed to generate suggestion");
       setPlan(data.plan);
       setItems(data.items);
+      setPlanNote(data.note ?? null);
       setGeneratedItems({});
       setFailedItems(new Set());
       setStep("suggestion");
@@ -322,6 +324,15 @@ export default function BulkPlan() {
 
       {step === "suggestion" && items.length > 0 && (
         <div className="space-y-5">
+          {planNote && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+              <span className="text-lg shrink-0">ℹ️</span>
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Starter schedule generated</p>
+                <p className="text-xs text-blue-700 mt-0.5">{planNote}</p>
+              </div>
+            </div>
+          )}
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <p className="text-sm font-semibold text-amber-900">Review your content plan before generating</p>
             <p className="text-xs text-amber-700 mt-0.5">Zuri always suggests before it produces. Delete any slots you don't want, then approve to generate all captions.</p>
