@@ -206,6 +206,26 @@ export class ObjectStorageService {
   }
 }
 
+export async function uploadImageForInstagram(dataUrl: string): Promise<string> {
+  const storageService = new ObjectStorageService();
+  const publicPaths = storageService.getPublicObjectSearchPaths();
+  const basePath = publicPaths[0];
+
+  const filename = `instagram-posts/${randomUUID()}.png`;
+  const fullPath = `${basePath}/${filename}`;
+  const { bucketName, objectName } = parseObjectPath(fullPath);
+
+  const matches = dataUrl.match(/^data:([^;]+);base64,([\s\S]+)$/);
+  if (!matches) throw new Error("Invalid data URL format");
+
+  const buffer = Buffer.from(matches[2], "base64");
+  const file = objectStorageClient.bucket(bucketName).file(objectName);
+  await file.save(buffer, { contentType: "image/png", resumable: false });
+
+  const appUrl = process.env.APP_URL ?? "https://zuri-insight-seunalla22.replit.app";
+  return `${appUrl}/api/storage/public-objects/${filename}`;
+}
+
 function parseObjectPath(path: string): {
   bucketName: string;
   objectName: string;

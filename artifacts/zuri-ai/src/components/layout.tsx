@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays, Zap, Film, CreditCard, Video } from "lucide-react";
+import { Layers, Sparkles, BookOpen, Settings, ChevronRight, X, LogOut, CalendarDays, Zap, Film, CreditCard, Video, Share2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -18,6 +18,7 @@ const navItems = [
   { href: "/generate", label: "Generate", icon: Video },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/content", label: "Content Library", icon: BookOpen },
+  { href: "/settings/social", label: "Social Accounts", icon: Share2 },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/pricing", label: "Pricing", icon: CreditCard },
 ];

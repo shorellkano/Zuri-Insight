@@ -1,4 +1,5 @@
-import { Settings as SettingsIcon, User, Bell, Globe, Shield } from "lucide-react";
+import { User, Bell, Globe, Shield, Share2 } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Settings() {
   return (
@@ -74,6 +75,23 @@ export default function Settings() {
           ))}
         </div>
       </div>
+
+      <Link href="/settings/social">
+        <div className="bg-card border border-border rounded-2xl p-7 hover:border-primary/40 transition-colors cursor-pointer group">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Share2 className="h-4.5 w-4.5 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">Social Accounts</h2>
+                <p className="text-xs text-muted-foreground">Connect Instagram and other platforms for auto-publishing.</p>
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors">Manage →</span>
+          </div>
+        </div>
+      </Link>
 
       <div className="bg-card border border-destructive/20 rounded-2xl p-7">
         <div className="flex items-center gap-3 mb-3">

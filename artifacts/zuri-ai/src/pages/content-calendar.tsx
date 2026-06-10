@@ -55,6 +55,8 @@ interface ScheduledPost {
   caption?: string;
   scheduledFor: string;
   status: string;
+  errorMessage?: string;
+  platformPostId?: string;
 }
 
 interface CalendarStats {
@@ -315,12 +317,25 @@ export default function ContentCalendar() {
                     <span className={cn("px-2 py-0.5 rounded text-xs font-medium capitalize", PLATFORM_COLORS[post.platform] ?? "bg-muted text-muted-foreground")}>
                       {post.platform}
                     </span>
-                    <span className={cn("text-xs font-medium", STATUS_COLORS[post.status] ?? "text-muted-foreground")}>
+                    <span className={cn("flex items-center gap-1 text-xs font-medium", STATUS_COLORS[post.status] ?? "text-muted-foreground")}>
+                      {post.status === "published" && <CheckCircle2 className="h-3 w-3" />}
+                      {post.status === "failed" && <AlertCircle className="h-3 w-3" />}
+                      {post.status === "scheduled" && <Clock className="h-3 w-3" />}
                       {post.status}
                     </span>
                   </div>
                   {post.caption && (
                     <p className="text-sm text-foreground line-clamp-2">{post.caption}</p>
+                  )}
+                  {post.status === "failed" && post.errorMessage && (
+                    <p className="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-2 py-1 border border-red-200 dark:border-red-800/40">
+                      {post.errorMessage}
+                    </p>
+                  )}
+                  {post.status === "published" && post.platformPostId && (
+                    <p className="text-[11px] text-green-600 dark:text-green-400">
+                      Published • Post ID: {post.platformPostId.slice(0, 12)}…
+                    </p>
                   )}
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { X, Info } from "lucide-react";
+import { X, Info, CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 const API = (path: string) => `/api${path}`;
 
@@ -8,17 +9,23 @@ const PLATFORMS = ["instagram", "facebook", "tiktok", "linkedin", "youtube", "sn
 const POST_TYPES = ["feed_post", "reel", "story", "video", "carousel", "text_post"];
 const TIMEZONES = ["Africa/Lagos", "Africa/Nairobi", "Africa/Accra", "Africa/Johannesburg", "UTC"];
 
+interface IGStatus {
+  connected: boolean;
+  username?: string;
+}
+
 interface SchedulePostSheetProps {
   brandId: string;
   defaultDate?: string;
   defaultCaption?: string;
   previewHtml?: string;
+  previewDataUrl?: string;
   canvasH?: number;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previewHtml, canvasH = 1080, onClose, onSaved }: SchedulePostSheetProps) {
+export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previewHtml, previewDataUrl, canvasH = 1080, onClose, onSaved }: SchedulePostSheetProps) {
   const { toast } = useToast();
   const [platform, setPlatform] = useState("instagram");
   const [postType, setPostType] = useState("feed_post");
@@ -31,15 +38,37 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previe
   const thumbH = Math.round(thumbW * (canvasH / 1080));
   const thumbScale = thumbW / 1080;
 
+  const { data: igStatus } = useQuery<IGStatus>({
+    queryKey: ["ig-status", brandId],
+    queryFn: () =>
+      fetch(API(`/oauth/instagram/status?brandId=${brandId}`)).then((r) => r.json()),
+    enabled: platform === "instagram",
+    staleTime: 30000,
+  });
+
   async function save() {
     if (!date || !time) return;
     setSaving(true);
     try {
+      let mediaUrls: string[] | undefined;
+
+      if (platform === "instagram" && previewDataUrl) {
+        const uploadResp = await fetch(API("/schedule/upload-preview-image"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: previewDataUrl }),
+        });
+        if (uploadResp.ok) {
+          const { url } = await uploadResp.json();
+          if (url) mediaUrls = [url];
+        }
+      }
+
       const scheduledFor = new Date(`${date}T${time}:00`).toISOString();
       const r = await fetch(API("/schedule/create"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId, platform, postType, caption, scheduledFor, timezone }),
+        body: JSON.stringify({ brandId, platform, postType, caption, scheduledFor, timezone, mediaUrls }),
       });
       if (!r.ok) throw new Error("Failed to schedule");
       toast({ title: "Post scheduled" });
@@ -50,6 +79,9 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previe
       setSaving(false);
     }
   }
+
+  const igConnected = platform === "instagram" && igStatus?.connected;
+  const igNotConnected = platform === "instagram" && igStatus && !igStatus.connected;
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -64,7 +96,6 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previe
 
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
-          {/* ── Creative thumbnail ── */}
           {previewHtml && (
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Creative</label>
@@ -80,19 +111,40 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previe
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5">
                   <p className="text-xs font-medium text-foreground">Generated creative</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">1 image attached</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {previewDataUrl ? "Image ready to upload" : "1 image attached"}
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── Posting notice ── */}
-          <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-lg">
-            <Info className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-              <strong>Saved to your calendar.</strong> Zuri does not auto-publish yet — you'll need to post the downloaded image manually at the scheduled time. Auto-publishing is on the roadmap.
-            </p>
-          </div>
+          {igConnected ? (
+            <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-lg">
+              <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-green-700 dark:text-green-400 leading-relaxed">
+                <strong>Auto-publish enabled.</strong> This post will be published automatically to{" "}
+                {igStatus?.username ? <strong>@{igStatus.username}</strong> : "your Instagram"} at the scheduled time.
+                {!previewDataUrl && " Attach a creative image for best results."}
+              </p>
+            </div>
+          ) : igNotConnected ? (
+            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-lg">
+              <Info className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                <strong>Instagram not connected.</strong>{" "}
+                <a href="/settings/social" className="underline font-medium">Connect in Settings → Social</a>{" "}
+                to enable auto-publishing. Post will be saved to your calendar.
+              </p>
+            </div>
+          ) : platform !== "instagram" ? (
+            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-lg">
+              <Info className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                <strong>Saved to your calendar.</strong> Auto-publishing for {platform} is coming soon — you'll need to post manually at the scheduled time.
+              </p>
+            </div>
+          ) : null}
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Platform</label>
@@ -164,9 +216,9 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previe
           <button
             onClick={save}
             disabled={saving || !date || !time}
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {saving ? "Scheduling..." : "Schedule Post"}
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin" />Scheduling...</> : "Schedule Post"}
           </button>
         </div>
       </div>

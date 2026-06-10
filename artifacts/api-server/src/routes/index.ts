@@ -17,6 +17,7 @@ import canvaApiRouter from "./canva-api";
 import billingRouter from "./billing";
 import gammaRouter from "./gamma";
 import sevenDayRouter from "./seven-day";
+import oauthRouter from "./oauth";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(canvaApiRouter);
 router.use(billingRouter);
 router.use(gammaRouter);
 router.use(sevenDayRouter);
+router.use(oauthRouter);
 
 export default router;

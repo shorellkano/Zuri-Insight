@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { db, scheduledPostsTable, calendarEventsTable, brandCalendarEventsTable, brandsTable } from "@workspace/db";
+import { uploadImageForInstagram } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -19,6 +20,21 @@ router.get("/brands/:brandId/scheduled-posts", async (req, res): Promise<void> =
     .where(eq(scheduledPostsTable.brandId, brandId))
     .orderBy(desc(scheduledPostsTable.scheduledFor));
   res.json(posts);
+});
+
+router.post("/schedule/upload-preview-image", async (req, res): Promise<void> => {
+  const { dataUrl } = req.body ?? {};
+  if (!dataUrl || !String(dataUrl).startsWith("data:")) {
+    res.status(400).json({ error: "Valid dataUrl is required" });
+    return;
+  }
+  try {
+    const url = await uploadImageForInstagram(dataUrl as string);
+    res.json({ url });
+  } catch (err: any) {
+    req.log.error({ err }, "Failed to upload preview image for Instagram");
+    res.status(500).json({ error: "Image upload failed. Object storage may not be configured." });
+  }
 });
 
 router.post("/schedule/create", async (req, res): Promise<void> => {

@@ -26,6 +26,7 @@ import GenerateVideoScripts from "@/pages/generate-video-scripts";
 import ContentLibrary from "@/pages/content-library";
 import Settings from "@/pages/settings";
 import SettingsBilling from "@/pages/settings-billing";
+import SettingsSocial from "@/pages/settings-social";
 import Pricing from "@/pages/pricing";
 import BrandVoice from "@/pages/brand-voice";
 import BrandLessons from "@/pages/brand-lessons";
@@ -123,6 +124,7 @@ function Router() {
       <Route path="/calendar"><Wrap><ContentCalendar /></Wrap></Route>
       <Route path="/content"><Wrap><ContentLibrary /></Wrap></Route>
       <Route path="/settings/billing"><Wrap><SettingsBilling /></Wrap></Route>
+      <Route path="/settings/social"><Wrap><SettingsSocial /></Wrap></Route>
       <Route path="/settings"><Wrap><Settings /></Wrap></Route>
       <Route path="/pricing" component={Pricing} />
       <Route path="/features" component={Features} />
