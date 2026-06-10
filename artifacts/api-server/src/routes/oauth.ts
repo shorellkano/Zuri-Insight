@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, socialConnectionsTable, brandsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
-import { encryptToken, decryptToken, signOAuthState, verifyOAuthState } from "../lib/tokenCrypto";
+import { eq, and, isNull } from "drizzle-orm";
+import { encryptToken, signOAuthState, verifyOAuthState } from "../lib/tokenCrypto";
 import { requireAuth, type AuthedRequest } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
@@ -28,7 +28,13 @@ function getCallbackUrl() {
   return `${getAppUrl()}/api/oauth/instagram/callback`;
 }
 
-async function verifyBrandOwnership(brandId: string, userId: string): Promise<boolean> {
+/**
+ * Verify ownership and auto-claim unowned (legacy) brands.
+ * - Returns true if brand.userId === userId (already owned by this user).
+ * - If brand.userId is NULL (pre-auth brand), atomically claims it for userId and returns true.
+ * - Returns false if brand is owned by a different user, or if brand doesn't exist.
+ */
+async function verifyAndClaimBrandOwnership(brandId: string, userId: string): Promise<boolean> {
   const [brand] = await db
     .select({ id: brandsTable.id, userId: brandsTable.userId })
     .from(brandsTable)
@@ -36,8 +42,21 @@ async function verifyBrandOwnership(brandId: string, userId: string): Promise<bo
     .limit(1);
 
   if (!brand) return false;
-  return brand.userId === null || brand.userId === userId;
+  if (brand.userId === userId) return true;
+  if (brand.userId !== null) return false;
+
+  // Unowned brand — atomically claim it for this user (first authenticated user wins)
+  const claimed = await db
+    .update(brandsTable)
+    .set({ userId })
+    .where(and(eq(brandsTable.id, brandId), isNull(brandsTable.userId)))
+    .returning({ id: brandsTable.id });
+
+  return claimed.length > 0;
 }
+
+
+// ── GET /oauth/instagram/connect-url ─────────────────────────────────────────
 
 router.get("/oauth/instagram/connect-url", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const authed = req as AuthedRequest;
@@ -48,7 +67,7 @@ router.get("/oauth/instagram/connect-url", requireAuth, async (req: Request, res
     return;
   }
 
-  const owned = await verifyBrandOwnership(brandId, authed.userId).catch(() => false);
+  const owned = await verifyAndClaimBrandOwnership(brandId, authed.userId).catch(() => false);
   if (!owned) {
     res.status(403).json({ error: "You do not have access to this brand." });
     return;
@@ -62,7 +81,8 @@ router.get("/oauth/instagram/connect-url", requireAuth, async (req: Request, res
     return;
   }
 
-  const signedState = signOAuthState(brandId);
+  // State includes both brandId and userId so callback can verify user binding + has 1-hour expiry
+  const signedState = signOAuthState(brandId, authed.userId);
 
   const params = new URLSearchParams({
     client_id: appId,
@@ -75,6 +95,9 @@ router.get("/oauth/instagram/connect-url", requireAuth, async (req: Request, res
   res.json({ authUrl: `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}` });
 });
 
+// ── GET /oauth/instagram/callback ─────────────────────────────────────────────
+// Public — Meta redirects here; no Bearer token possible. State contains userId + expiry.
+
 router.get("/oauth/instagram/callback", async (req: Request, res: Response): Promise<void> => {
   const { code, state, error: fbError } = req.query as Record<string, string>;
   const appUrl = getAppUrl();
@@ -84,20 +107,28 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
     return;
   }
 
-  const brandId = state ? verifyOAuthState(state) : null;
-  if (!brandId) {
+  const statePayload = state ? verifyOAuthState(state) : null;
+  if (!statePayload) {
     res.redirect(`${appUrl}/settings/social?error=invalid_state`);
     return;
   }
 
+  const { brandId, userId } = statePayload;
+
+  // Verify brand still exists and belongs to the same user who initiated the flow
   const [brand] = await db
-    .select({ id: brandsTable.id })
+    .select({ id: brandsTable.id, ownerId: brandsTable.userId })
     .from(brandsTable)
     .where(eq(brandsTable.id, brandId))
     .limit(1);
 
   if (!brand) {
     res.redirect(`${appUrl}/settings/social?error=brand_not_found`);
+    return;
+  }
+
+  if (brand.ownerId !== null && brand.ownerId !== userId) {
+    res.redirect(`${appUrl}/settings/social?error=brand_ownership_mismatch`);
     return;
   }
 
@@ -121,12 +152,10 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
     const userToken: string = longTokenData.access_token;
     const expiresInSec: number = longTokenData.expires_in ?? 5184000;
 
-    const pagesResp = await fetch(
-      `${FB_API}/me/accounts?access_token=${encodeURIComponent(userToken)}`,
-    );
+    const pagesResp = await fetch(`${FB_API}/me/accounts?access_token=${encodeURIComponent(userToken)}`);
     const pagesData = await pagesResp.json() as any;
     if (pagesData.error) throw new Error(pagesData.error.message ?? "Failed to fetch pages");
-    const pages: Array<{ id: string; access_token: string; name: string }> = pagesData.data ?? [];
+    const pages: Array<{ id: string; access_token: string }> = pagesData.data ?? [];
 
     if (!pages.length) {
       res.redirect(`${appUrl}/settings/social?error=no_facebook_pages`);
@@ -168,12 +197,7 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
     const existing = await db
       .select({ id: socialConnectionsTable.id })
       .from(socialConnectionsTable)
-      .where(
-        and(
-          eq(socialConnectionsTable.brandId, brandId),
-          eq(socialConnectionsTable.platform, "instagram"),
-        ),
-      )
+      .where(and(eq(socialConnectionsTable.brandId, brandId), eq(socialConnectionsTable.platform, "instagram")))
       .limit(1);
 
     if (existing.length > 0) {
@@ -193,12 +217,19 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
       });
     }
 
+    // Ensure brand.userId is set (in case it was null before this flow)
+    if (brand.ownerId === null) {
+      await db.update(brandsTable).set({ userId }).where(eq(brandsTable.id, brandId));
+    }
+
     res.redirect(`${appUrl}/settings/social?connected=instagram&username=${encodeURIComponent(igUsername ?? "")}`);
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     res.redirect(`${appUrl}/settings/social?error=${encodeURIComponent(msg)}`);
   }
 });
+
+// ── GET /oauth/instagram/status ───────────────────────────────────────────────
 
 router.get("/oauth/instagram/status", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const authed = req as AuthedRequest;
@@ -209,7 +240,7 @@ router.get("/oauth/instagram/status", requireAuth, async (req: Request, res: Res
     return;
   }
 
-  const owned = await verifyBrandOwnership(brandId, authed.userId).catch(() => false);
+  const owned = await verifyAndClaimBrandOwnership(brandId, authed.userId).catch(() => false);
   if (!owned) {
     res.status(403).json({ error: "You do not have access to this brand." });
     return;
@@ -223,12 +254,7 @@ router.get("/oauth/instagram/status", requireAuth, async (req: Request, res: Res
       createdAt: socialConnectionsTable.createdAt,
     })
     .from(socialConnectionsTable)
-    .where(
-      and(
-        eq(socialConnectionsTable.brandId, brandId),
-        eq(socialConnectionsTable.platform, "instagram"),
-      ),
-    )
+    .where(and(eq(socialConnectionsTable.brandId, brandId), eq(socialConnectionsTable.platform, "instagram")))
     .limit(1);
 
   if (!conn) {
@@ -246,6 +272,8 @@ router.get("/oauth/instagram/status", requireAuth, async (req: Request, res: Res
   });
 });
 
+// ── DELETE /oauth/instagram/disconnect ────────────────────────────────────────
+
 router.delete("/oauth/instagram/disconnect", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const authed = req as AuthedRequest;
   const { brandId } = req.query as { brandId?: string };
@@ -255,7 +283,7 @@ router.delete("/oauth/instagram/disconnect", requireAuth, async (req: Request, r
     return;
   }
 
-  const owned = await verifyBrandOwnership(brandId, authed.userId).catch(() => false);
+  const owned = await verifyAndClaimBrandOwnership(brandId, authed.userId).catch(() => false);
   if (!owned) {
     res.status(403).json({ error: "You do not have access to this brand." });
     return;
@@ -263,12 +291,7 @@ router.delete("/oauth/instagram/disconnect", requireAuth, async (req: Request, r
 
   await db
     .delete(socialConnectionsTable)
-    .where(
-      and(
-        eq(socialConnectionsTable.brandId, brandId),
-        eq(socialConnectionsTable.platform, "instagram"),
-      ),
-    );
+    .where(and(eq(socialConnectionsTable.brandId, brandId), eq(socialConnectionsTable.platform, "instagram")));
 
   res.json({ success: true });
 });

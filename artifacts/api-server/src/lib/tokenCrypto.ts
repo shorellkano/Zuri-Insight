@@ -38,26 +38,31 @@ export function decryptToken(ciphertext: string): string {
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
 }
 
-export function signOAuthState(brandId: string): string {
+export function signOAuthState(brandId: string, userId: string): string {
   const nonce = randomBytes(8).toString("hex");
-  const payload = `${brandId}:${nonce}`;
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const payload = `${brandId}:${userId}:${nonce}:${issuedAt}`;
   const sig = createHmac("sha256", getHmacKey()).update(payload).digest("hex").slice(0, 24);
   return Buffer.from(`${payload}:${sig}`).toString("base64url");
 }
 
-export function verifyOAuthState(state: string): string | null {
+export function verifyOAuthState(
+  state: string,
+  maxAgeSec = 3600,
+): { brandId: string; userId: string } | null {
   try {
     const decoded = Buffer.from(state, "base64url").toString("utf8");
-    const lastColon = decoded.lastIndexOf(":");
-    const secondLastColon = decoded.lastIndexOf(":", lastColon - 1);
-    if (secondLastColon === -1 || lastColon === -1) return null;
-    const brandId = decoded.slice(0, secondLastColon);
-    const nonce = decoded.slice(secondLastColon + 1, lastColon);
-    const sig = decoded.slice(lastColon + 1);
-    const payload = `${brandId}:${nonce}`;
+    // Format: <brandUUID>:<userUUID>:<nonce16>:<issuedAt>:<sig24>
+    // UUIDs contain hyphens but never colons, so splitting by ":" gives exactly 5 parts.
+    const parts = decoded.split(":");
+    if (parts.length !== 5) return null;
+    const [brandId, userId, nonce, issuedAtStr, sig] = parts;
+    const payload = `${brandId}:${userId}:${nonce}:${issuedAtStr}`;
     const expected = createHmac("sha256", getHmacKey()).update(payload).digest("hex").slice(0, 24);
     if (sig !== expected) return null;
-    return brandId;
+    const age = Math.floor(Date.now() / 1000) - parseInt(issuedAtStr, 10);
+    if (age > maxAgeSec || age < 0) return null;
+    return { brandId, userId };
   } catch {
     return null;
   }

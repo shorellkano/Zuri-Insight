@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Info, CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/context/auth-context";
 
 const API = (path: string) => `/api${path}`;
 
@@ -27,6 +28,7 @@ interface SchedulePostSheetProps {
 
 export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previewHtml, previewDataUrl, canvasH = 1080, onClose, onSaved }: SchedulePostSheetProps) {
   const { toast } = useToast();
+  const { session } = useAuth();
   const [platform, setPlatform] = useState("instagram");
   const [postType, setPostType] = useState("feed_post");
   const [caption, setCaption] = useState(defaultCaption ?? "");
@@ -38,11 +40,19 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previe
   const thumbH = Math.round(thumbW * (canvasH / 1080));
   const thumbScale = thumbW / 1080;
 
+  const authHeaders = (): HeadersInit =>
+    session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+
   const { data: igStatus } = useQuery<IGStatus>({
-    queryKey: ["ig-status", brandId],
-    queryFn: () =>
-      fetch(API(`/oauth/instagram/status?brandId=${brandId}`)).then((r) => r.json()),
-    enabled: platform === "instagram",
+    queryKey: ["ig-status", brandId, !!session],
+    queryFn: async () => {
+      const r = await fetch(API(`/oauth/instagram/status?brandId=${brandId}`), {
+        headers: authHeaders(),
+      });
+      if (!r.ok) return { connected: false };
+      return r.json();
+    },
+    enabled: platform === "instagram" && !!session,
     staleTime: 30000,
   });
 
