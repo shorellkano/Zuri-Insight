@@ -7,7 +7,7 @@ import { Link } from "wouter";
 import html2canvas from "html2canvas";
 import {
   Zap, ArrowLeft, Download, RefreshCw, Loader2, Sparkles,
-  Instagram, PlaySquare, Monitor, Ghost,
+  Instagram, PlaySquare, Monitor, Smile,
 } from "lucide-react";
 import { PhotoUploadPanel } from "@/components/photo-upload-panel";
 
@@ -47,7 +47,7 @@ const PLATFORMS: PlatformDef[] = [
     ],
   },
   {
-    id: "snapchat", label: "Snapchat", Icon: Ghost, color: "text-yellow-600 bg-yellow-50",
+    id: "snapchat", label: "Snapchat", Icon: Smile, color: "text-yellow-600 bg-yellow-50",
     formats: [
       { id: "story", label: "Story Ad",    dims: "1080 × 1920 (vertical)" },
       { id: "feed",  label: "Square Post", dims: "1080 × 1080 (square)" },
