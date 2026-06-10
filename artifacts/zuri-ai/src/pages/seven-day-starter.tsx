@@ -225,6 +225,9 @@ export default function SevenDayStarter() {
   const { toast } = useToast();
 
   const [weekFocus, setWeekFocus] = useState("");
+  const [website, setWebsite] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [plan, setPlan] = useState<SevenDayPlan | null>(null);
@@ -245,16 +248,33 @@ export default function SevenDayStarter() {
     }, 1800);
 
     try {
-      const r = await fetch(API("/generate/7day-starter"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, weekFocus: weekFocus.trim() || undefined }),
-      });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60_000);
+      let r: Response;
+      try {
+        r = await fetch(API("/generate/7day-starter"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            brandId: activeBrandId,
+            weekFocus: weekFocus.trim() || undefined,
+            website: website.trim() || undefined,
+            instagram: instagram.trim() || undefined,
+            phone: phone.trim() || undefined,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? `Error ${r.status}`);
       setPlan(data);
     } catch (err: any) {
-      toast({ title: "Generation failed", description: err.message ?? "Please try again.", variant: "destructive" });
+      const msg = err?.name === "AbortError"
+        ? "Taking too long - showing a starter template you can edit."
+        : (err.message ?? "Please try again.");
+      toast({ title: err?.name === "AbortError" ? "Using starter template" : "Generation failed", description: msg, variant: "destructive" });
     } finally {
       clearInterval(interval);
       setLoading(false);
@@ -311,6 +331,31 @@ export default function SevenDayStarter() {
                 <button className="text-xs font-semibold text-primary hover:underline shrink-0">Set up brand</button>
               </Link>
             )}
+          </div>
+
+          {/* Contact info */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-foreground">
+              Your contact details <span className="text-muted-foreground font-normal">(optional — added to CTAs)</span>
+            </label>
+            <input
+              value={website}
+              onChange={e => setWebsite(e.target.value)}
+              placeholder="🌐 Website (e.g. yoursite.com)"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <input
+              value={instagram}
+              onChange={e => setInstagram(e.target.value)}
+              placeholder="📷 Instagram handle (e.g. @yourbrand)"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <input
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="📞 Phone / WhatsApp number"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
           </div>
 
           {/* Week focus */}

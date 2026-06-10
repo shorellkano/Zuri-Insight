@@ -74,7 +74,7 @@ function buildFallbackDays(brandName: string, weekFocus?: string) {
 }
 
 router.post("/generate/7day-starter", async (req, res) => {
-  const { brandId, weekFocus } = req.body;
+  const { brandId, weekFocus, website, instagram, phone } = req.body;
 
   if (!brandId) {
     res.status(400).json({ error: "brandId is required" });
@@ -107,6 +107,9 @@ router.post("/generate/7day-starter", async (req, res) => {
       dna?.coreValues ? `Core values: ${dna.coreValues}` : "",
       dna?.culturalContext ? `Cultural context: ${dna.culturalContext}` : "",
       weekFocus ? `This week's focus: ${weekFocus}` : "",
+      website ? `Website: ${website}` : "",
+      instagram ? `Instagram handle: ${instagram}` : "",
+      phone ? `Phone/WhatsApp: ${phone}` : "",
     ].filter(Boolean).join("\n");
 
     const systemPrompt = `You are Zuri AI, an expert social media content strategist for African businesses and global emerging markets.
@@ -116,7 +119,9 @@ Rules:
 - Keep captions human and authentic, not corporate
 - Use Lagos, Nairobi, Accra, or local market references where natural
 - Hashtags must be realistic and relevant
-- TikTok scripts should sound like someone actually talking, casual and direct`;
+- TikTok scripts should sound like someone actually talking, casual and direct
+- If a website, Instagram handle, or phone number is provided, weave them naturally into CTAs (e.g. "visit yoursite.com", "follow us @handle", "DM or WhatsApp us on +234...")
+- Do not invent contact details that were not provided`;
 
     const dayInstructions = DAY_PLAN.map((d, i) => (
       `Day ${i + 1}: Instagram ${d.instagram.format} (${d.instagram.contentType}) | TikTok UGC Video (${d.tiktok.contentType})`
