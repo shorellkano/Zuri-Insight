@@ -327,7 +327,7 @@ function brandBar({ showBrandName, logoEl, logoPosition = "bottom-center", bg, c
 
 // ─── Announcement ─────────────────────────────────────────────────────────────
 router.post("/generate/announcement", async (req, res): Promise<void> => {
-  const { brandId, eventDetails, ctaText, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {} } = req.body;
+  const { brandId, eventDetails, ctaText, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
   const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
@@ -359,17 +359,18 @@ Never use em dashes.`, "{}");
   } catch { }
 
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const photoUrl = await resolvePhotoUrl(imageQuery, w, h);
-  const html = buildAnnouncementHtml({ headline, subtext, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h);
+  const html = buildAnnouncementHtml({ headline, subtext, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, headline, subtext, cta });
 });
 
-function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {} }: {
+function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, smoothFace = false }: {
   headline: string; subtext: string; cta: string; brandName: string; colors: string[];
   format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
-  logoPosition?: string; contactInfo?: ContactInfo;
+  logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
   const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
   const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const hs = headline.length > 40 ? 72 : headline.length > 22 ? 90 : 108;
@@ -394,7 +395,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, form
     : "";
 
   return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
   <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.55) 0%,rgba(0,0,0,0.15) 45%,rgba(0,0,0,0.0) 70%);"></div>
   ${floatLogoHtml}
   <div style="position:absolute;top:${headlineTop}px;left:64px;right:64px;">
@@ -407,7 +408,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, form
 
 // ─── Product Showcase ─────────────────────────────────────────────────────────
 router.post("/generate/product-showcase", async (req, res): Promise<void> => {
-  const { brandId, productName, productDescription, price, ctaText, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {} } = req.body;
+  const { brandId, productName, productDescription, price, ctaText, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId || !productName) { res.status(400).json({ error: "brandId and productName required" }); return; }
   const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
@@ -440,17 +441,18 @@ Never use em dashes.`, "{}");
   } catch { }
 
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const photoUrl = await resolvePhotoUrl(imageQuery, w, h);
-  const html = buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h);
+  const html = buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, headline, tagline, cta });
 });
 
-function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {} }: {
+function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, smoothFace = false }: {
   productName: string; headline: string; tagline: string; price?: string; cta: string;
   brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
-  logoPosition?: string; contactInfo?: ContactInfo;
+  logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
   const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
   const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const cardH = Math.round(h * 0.40);
@@ -477,7 +479,7 @@ function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, 
   const ctHtml = contactSnippet(contactInfo, "#666", 16);
 
   return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;background:#f5f5f5;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:${h - cardH + 80}px;object-fit:cover;object-position:center top;" />
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:${h - cardH + 80}px;object-fit:cover;object-position:center top;${smoothStyle}" />
   <div style="position:absolute;top:0;left:0;right:0;height:${h - cardH + 80}px;background:linear-gradient(to bottom,rgba(0,0,0,0) 35%,rgba(0,0,0,0.15) 65%,rgba(245,245,245,1) 100%);"></div>
   ${floatLogoHtml}
   <div style="position:absolute;bottom:0;left:0;right:0;height:${cardH}px;background:#ffffff;border-radius:28px 28px 0 0;padding:${Math.round(cardH * 0.10)}px 52px ${Math.round(cardH * 0.12)}px;border-top:8px solid ${primary};">
@@ -495,7 +497,7 @@ function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, 
 
 // ─── Story Cover ──────────────────────────────────────────────────────────────
 router.post("/generate/story-cover", async (req, res): Promise<void> => {
-  const { brandId, topic, mood = "bold", showBrandName = true, logoPosition = "top-left", contactInfo = {} } = req.body;
+  const { brandId, topic, mood = "bold", showBrandName = true, logoPosition = "top-left", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
   const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
@@ -524,17 +526,18 @@ Never use em dashes.`, "{}");
     }
   } catch { }
 
-  const photoUrl = await resolvePhotoUrl(imageQuery, 1080, 1920);
-  const html = buildStoryCoverHtml({ hookText, subText, brandName: brand.name, colors, mood, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, 1080, 1920);
+  const html = buildStoryCoverHtml({ hookText, subText, brandName: brand.name, colors, mood, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, hookText, subText });
 });
 
-function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showBrandName, logoUrl, photoUrl, logoPosition = "top-left", contactInfo = {} }: {
+function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showBrandName, logoUrl, photoUrl, logoPosition = "top-left", contactInfo = {}, smoothFace = false }: {
   hookText: string; subText: string; brandName: string; colors: string[];
   mood: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
-  logoPosition?: string; contactInfo?: ContactInfo;
+  logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
   const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
   const hs = hookText.length > 22 ? 100 : hookText.length > 12 ? 120 : 144;
   const logoEl = logoUrl
     ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:44px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);" />`
@@ -545,7 +548,7 @@ function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showB
   const ctaBottom = hasBottomBar ? 180 : 100;
 
   return `<div style="width:1080px;height:1920px;position:relative;overflow:hidden;font-family:'Arial Black',system-ui,sans-serif;box-sizing:border-box;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
   <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.50) 0%,rgba(0,0,0,0.05) 35%,rgba(0,0,0,0.0) 50%,rgba(0,0,0,0.65) 100%);"></div>
   ${barHtml}
   <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;justify-content:center;padding:80px 72px;">
@@ -563,7 +566,7 @@ function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showB
 
 // ─── Birthday Post ────────────────────────────────────────────────────────────
 router.post("/generate/birthday-post", async (req, res): Promise<void> => {
-  const { brandId, personName, personRole, shortMessage, showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, celebrantPhotoDataUrl } = req.body;
+  const { brandId, personName, personRole, shortMessage, showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, celebrantPhotoDataUrl, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId || !personName) { res.status(400).json({ error: "brandId and personName required" }); return; }
   const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
@@ -583,17 +586,18 @@ Never use em dashes.`, "{}");
     }
   } catch { }
 
-  const photoUrl = await resolvePhotoUrl("birthday celebration confetti balloons african joy colorful", 1080, 1080);
-  const html = buildBirthdayPostHtml({ personName, personRole, message, brandName: brand.name, colors, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, celebrantPhotoDataUrl });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl("birthday celebration confetti balloons african joy colorful", 1080, 1080);
+  const html = buildBirthdayPostHtml({ personName, personRole, message, brandName: brand.name, colors, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, celebrantPhotoDataUrl, smoothFace });
   res.json({ html, message });
 });
 
-function buildBirthdayPostHtml({ personName, personRole, message, brandName, colors, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, celebrantPhotoDataUrl }: {
+function buildBirthdayPostHtml({ personName, personRole, message, brandName, colors, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, celebrantPhotoDataUrl, smoothFace = false }: {
   personName: string; personRole?: string; message: string;
   brandName: string; colors: string[]; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
-  logoPosition?: string; contactInfo?: ContactInfo; celebrantPhotoDataUrl?: string;
+  logoPosition?: string; contactInfo?: ContactInfo; celebrantPhotoDataUrl?: string; smoothFace?: boolean;
 }) {
   const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
   const nameFz = personName.length > 14 ? 68 : personName.length > 8 ? 84 : 100;
   const logoEl = logoUrl
     ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:44px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);" />`
@@ -607,7 +611,7 @@ function buildBirthdayPostHtml({ personName, personRole, message, brandName, col
   <div style="position:absolute;top:-120px;right:-120px;width:520px;height:520px;border-radius:50%;background:${primary};opacity:0.08;"></div>
   <div style="position:absolute;bottom:50px;left:-90px;width:320px;height:320px;border-radius:50%;background:${primary};opacity:0.07;"></div>
   <div style="position:absolute;top:72px;left:50%;transform:translateX(-50%);width:${circleSize}px;height:${circleSize}px;border-radius:50%;overflow:hidden;border:8px solid ${primary};box-shadow:0 16px 56px rgba(0,0,0,0.45);">
-    <img src="${celebrantPhotoDataUrl}" alt="${personName}" style="width:100%;height:100%;object-fit:cover;" />
+    <img src="${celebrantPhotoDataUrl}" alt="${personName}" style="width:100%;height:100%;object-fit:cover;${smoothStyle}" />
   </div>
   <div style="position:absolute;top:${72 + circleSize + 28}px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 80px;">
     <div style="font-size:46px;line-height:1;">🎂</div>
@@ -622,7 +626,7 @@ function buildBirthdayPostHtml({ personName, personRole, message, brandName, col
   }
 
   return `<div style="width:1080px;height:1080px;position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;text-align:center;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
   <div style="position:absolute;inset:0;background:rgba(0,0,0,0.54);"></div>
   <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px;gap:22px;">
     <div style="font-size:72px;line-height:1;">&#127881;</div>
@@ -638,7 +642,7 @@ function buildBirthdayPostHtml({ personName, personRole, message, brandName, col
 
 // ─── Testimonial Card ─────────────────────────────────────────────────────────
 router.post("/generate/testimonial", async (req, res): Promise<void> => {
-  const { brandId, testimonialText, customerName, customerRole, rating = 5, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {} } = req.body;
+  const { brandId, testimonialText, customerName, customerRole, rating = 5, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId || !testimonialText) { res.status(400).json({ error: "brandId and testimonialText required" }); return; }
   const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
@@ -646,17 +650,18 @@ router.post("/generate/testimonial", async (req, res): Promise<void> => {
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const photoUrl = await resolvePhotoUrl(industryPhotoQuery(brand.industry, "professional team satisfied customer"), w, h);
-  const html = buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, "professional team satisfied customer"), w, h);
+  const html = buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html });
 });
 
-function buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {} }: {
+function buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, smoothFace = false }: {
   testimonialText: string; customerName?: string; customerRole?: string; rating: number;
   brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
-  logoPosition?: string; contactInfo?: ContactInfo;
+  logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
   const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
   const stars = Array.from({ length: 5 }, (_, i) => `<span style="color:${i < rating ? primary : "#ffffff40"};font-size:36px;">&#9733;</span>`).join("");
   const logoEl = logoUrl
@@ -667,7 +672,7 @@ function buildTestimonialHtml({ testimonialText, customerName, customerRole, rat
   const barHtml = brandBar({ showBrandName, logoEl, logoPosition, bg: secondary, ci: contactInfo, padH: 90, padV: 28 });
 
   return `<div style="${dims};position:relative;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;box-sizing:border-box;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" />
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;${smoothStyle}" />
   <div style="position:absolute;inset:0;background:rgba(0,0,0,0.70);"></div>
   <div style="position:absolute;top:0;left:0;right:0;height:6px;background:${primary};"></div>
   <div style="position:absolute;inset:6px 0 0 0;display:flex;flex-direction:column;justify-content:center;padding:80px 90px;gap:28px;">

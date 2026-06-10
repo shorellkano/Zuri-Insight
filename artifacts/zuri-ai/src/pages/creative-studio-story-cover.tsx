@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
+import { PhotoUploadPanel } from "@/components/photo-upload-panel";
 
 const API = (path: string) => `/api${path}`;
 
@@ -30,6 +31,8 @@ export default function CreativeStudioStoryCover() {
   const [downloading, setDownloading] = useState(false);
   const [logoPosition, setLogoPosition] = useState("top-left");
   const [contactInfo, setContactInfo] = useState({ website: "", instagram: "", phone: "" });
+  const [customPhotoDataUrl, setCustomPhotoDataUrl] = useState<string | null>(null);
+  const [smoothFace, setSmoothFace] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
   useEffect(() => {
@@ -47,7 +50,7 @@ export default function CreativeStudioStoryCover() {
       const r = await fetch(API("/generate/story-cover"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, topic, mood, showBrandName, logoPosition, contactInfo }),
+        body: JSON.stringify({ brandId: activeBrandId, topic, mood, showBrandName, logoPosition, contactInfo, customPhotoDataUrl, smoothFace }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
@@ -147,6 +150,8 @@ export default function CreativeStudioStoryCover() {
               />
             </button>
           </div>
+
+          <PhotoUploadPanel onPhotoChange={setCustomPhotoDataUrl} onSmoothChange={setSmoothFace} />
 
           <div className="space-y-2">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Logo position</label>

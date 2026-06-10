@@ -6,6 +6,7 @@ import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { removeBackground } from "@imgly/background-removal";
+import { PhotoUploadPanel } from "@/components/photo-upload-panel";
 
 const API = (path: string) => `/api${path}`;
 
@@ -27,6 +28,8 @@ export default function CreativeStudioBirthdayPost() {
   const [contactInfo, setContactInfo] = useState({ website: "", instagram: "", phone: "" });
   const [celebrantPhotoDataUrl, setCelebrantPhotoDataUrl] = useState<string | null>(null);
   const [removingBg, setRemovingBg] = useState(false);
+  const [customPhotoDataUrl, setCustomPhotoDataUrl] = useState<string | null>(null);
+  const [smoothFace, setSmoothFace] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function CreativeStudioBirthdayPost() {
       const r = await fetch(API("/generate/birthday-post"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, personName, personRole, shortMessage, showBrandName, logoPosition, contactInfo, celebrantPhotoDataUrl }),
+        body: JSON.stringify({ brandId: activeBrandId, personName, personRole, shortMessage, showBrandName, logoPosition, contactInfo, celebrantPhotoDataUrl, customPhotoDataUrl, smoothFace }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
@@ -187,7 +190,7 @@ export default function CreativeStudioBirthdayPost() {
               <div className="space-y-2">
                 <div className="relative rounded-lg overflow-hidden" style={{ background: "repeating-conic-gradient(#80808020 0% 25%, transparent 0% 50%) 0 0 / 12px 12px" }}>
                   <img src={celebrantPhotoDataUrl} alt="Celebrant" className="w-full h-28 object-contain" />
-                  <button type="button" onClick={() => setCelebrantPhotoDataUrl(null)} className="absolute top-2 right-2 bg-background/80 border border-border rounded-full px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">✕</button>
+                  <button type="button" onClick={() => { setCelebrantPhotoDataUrl(null); setSmoothFace(false); }} className="absolute top-2 right-2 bg-background/80 border border-border rounded-full px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">✕</button>
                 </div>
                 <button
                   type="button"
@@ -197,6 +200,18 @@ export default function CreativeStudioBirthdayPost() {
                 >
                   {removingBg ? <><Loader2 className="h-3 w-3 animate-spin" />Removing background...</> : "✨ Remove background"}
                 </button>
+                <div className="flex items-center justify-between py-0.5">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Smooth skin</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Soften skin &amp; reduce blemishes</p>
+                  </div>
+                  <button type="button" onClick={() => setSmoothFace(v => !v)}
+                    className="relative rounded-full transition-colors shrink-0"
+                    style={{ width: "40px", height: "22px", background: smoothFace ? "var(--primary)" : "rgba(100,100,100,0.3)" }}>
+                    <span className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                      style={{ transform: smoothFace ? "translateX(20px)" : "translateX(2px)" }} />
+                  </button>
+                </div>
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
@@ -206,6 +221,10 @@ export default function CreativeStudioBirthdayPost() {
               </label>
             )}
           </div>
+
+          {!celebrantPhotoDataUrl && (
+            <PhotoUploadPanel onPhotoChange={setCustomPhotoDataUrl} onSmoothChange={setSmoothFace} />
+          )}
 
           <div className="space-y-2">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Logo position</label>
