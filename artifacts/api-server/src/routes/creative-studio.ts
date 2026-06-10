@@ -598,14 +598,14 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
            </div>`)
     : "";
 
-  // ── Feature bullet rows: solid brand-color circle + bold label + description ──
+  // ── Feature bullet rows: FILLED brand-color circle + bold label + description ──
   const featureBulletsHtml = features.length > 0
     ? features.slice(0, 4).map(f =>
-        `<div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;">
-          <div style="width:38px;height:38px;border-radius:50%;background:${primary}1A;border:2px solid ${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;line-height:1;">${f.emoji}</div>
-          <div style="padding-top:3px;">
-            <p style="margin:0 0 3px;font-size:14px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.5px;font-family:${H_FONT};">${f.label}</p>
-            ${f.description ? `<p style="margin:0;font-size:11.5px;color:#555;line-height:1.45;font-family:${B_FONT};">${f.description}</p>` : ""}
+        `<div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:18px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;line-height:1;">${f.emoji}</div>
+          <div style="padding-top:4px;">
+            <p style="margin:0 0 3px;font-size:14px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.6px;font-family:${H_FONT};">${f.label}</p>
+            ${f.description ? `<p style="margin:0;font-size:12px;color:#555;line-height:1.45;font-family:${B_FONT};">${f.description}</p>` : ""}
           </div>
         </div>`
       ).join("")
@@ -615,7 +615,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   const featureGridHtml = features.length > 0
     ? features.slice(0, 4).map(f =>
         `<div style="display:flex;align-items:flex-start;gap:16px;min-width:260px;flex:1;">
-          <div style="width:50px;height:50px;border-radius:50%;background:${primary}1A;border:2px solid ${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;">${f.emoji}</div>
+          <div style="width:52px;height:52px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:23px;">${f.emoji}</div>
           <div>
             <p style="margin:0 0 3px;font-size:19px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.5px;font-family:${H_FONT};">${f.label}</p>
             ${f.description ? `<p style="margin:0;font-size:16px;color:#555;line-height:1.4;font-family:${B_FONT};">${f.description}</p>` : ""}
@@ -624,30 +624,36 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
       ).join("")
     : "";
 
-  // ── CTA button ────────────────────────────────────────────────────────────────
+  // ── CTA button with calendar icon ────────────────────────────────────────────
+  const calIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${onPrimary}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
   const ctaButtonHtml = cta
-    ? `<div style="width:100%;background:${primary};border-radius:10px;padding:13px 20px;box-sizing:border-box;display:table;table-layout:fixed;">
-        <span style="display:table-cell;vertical-align:middle;color:${onPrimary};font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${H_FONT};">${cta}</span>
-        <span style="display:table-cell;vertical-align:middle;text-align:right;color:${onPrimary};font-size:20px;width:28px;">&#8594;</span>
+    ? `<div style="width:100%;background:${primary};border-radius:10px;padding:15px 20px;box-sizing:border-box;display:flex;align-items:center;gap:14px;">
+        <div style="width:36px;height:36px;background:rgba(255,255,255,0.18);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${calIconSvg}</div>
+        <span style="flex:1;color:${onPrimary};font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${H_FONT};">${cta}</span>
+        <span style="color:${onPrimary};font-size:22px;font-weight:700;">&#8594;</span>
       </div>`
     : "";
 
-  // ── Teal footer bar with trust badges ─────────────────────────────────────────
+  // ── Footer bar: SVG icon badges + website ─────────────────────────────────────
   function footerBar(padH = 44, h = 84, fz = 11.5): string {
+    const ic = (svg: string) =>
+      `<div style="width:30px;height:30px;border-radius:50%;border:2px solid ${onPrimary}66;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${svg}</div>`;
+    const shieldSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 24 28" fill="none"><path d="M12 2L4 6v8c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6L12 2z" stroke="${onPrimary}" stroke-width="2.2" stroke-linejoin="round"/><path d="M9 14l2 2 4-4" stroke="${onPrimary}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
+    const heartSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 22" fill="none"><path d="M12 20S3 14 3 8a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6-9 12-9 12z" stroke="${onPrimary}" stroke-width="2.2" stroke-linejoin="round"/></svg>`);
+    const globeSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="${onPrimary}" stroke-width="2"/><path d="M12 3c-2.5 3-4 5.8-4 9s1.5 6 4 9M12 3c2.5 3 4 5.8 4 9s-1.5 6-4 9M3 12h18" stroke="${onPrimary}" stroke-width="1.8"/></svg>`);
     const badges = [
-      { icon: "✓", label: "TRUSTED CARE" },
-      { icon: "♡", label: "PEACE OF MIND" },
-      { icon: "★", label: "EXCELLENCE" },
+      { icon: shieldSvg, label: "TRUSTED CARE" },
+      { icon: heartSvg, label: "PEACE OF MIND" },
     ];
     const badgesHtml = badges.map(b =>
       `<div style="display:flex;align-items:center;gap:9px;">
-        <div style="width:32px;height:32px;border-radius:50%;border:2px solid ${onPrimary}77;display:flex;align-items:center;justify-content:center;color:${onPrimary};font-size:15px;">${b.icon}</div>
+        ${b.icon}
         <span style="color:${onPrimary};font-size:${fz}px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${FONT_STACK};">${b.label}</span>
       </div>`
-    ).join(`<div style="width:1px;height:28px;background:${onPrimary}44;"></div>`);
+    ).join(`<div style="width:1px;height:28px;background:${onPrimary}44;margin:0 4px;"></div>`);
     const websiteHtml = websiteUrl
-      ? `<div style="display:flex;align-items:center;gap:7px;">
-          <span style="color:${onPrimary};font-size:18px;">🌐</span>
+      ? `<div style="display:flex;align-items:center;gap:8px;">
+          ${globeSvg}
           <span style="color:${onPrimary};font-size:${fz}px;font-weight:600;font-family:${FONT_STACK};">${websiteUrl}</span>
         </div>`
       : "";
@@ -687,63 +693,68 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
 </div>`;
   }
 
-  // ── PORTRAIT: text-left photo-right split, taller canvas ─────────────────────
+  // ── PORTRAIT: text-left + diagonal photo-right, taller canvas ───────────────
   if (isPortrait) {
     const textW = 460;
     const footerH = 84;
     const mainH = 1350 - footerH;
-    const hFz = hl > 70 ? 48 : hl > 50 ? 56 : hl > 35 ? 66 : 76;
+    const hFz = hl > 70 ? 52 : hl > 50 ? 62 : hl > 35 ? 72 : 86;
     return `${ANN_FONT_IMPORT}<div style="width:1080px;height:1350px;font-family:${B_FONT};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
-  <div style="flex:1;display:flex;overflow:hidden;">
-    <div style="width:${textW}px;height:${mainH}px;background:#ffffff;padding:48px 40px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
-      ${showBrandName ? `<div style="margin-bottom:22px;flex-shrink:0;">${logoEl}</div>` : ""}
+  <div style="position:relative;flex:1;overflow:hidden;background:#ffffff;">
+
+    <!-- RIGHT PHOTO: diagonal left-edge bleed into text zone -->
+    <div style="position:absolute;top:0;right:0;width:680px;height:${mainH}px;overflow:hidden;clip-path:polygon(140px 0,100% 0,100% 100%,0 100%);">
+      <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
+    </div>
+
+    <!-- LEFT TEXT PANEL -->
+    <div style="position:absolute;top:0;left:0;width:${textW}px;height:${mainH}px;padding:48px 40px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
+      ${showBrandName ? `<div style="margin-bottom:20px;flex-shrink:0;">${logoEl}</div>` : ""}
       <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
-      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0 0 14px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};">${headline}</h1>
-      <p style="font-size:16px;color:#3a3a3a;line-height:1.72;margin:0 0 20px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
+      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.0;margin:0 0 14px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};text-transform:uppercase;">${headline}</h1>
+      <p style="font-size:16px;color:#3a3a3a;line-height:1.7;margin:0 0 20px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
       <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
       <div style="flex-shrink:0;margin-top:14px;">
         ${calloutStripHtml}
         ${ctaButtonHtml}
       </div>
     </div>
-    <div style="flex:1;height:${mainH}px;overflow:hidden;">
-      <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
-    </div>
+
   </div>
   ${footerBar(44, 92, 14)}
 </div>`;
   }
 
-  // ── SQUARE: "Agency Impact" — text-left + photo-right + full-width footer bar ─
+  // ── SQUARE: diagonal photo bleed, agency-impact layout ───────────────────────
   const textW = 460;
   const footerH = 92;
   const mainH = 1080 - footerH;
-  const hFz = hl > 70 ? 48 : hl > 50 ? 56 : hl > 35 ? 64 : 72;
+  const hFz = hl > 70 ? 52 : hl > 50 ? 60 : hl > 35 ? 72 : 88;
 
   return `${ANN_FONT_IMPORT}<div style="width:1080px;height:1080px;font-family:${B_FONT};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
-  <div style="flex:1;display:flex;overflow:hidden;">
+  <div style="position:relative;flex:1;overflow:hidden;background:#ffffff;">
+
+    <!-- RIGHT PHOTO: angled left edge for diagonal bleed effect -->
+    <div style="position:absolute;top:0;right:0;width:680px;height:${mainH}px;overflow:hidden;clip-path:polygon(120px 0%,100% 0%,100% 100%,0% 100%);">
+      <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
+    </div>
 
     <!-- LEFT TEXT PANEL -->
-    <div style="width:${textW}px;height:${mainH}px;background:#ffffff;padding:44px 40px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
-      ${showBrandName ? `<div style="margin-bottom:22px;flex-shrink:0;">${logoEl}</div>` : ""}
-      <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
-      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.05;margin:0 0 12px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};">${headline}</h1>
-      <p style="font-size:16px;color:#3a3a3a;line-height:1.72;margin:0 0 18px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
+    <div style="position:absolute;top:0;left:0;width:${textW}px;height:${mainH}px;padding:44px 40px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
+      ${showBrandName ? `<div style="margin-bottom:20px;flex-shrink:0;">${logoEl}</div>` : ""}
+      <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:12px;flex-shrink:0;"></div>
+      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.0;margin:0 0 12px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};text-transform:uppercase;">${headline}</h1>
+      <p style="font-size:15.5px;color:#3a3a3a;line-height:1.7;margin:0 0 16px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
       <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
-      <div style="flex-shrink:0;margin-top:12px;">
+      <div style="flex-shrink:0;margin-top:10px;">
         ${calloutStripHtml}
         ${ctaButtonHtml}
       </div>
     </div>
 
-    <!-- RIGHT PHOTO PANEL: full bleed -->
-    <div style="flex:1;height:${mainH}px;overflow:hidden;">
-      <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
-    </div>
-
   </div>
 
-  <!-- FOOTER BAR: brand primary, trust badges + website -->
+  <!-- FOOTER BAR: trust badges + website -->
   ${footerBar(44, footerH, 11.5)}
 </div>`;
 }
