@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, brandsTable, brandVisualPrefsTable, generatedDesignsTable } from "@workspace/db";
+import { db, brandsTable, brandVisualPrefsTable, brandDnaTable, generatedDesignsTable } from "@workspace/db";
 import { aiJSON, hasAI, generateImage, hasImageAI } from "../lib/ai.js";
 
 const router: IRouter = Router();
@@ -243,39 +243,180 @@ function brandMark({ showBrandName, logoUrl, brandName, primary, dark = true }: 
 
 // ─── Photo background helpers ──────────────────────────────────────────────────
 
-/**
- * Build a FLUX image generation prompt from brand context + scene description.
- * Returns a rich, detailed prompt optimized for photorealistic output.
- */
-function buildFluxPrompt(opts: {
-  scene: string;
+/** Consolidated brand context passed into DNA-aware prompt building */
+interface BrandImageContext {
+  brandName: string;
   industry?: string | null;
-  brandName?: string;
+  country?: string | null;
+  city?: string | null;
+  targetMarket?: string | null;
+  brandBrief?: string | null;
+  colors: string[];          // hex codes from visual prefs
+  designStyle?: string;
+  // from brand_dna (all optional — not all brands have DNA built)
+  toneOfVoice?: string;
+  targetAudience?: string;   // JSON string
+  brandPersonality?: string; // e.g. "Formality: 6/10, Energy: 8/10, Boldness: 7/10"
+  culturalContext?: string;  // JSON string
+  coreValues?: string[];
+  uniqueSellingPoints?: string[];
+  keyMessages?: string[];
+}
+
+/** Convert a hex color to a human-readable color name for prompt use */
+function hexToColorName(hex: string): string {
+  const map: Record<string, string> = {
+    "#000000": "black", "#ffffff": "white", "#ff0000": "red", "#00ff00": "green",
+    "#0000ff": "blue", "#ffff00": "yellow", "#ff6600": "orange", "#ff9900": "amber",
+    "#d97706": "amber gold", "#b45309": "dark amber", "#92400e": "warm brown",
+    "#1c1917": "deep charcoal", "#111827": "near black", "#1f2937": "dark slate",
+    "#374151": "slate grey", "#6b7280": "cool grey", "#9ca3af": "light grey",
+    "#f3f4f6": "off white", "#faf8f0": "cream", "#fef3c7": "pale yellow",
+    "#fde68a": "light gold", "#fbbf24": "golden yellow", "#f59e0b": "warm amber",
+    "#ef4444": "bright red", "#dc2626": "deep red", "#b91c1c": "dark red",
+    "#10b981": "emerald green", "#059669": "deep green", "#047857": "forest green",
+    "#3b82f6": "bright blue", "#2563eb": "royal blue", "#1d4ed8": "deep blue",
+    "#8b5cf6": "purple", "#7c3aed": "deep purple", "#6d28d9": "violet",
+    "#ec4899": "pink", "#db2777": "hot pink", "#be185d": "deep pink",
+    "#14b8a6": "teal", "#0d9488": "deep teal", "#0f766e": "dark teal",
+  };
+  const normalized = hex.toLowerCase();
+  if (map[normalized]) return map[normalized];
+  // Heuristic for unknown hex
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  if (r > 200 && g > 150 && b < 80) return "warm gold";
+  if (r > 180 && g < 80 && b < 80) return "rich red";
+  if (r < 80 && g > 150 && b < 80) return "vibrant green";
+  if (r < 80 && g < 80 && b > 180) return "deep blue";
+  if (r > 180 && g > 180 && b > 180) return "light silver";
+  if (r < 60 && g < 60 && b < 60) return "near black";
+  return hex; // fallback to raw hex
+}
+
+/**
+ * Build a rich FLUX image generation prompt from the full brand DNA context.
+ * The result is a photorealistic, brand-aware scene description.
+ */
+function buildDNAFluxPrompt(opts: {
+  scene: string;
+  ctx: BrandImageContext;
   mood?: string;
   aspectHint?: string;
+  postType?: string;
 }): string {
-  const industryContext: Record<string, string> = {
-    "Food & Beverage": "warm restaurant ambiance, beautiful plating, rich textures",
-    "Health & Wellness": "clean bright studio, natural light, energetic lifestyle",
-    "Healthcare & Medical": "modern clinic, professional medical setting, clean and bright",
-    "Beauty & Personal Care": "elegant beauty studio, soft lighting, luxury cosmetics",
-    "Fashion & Apparel": "high fashion editorial, clean background, stylish clothing",
-    "Technology & SaaS": "modern office, sleek devices, professional workspace",
-    "Real Estate & Property": "luxury interior design, architectural photography, aspirational living",
-    "Education & Training": "bright classroom, learning environment, engaged students",
-    "Entertainment & Events": "vibrant event, colorful celebration, dynamic atmosphere",
-    "Travel & Hospitality": "luxury hotel, tropical destination, premium travel",
-    "Agriculture & Farming": "lush African farmland, golden hour, sustainable agriculture",
-    "Retail & E-commerce": "beautiful product display, clean commercial photography",
-    "Fintech & Payments": "modern finance, digital payment, professional business",
-    "Logistics & Courier": "professional delivery, urban logistics, efficient operations",
-    "Construction & Engineering": "modern architecture, construction excellence, engineering",
-    "Non-profit & NGO": "community empowerment, African people, hope and progress",
-    "Church & Religious Organisation": "uplifting community gathering, light and hope",
+  const { scene, ctx, mood, aspectHint = "square format", postType } = opts;
+
+  // ── Location / cultural setting ──
+  const locationParts: string[] = [];
+  if (ctx.city) locationParts.push(ctx.city);
+  if (ctx.country) locationParts.push(ctx.country);
+  const locationStr = locationParts.length
+    ? `in ${locationParts.join(", ")}`
+    : "in an African urban setting";
+
+  // ── Industry environment ──
+  const industryEnv: Record<string, string> = {
+    "Food & Beverage": "warm restaurant ambiance, beautiful food plating, rich textures, dining atmosphere",
+    "Health & Wellness": "bright wellness studio, natural light, clean energetic lifestyle environment",
+    "Healthcare & Medical": "modern clinic or hospital setting, professional medical environment, clean and bright",
+    "Beauty & Personal Care": "elegant beauty salon or studio, soft flattering lighting, luxury cosmetic products",
+    "Fashion & Apparel": "high-fashion editorial setting, stylish clothing display, aspirational style",
+    "Technology & SaaS": "modern tech office, sleek digital devices, professional contemporary workspace",
+    "Real Estate & Property": "luxury interior or architectural photography, aspirational living space",
+    "Education & Training": "bright classroom or learning environment, engaged students, academic setting",
+    "Entertainment & Events": "vibrant event venue, dynamic atmosphere, colorful celebration",
+    "Travel & Hospitality": "luxury hotel or tropical destination, premium travel experience",
+    "Agriculture & Farming": "lush farmland, golden hour light, sustainable and productive farm",
+    "Retail & E-commerce": "beautiful commercial product display, clean retail photography",
+    "Fintech & Payments": "modern finance office, digital payment interface, professional business setting",
+    "Logistics & Courier": "professional delivery and logistics, urban operations, efficient and modern",
+    "Construction & Engineering": "modern architecture or construction site, engineering excellence",
+    "Non-profit & NGO": "community empowerment scene, hopeful African community, volunteers and impact",
+    "Church & Religious Organisation": "uplifting community gathering, spiritual atmosphere, light and hope",
+    "Domestic Staffing & Caregiving": "warm home environment, professional caregiving, domestic setting",
   };
-  const indCtx = industryContext[opts.industry ?? ""] ?? "professional African business setting";
-  const moodStr = opts.mood ? `${opts.mood} mood, ` : "";
-  return `${moodStr}${opts.scene}, ${indCtx}, ${opts.aspectHint ?? "square format"}, photorealistic, ultra high quality, professional photography, 4k, sharp focus, beautiful composition, vibrant colors, cinematic lighting. No text, no logos, no watermarks.`;
+  const envCtx = industryEnv[ctx.industry ?? ""] ?? "professional African business environment";
+
+  // ── Brand color lighting ──
+  const colorNames = ctx.colors.slice(0, 2).map(hexToColorName).filter(Boolean);
+  const colorStr = colorNames.length
+    ? `with ${colorNames.join(" and ")} color tones and accents`
+    : "";
+
+  // ── Brand personality / energy ──
+  let personalityStr = "";
+  if (ctx.brandPersonality) {
+    const energyMatch = ctx.brandPersonality.match(/Energy:\s*(\d+)/i);
+    const boldnessMatch = ctx.brandPersonality.match(/Boldness:\s*(\d+)/i);
+    const formalityMatch = ctx.brandPersonality.match(/Formality:\s*(\d+)/i);
+    const energy = energyMatch ? parseInt(energyMatch[1]) : 5;
+    const boldness = boldnessMatch ? parseInt(boldnessMatch[1]) : 5;
+    const formality = formalityMatch ? parseInt(formalityMatch[1]) : 5;
+    if (energy >= 7) personalityStr = "dynamic, high-energy";
+    else if (energy <= 3) personalityStr = "calm, serene";
+    if (boldness >= 7) personalityStr += personalityStr ? ", bold and striking" : "bold and striking";
+    if (formality >= 7) personalityStr += personalityStr ? ", formal and refined" : "formal and refined";
+    else if (formality <= 3) personalityStr += personalityStr ? ", casual and approachable" : "casual and approachable";
+  }
+
+  // ── Target audience visual representation ──
+  let audienceStr = "";
+  if (ctx.targetAudience) {
+    try {
+      const ta = JSON.parse(ctx.targetAudience);
+      if (ta.age_range) audienceStr = `targeting ${ta.age_range} demographic`;
+      if (ta.gender && ta.gender !== "all") audienceStr += ` ${ta.gender}`;
+    } catch { /* not valid JSON, try plain text */ }
+    if (!audienceStr && ctx.targetAudience.length < 80) {
+      audienceStr = `for ${ctx.targetAudience}`;
+    }
+  }
+
+  // ── Design style → photography style ──
+  const styleMap: Record<string, string> = {
+    "bold": "bold dramatic lighting, high contrast, vibrant",
+    "minimal": "clean minimalist composition, soft natural light, airy",
+    "professional": "polished professional photography, clean composition",
+    "warm": "warm golden tones, soft inviting light, cozy",
+    "luxury": "luxury editorial style, rich textures, premium feel",
+    "playful": "bright cheerful colors, fun dynamic composition",
+    "modern": "sleek modern aesthetics, contemporary clean style",
+  };
+  const styleStr = styleMap[ctx.designStyle ?? "professional"] ?? "polished professional photography";
+
+  // ── Tone of voice → visual mood ──
+  let toneStr = mood ?? "";
+  if (!toneStr && ctx.toneOfVoice) {
+    const tone = ctx.toneOfVoice.toLowerCase();
+    if (tone.includes("premium") || tone.includes("luxury")) toneStr = "premium luxury";
+    else if (tone.includes("playful") || tone.includes("fun")) toneStr = "cheerful vibrant";
+    else if (tone.includes("empow") || tone.includes("inspir")) toneStr = "empowering inspiring";
+    else if (tone.includes("trust") || tone.includes("reliable")) toneStr = "trustworthy warm";
+    else if (tone.includes("bold") || tone.includes("energetic")) toneStr = "bold energetic";
+    else toneStr = "professional confident";
+  }
+
+  // ── Core values / USP context ──
+  const valuesStr = ctx.coreValues?.slice(0, 2).join(", ") ?? "";
+
+  // ── Assemble the final prompt ──
+  const parts = [
+    `${toneStr ? toneStr + " mood, " : ""}${scene}`,
+    locationStr,
+    envCtx,
+    colorStr,
+    styleStr,
+    personalityStr,
+    audienceStr,
+    valuesStr ? `evoking ${valuesStr}` : "",
+    aspectHint,
+    "photorealistic, ultra high quality, professional marketing photography, 4k resolution, sharp focus, beautiful composition, cinematic lighting, magazine quality",
+    "No text overlays, no logos, no watermarks, no graphic design elements",
+  ].filter(Boolean);
+
+  return parts.join(", ");
 }
 
 /**
@@ -375,18 +516,29 @@ function brandBar({ showBrandName, logoEl, logoPosition = "bottom-center", bg, c
 router.post("/generate/announcement", async (req, res): Promise<void> => {
   const { brandId, eventDetails, ctaText, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
-  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  const [[brand], [prefs], [dna]] = await Promise.all([
+    db.select().from(brandsTable).where(eq(brandsTable.id, brandId)),
+    db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId)),
+    db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
+  ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
+  const brandCtx: BrandImageContext = {
+    brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
+    targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
+    designStyle: prefs?.designStyle,
+    toneOfVoice: dna?.toneOfVoice, targetAudience: dna?.targetAudience,
+    brandPersonality: dna?.brandPersonality, culturalContext: dna?.culturalContext,
+    coreValues: dna?.coreValues, uniqueSellingPoints: dna?.uniqueSellingPoints, keyMessages: dna?.keyMessages,
+  };
 
   let headline = "BIG NEWS IS HERE", subtext = eventDetails || "Stay tuned for something exciting.", cta = ctaText || "Learn More";
-  let imageQuery = industryPhotoQuery(brand.industry, "announcement launch event outdoor");
+  let imageScene = `${brand.name} ${brand.industry ?? "business"} announcement launch event, ${brand.city ?? brand.country ?? "African city"} setting, outdoor or modern venue`;
   try {
     if (hasAI()) {
       const result = await aiJSON(`You are a brand copywriter for African businesses.
-Brand: ${brand.name}. Industry: ${brand.industry || "Business"}.
+Brand: ${brand.name}. Industry: ${brand.industry || "Business"}. Location: ${brand.city ?? brand.country ?? "Nigeria"}.
 Event/Announcement details: ${eventDetails || "General announcement — make something exciting"}
 
 Generate announcement copy. Return JSON:
@@ -394,20 +546,20 @@ Generate announcement copy. Return JSON:
   "headline": "string (max 8 words, punchy, ALL CAPS friendly)",
   "subtext": "string (max 18 words, supporting detail)",
   "cta": "string (max 4 words)",
-  "imageQuery": "string (5-8 keywords for a relevant Unsplash stock photo — describe scene not text)"
+  "imageScene": "string (10-15 words describing a specific photorealistic scene for this brand's announcement — no text, include location context)"
 }
 Never use em dashes.`, "{}");
       if (result.headline) headline = result.headline;
       if (result.subtext) subtext = result.subtext;
       if (result.cta) cta = ctaText || result.cta;
-      if (result.imageQuery) imageQuery = result.imageQuery;
+      if (result.imageScene) imageScene = result.imageScene;
     }
   } catch { }
 
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
-  const fluxPrompt = buildFluxPrompt({ scene: imageQuery, industry: brand.industry, brandName: brand.name, aspectHint });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h, fluxPrompt);
+  const fluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, aspectHint, postType: "announcement" });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, "announcement launch event outdoor"), w, h, fluxPrompt);
   const html = buildAnnouncementHtml({ headline, subtext, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
   res.json({ html, headline, subtext, cta });
 });
@@ -530,19 +682,31 @@ function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, form
 router.post("/generate/product-showcase", async (req, res): Promise<void> => {
   const { brandId, productName, productDescription, price, ctaText, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId || !productName) { res.status(400).json({ error: "brandId and productName required" }); return; }
-  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  const [[brand], [prefs], [dna]] = await Promise.all([
+    db.select().from(brandsTable).where(eq(brandsTable.id, brandId)),
+    db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId)),
+    db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
+  ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
+  const brandCtx: BrandImageContext = {
+    brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
+    targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
+    designStyle: prefs?.designStyle,
+    toneOfVoice: dna?.toneOfVoice, targetAudience: dna?.targetAudience,
+    brandPersonality: dna?.brandPersonality, culturalContext: dna?.culturalContext,
+    coreValues: dna?.coreValues, uniqueSellingPoints: dna?.uniqueSellingPoints, keyMessages: dna?.keyMessages,
+  };
 
   let headline = `Introducing ${productName}`, tagline = productDescription || "Premium quality, made for you.";
   let cta = ctaText || "Shop Now";
-  let imageQuery = industryPhotoQuery(brand.industry, `${productName} product lifestyle`);
+  let imageScene = `${productName} product lifestyle shot, ${brand.city ?? brand.country ?? "African city"}, ${brand.industry ?? "retail"} context`;
   try {
     if (hasAI()) {
       const result = await aiJSON(`You are a product marketer for African brands.
-Brand: ${brand.name}. Product: ${productName}. ${productDescription ? `Description: ${productDescription}` : ""}
+Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.city ?? brand.country ?? "Nigeria"}).
+Product: ${productName}. ${productDescription ? `Description: ${productDescription}` : ""}
 ${price ? `Price: ${price}` : ""}
 
 Write product showcase copy. Return JSON:
@@ -550,20 +714,20 @@ Write product showcase copy. Return JSON:
   "headline": "string (punchy hook, max 8 words)",
   "tagline": "string (value prop, max 12 words)",
   "cta": "string (max 3 words)",
-  "imageQuery": "string (5-8 keywords for a relevant Unsplash lifestyle or product photo)"
+  "imageScene": "string (10-15 words: a specific photorealistic scene showing this product in context — place, lighting, setting, no text)"
 }
 Never use em dashes.`, "{}");
       if (result.headline) headline = result.headline;
       if (result.tagline) tagline = result.tagline;
       if (result.cta) cta = ctaText || result.cta;
-      if (result.imageQuery) imageQuery = result.imageQuery;
+      if (result.imageScene) imageScene = result.imageScene;
     }
   } catch { }
 
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
-  const fluxPrompt = buildFluxPrompt({ scene: imageQuery, industry: brand.industry, brandName: brand.name, aspectHint });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h, fluxPrompt);
+  const fluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, aspectHint, postType: "product-showcase" });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, `${productName} product lifestyle`), w, h, fluxPrompt);
   const html = buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, headline, tagline, cta });
 });
@@ -621,35 +785,46 @@ function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, 
 router.post("/generate/story-cover", async (req, res): Promise<void> => {
   const { brandId, topic, mood = "bold", showBrandName = true, logoPosition = "top-left", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
-  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  const [[brand], [prefs], [dna]] = await Promise.all([
+    db.select().from(brandsTable).where(eq(brandsTable.id, brandId)),
+    db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId)),
+    db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
+  ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
+  const brandCtx: BrandImageContext = {
+    brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
+    targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
+    designStyle: prefs?.designStyle,
+    toneOfVoice: dna?.toneOfVoice, targetAudience: dna?.targetAudience,
+    brandPersonality: dna?.brandPersonality, culturalContext: dna?.culturalContext,
+    coreValues: dna?.coreValues, uniqueSellingPoints: dna?.uniqueSellingPoints, keyMessages: dna?.keyMessages,
+  };
 
   let hookText = "SWIPE FOR MORE", subText = "Tap to open";
-  let imageQuery = industryPhotoQuery(brand.industry, "lifestyle portrait vertical");
+  let imageScene = `${brand.industry ?? "business"} lifestyle portrait, ${brand.city ?? brand.country ?? "African city"}, vertical framing`;
   try {
     if (hasAI()) {
       const result = await aiJSON(`You are a social media strategist for African brands.
-Brand: ${brand.name}. Industry: ${brand.industry || "Business"}.
+Brand: ${brand.name}. Industry: ${brand.industry || "Business"}. Location: ${brand.city ?? brand.country ?? "Nigeria"}.
 Mood: ${mood}. ${topic ? `Topic: ${topic}` : "Generate a compelling hook"}
 
 Write an Instagram/TikTok story cover. Return JSON:
 {
   "hookText": "string (bold hook, max 6 words, ALL CAPS format works great)",
   "subText": "string (call to action, max 5 words)",
-  "imageQuery": "string (5-8 keywords for a Unsplash vertical/portrait photo)"
+  "imageScene": "string (10-15 words: a specific vertical lifestyle scene for this brand — person, setting, mood, location, no text)"
 }
 Never use em dashes.`, "{}");
       if (result.hookText) hookText = result.hookText;
       if (result.subText) subText = result.subText;
-      if (result.imageQuery) imageQuery = result.imageQuery;
+      if (result.imageScene) imageScene = result.imageScene;
     }
   } catch { }
 
-  const fluxPrompt = buildFluxPrompt({ scene: imageQuery, industry: brand.industry, brandName: brand.name, mood, aspectHint: "portrait 9:16 vertical story format" });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, 1080, 1920, fluxPrompt);
+  const fluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, mood, aspectHint: "portrait 9:16 vertical story format", postType: "story-cover" });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, "lifestyle portrait vertical"), 1080, 1920, fluxPrompt);
   const html = buildStoryCoverHtml({ hookText, subText, brandName: brand.name, colors, mood, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, hookText, subText });
 });
@@ -701,11 +876,22 @@ function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showB
 router.post("/generate/birthday-post", async (req, res): Promise<void> => {
   const { brandId, personName, personRole, shortMessage, showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, celebrantPhotoDataUrl, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId || !personName) { res.status(400).json({ error: "brandId and personName required" }); return; }
-  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  const [[brand], [prefs], [dna]] = await Promise.all([
+    db.select().from(brandsTable).where(eq(brandsTable.id, brandId)),
+    db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId)),
+    db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
+  ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
+  const brandCtx: BrandImageContext = {
+    brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
+    targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
+    designStyle: prefs?.designStyle,
+    toneOfVoice: dna?.toneOfVoice, targetAudience: dna?.targetAudience,
+    brandPersonality: dna?.brandPersonality, culturalContext: dna?.culturalContext,
+    coreValues: dna?.coreValues, uniqueSellingPoints: dna?.uniqueSellingPoints, keyMessages: dna?.keyMessages,
+  };
 
   let message = shortMessage || "Wishing you a wonderful birthday filled with joy and celebration!";
   try {
@@ -719,7 +905,8 @@ Never use em dashes.`, "{}");
     }
   } catch { }
 
-  const birthdayFluxPrompt = buildFluxPrompt({ scene: "birthday celebration confetti balloons colorful joyful festive party decor bokeh", industry: brand.industry, brandName: brand.name, mood: "joyful celebratory", aspectHint: "square format" });
+  const birthdayScene = `joyful birthday celebration, confetti, balloons, festive decor, bokeh lights, ${brand.city ?? brand.country ?? "African city"} party setting, warm celebratory atmosphere`;
+  const birthdayFluxPrompt = buildDNAFluxPrompt({ scene: birthdayScene, ctx: brandCtx, mood: "joyful celebratory", aspectHint: "square format", postType: "birthday-post" });
   const photoUrl = customPhotoDataUrl || await resolvePhotoUrl("birthday celebration confetti balloons african joy colorful", 1080, 1080, birthdayFluxPrompt);
   const html = buildBirthdayPostHtml({ personName, personRole, message, brandName: brand.name, colors, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, celebrantPhotoDataUrl, smoothFace });
   res.json({ html, message });
@@ -778,16 +965,27 @@ function buildBirthdayPostHtml({ personName, personRole, message, brandName, col
 router.post("/generate/testimonial", async (req, res): Promise<void> => {
   const { brandId, testimonialText, customerName, customerRole, rating = 5, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId || !testimonialText) { res.status(400).json({ error: "brandId and testimonialText required" }); return; }
-  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  const [[brand], [prefs], [dna]] = await Promise.all([
+    db.select().from(brandsTable).where(eq(brandsTable.id, brandId)),
+    db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId)),
+    db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
+  ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
+  const brandCtx: BrandImageContext = {
+    brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
+    targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
+    designStyle: prefs?.designStyle,
+    toneOfVoice: dna?.toneOfVoice, targetAudience: dna?.targetAudience,
+    brandPersonality: dna?.brandPersonality, culturalContext: dna?.culturalContext,
+    coreValues: dna?.coreValues, uniqueSellingPoints: dna?.uniqueSellingPoints, keyMessages: dna?.keyMessages,
+  };
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
-  const testimQuery = industryPhotoQuery(brand.industry, "professional team satisfied customer");
-  const testimFluxPrompt = buildFluxPrompt({ scene: testimQuery, industry: brand.industry, brandName: brand.name, mood: "warm trustworthy", aspectHint });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(testimQuery, w, h, testimFluxPrompt);
+  const testimScene = `happy satisfied ${brand.industry ?? "business"} customer, ${brand.city ?? brand.country ?? "African city"}, warm professional environment, smiling person`;
+  const testimFluxPrompt = buildDNAFluxPrompt({ scene: testimScene, ctx: brandCtx, mood: "warm trustworthy", aspectHint, postType: "testimonial" });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, "professional team satisfied customer"), w, h, testimFluxPrompt);
   const html = buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html });
 });
@@ -845,24 +1043,34 @@ router.post("/generate/ad-creative", async (req, res): Promise<void> => {
 
   if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
 
-  const [brand] = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId));
+  const [[brand], [prefs], [dna]] = await Promise.all([
+    db.select().from(brandsTable).where(eq(brandsTable.id, brandId)),
+    db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId)),
+    db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
+  ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-
-  const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
+  const brandCtx: BrandImageContext = {
+    brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
+    targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
+    designStyle: prefs?.designStyle,
+    toneOfVoice: dna?.toneOfVoice, targetAudience: dna?.targetAudience,
+    brandPersonality: dna?.brandPersonality, culturalContext: dna?.culturalContext,
+    coreValues: dna?.coreValues, uniqueSellingPoints: dna?.uniqueSellingPoints, keyMessages: dna?.keyMessages,
+  };
 
   let finalHeadline = headline || "";
   let finalTagline  = tagline  || "";
   let finalCta      = cta      || "Learn More";
-  let imageQuery    = industryPhotoQuery(brand.industry, offerText || brand.name);
+  let imageScene    = `${brand.industry ?? "business"} lifestyle advertising scene, ${brand.city ?? brand.country ?? "African city"}, ${offerText ? offerText + " product in use" : "professional brand moment"}`;
 
   try {
     if (hasAI()) {
-      const result = await aiJSON<{ headline: string; tagline: string; cta: string; imageQuery: string }>(
+      const result = await aiJSON<{ headline: string; tagline: string; cta: string; imageScene: string }>(
         `You are a high-converting ad copywriter for African brands on digital platforms.
 Write short, punchy ad copy that stops the scroll.
-Platform: ${platform}. Format: ${adFormat}.
+Platform: ${platform}. Format: ${adFormat}. Location: ${brand.city ?? brand.country ?? "Nigeria"}.
 NEVER use em dashes.
 
 Return JSON:
@@ -870,9 +1078,9 @@ Return JSON:
   "headline": "string (5-9 words, bold hook - the first thing they read)",
   "tagline": "string (8-14 words, value proposition)",
   "cta": "string (2-4 words, action-driven)",
-  "imageQuery": "string (5-8 keywords for an Unsplash lifestyle photo matching this brand)"
+  "imageScene": "string (10-15 words: a specific photorealistic scene for this ad — product in use, location, lighting, mood — no text)"
 }`,
-        `Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
+        `Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.city ?? brand.country ?? "Nigeria"}).
 Offer / product: ${offerText || "their product or service"}.
 ${headline ? `Existing headline: ${headline} (improve it slightly)` : "Write a fresh headline."}`,
         350,
@@ -880,7 +1088,7 @@ ${headline ? `Existing headline: ${headline} (improve it slightly)` : "Write a f
       if (result?.headline) finalHeadline = result.headline;
       if (result?.tagline)  finalTagline  = result.tagline;
       if (result?.cta)      finalCta      = cta || result.cta;
-      if (result?.imageQuery) imageQuery  = result.imageQuery;
+      if (result?.imageScene) imageScene  = result.imageScene;
     }
   } catch { /* fall through to defaults */ }
 
@@ -890,8 +1098,8 @@ ${headline ? `Existing headline: ${headline} (improve it slightly)` : "Write a f
   const h = isStory  ? 1920 : isBanner ? 628 : 1080;
 
   const adAspectHint = isStory ? "portrait 9:16 vertical format" : isBanner ? "landscape wide banner format" : "square format";
-  const adFluxPrompt = buildFluxPrompt({ scene: imageQuery, industry: brand.industry, brandName: brand.name, mood: "bold impactful advertising", aspectHint: adAspectHint });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(imageQuery, w, h, adFluxPrompt);
+  const adFluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, mood: "bold impactful advertising", aspectHint: adAspectHint, postType: "ad-creative" });
+  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, offerText || brand.name), w, h, adFluxPrompt);
   const html = buildAdCreativeHtml({
     headline: finalHeadline, tagline: finalTagline, cta: finalCta,
     brandName: brand.name, colors, adFormat, showBrandName, logoUrl, photoUrl, platform,
