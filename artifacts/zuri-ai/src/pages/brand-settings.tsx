@@ -59,6 +59,63 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
+function isValidHex(hex: string) {
+  return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex.trim());
+}
+
+function BrandColorRow({ color, label, onChange, onRemove }: {
+  color: string; label: string; onChange: (v: string) => void; onRemove: () => void;
+}) {
+  const [hexInput, setHexInput] = useState(color);
+  useEffect(() => { setHexInput(color); }, [color]);
+
+  function commitHex(raw: string) {
+    const s = raw.trim().startsWith("#") ? raw.trim() : `#${raw.trim()}`;
+    if (isValidHex(s)) { onChange(s); setHexInput(s); }
+    else setHexInput(color);
+  }
+
+  return (
+    <div className="flex items-center gap-3 py-1.5">
+      <label
+        className="h-10 w-10 rounded-xl cursor-pointer border-2 border-border hover:border-primary/60 transition-colors shrink-0 overflow-hidden shadow-sm"
+        style={{ backgroundColor: isValidHex(hexInput.startsWith("#") ? hexInput : `#${hexInput}`) ? (hexInput.startsWith("#") ? hexInput : `#${hexInput}`) : color }}
+        title="Click to open color picker"
+      >
+        <input
+          type="color"
+          value={color}
+          onChange={e => { onChange(e.target.value); setHexInput(e.target.value); }}
+          className="opacity-0 w-full h-full cursor-pointer"
+        />
+      </label>
+      <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+        <span className="text-xs font-medium text-foreground">{label}</span>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={hexInput}
+            onChange={e => setHexInput(e.target.value)}
+            onBlur={e => commitHex(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && commitHex((e.target as HTMLInputElement).value)}
+            placeholder="#000000"
+            maxLength={7}
+            className="w-28 px-2 py-1 rounded-lg border border-border bg-background text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+          />
+          <span className="text-xs text-muted-foreground">or click the swatch to pick</span>
+        </div>
+      </div>
+      <button
+        onClick={onRemove}
+        className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
+        title="Remove"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export default function BrandSettings() {
   const { brandId } = useParams<{ brandId: string }>();
   const queryClient = useQueryClient();
@@ -136,22 +193,24 @@ export default function BrandSettings() {
       toast({ title: "Please upload an image file (PNG, JPG, SVG)", variant: "destructive" });
       return;
     }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Logo too large", description: "Please use an image under 2 MB.", variant: "destructive" });
+      return;
+    }
     setLogoUploading(true);
     try {
-      const presignRes = await fetch(`${API_BASE}/storage/uploads/request-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
-      const { uploadURL, objectPath } = await presignRes.json();
-      await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-      const serveUrl = `${API_BASE}/storage/objects/${objectPath.replace(/^\/objects\//, "")}`;
       await fetch(`${API_BASE}/brands/${brandId}/visual-prefs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logoUrl: serveUrl }),
+        body: JSON.stringify({ logoUrl: dataUrl }),
       });
-      setLogoUrl(serveUrl);
+      setLogoUrl(dataUrl);
       toast({ title: "Logo uploaded and saved!" });
     } catch {
       toast({ title: "Logo upload failed. Please try again.", variant: "destructive" });
@@ -701,53 +760,30 @@ export default function BrandSettings() {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-3 items-end">
+          <div className="space-y-1">
             {brandColors.map((color, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5">
-                <div className="relative group">
-                  <label
-                    className="block h-12 w-12 rounded-xl cursor-pointer shadow-sm border-2 border-border hover:border-primary/50 transition-colors overflow-hidden"
-                    style={{ backgroundColor: color }}
-                  >
-                    <input
-                      type="color"
-                      value={color}
-                      onChange={e => {
-                        const next = [...brandColors];
-                        next[i] = e.target.value;
-                        setBrandColors(next);
-                      }}
-                      className="opacity-0 w-full h-full cursor-pointer"
-                    />
-                  </label>
-                  <button
-                    onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
-                    className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="h-2.5 w-2.5" />
-                  </button>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {i === 0 ? "Primary" : i === 1 ? "Secondary" : i === 2 ? "Accent" : `Color ${i + 1}`}
-                </span>
-              </div>
+              <BrandColorRow
+                key={i}
+                color={color}
+                label={i === 0 ? "Primary" : i === 1 ? "Secondary" : i === 2 ? "Accent" : `Color ${i + 1}`}
+                onChange={val => { const next = [...brandColors]; next[i] = val; setBrandColors(next); }}
+                onRemove={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
+              />
             ))}
-            {brandColors.length < 5 && (
-              <div className="flex flex-col items-center gap-1.5">
-                <button
-                  onClick={() => setBrandColors([...brandColors, "#6366F1"])}
-                  className="h-12 w-12 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-                <span className="text-xs text-muted-foreground">Add</span>
-              </div>
-            )}
           </div>
+
+          {brandColors.length < 5 && (
+            <button
+              onClick={() => setBrandColors([...brandColors, "#0D6B8C"])}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Plus className="h-4 w-4" /> Add color
+            </button>
+          )}
 
           {brandColors.length === 0 && (
             <p className="text-xs text-muted-foreground italic">
-              No colors set yet. Click <strong>Add</strong> to pick colors manually, or use <strong>Auto-detect</strong> to pull them from your website.
+              No colors yet. Click <strong>Add color</strong> to add one manually, or use <strong>Auto-detect</strong> to pull colors from your website.
             </p>
           )}
 
@@ -761,7 +797,7 @@ export default function BrandSettings() {
                 {colorsSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                 Save Colors
               </button>
-              <p className="text-xs text-muted-foreground">Click a swatch to change its color</p>
+              <p className="text-xs text-muted-foreground">Tip: you can also type a hex code like <code>#0097A7</code></p>
             </div>
           )}
 
