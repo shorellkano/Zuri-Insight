@@ -237,7 +237,7 @@ function brandMark({ showBrandName, logoUrl, brandName, primary, dark = true }: 
   if (!showBrandName) return "";
   if (logoUrl) {
     const f = dark ? "filter:brightness(0) invert(1);" : "";
-    return `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:36px;max-width:160px;object-fit:contain;${f}" />`;
+    return `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:64px;max-width:220px;object-fit:contain;${f}" />`;
   }
   return `<span style="color:${primary};font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`;
 }
@@ -384,7 +384,7 @@ function buildDNAFluxPrompt(opts: {
     city,
     lighting,
     camera,
-    "looking at camera, sharp focus, photorealistic, 8k uhd, natural skin tones, magazine editorial quality, professional stock photography",
+    "sharp focus, hyperrealistic, ultra-detailed skin and fabric texture, 8k uhd, natural skin tones, magazine editorial photography, professional commercial photography, Nikon D850 RAW, vivid colors, no CGI, no 3D render",
     "no text, no watermark, no logos, no overlay",
   ].filter(Boolean);
 
@@ -422,7 +422,7 @@ async function resolvePhotoUrl(query: string, w: number, h: number, fluxPrompt?:
       const isWide = w > h * 1.3;
       const fluxW = isWide ? 1024 : 768;
       const fluxH = isWide ? 576  : 1024;
-      const dataUrl = await generateImage({ prompt: fluxPrompt, width: fluxW, height: fluxH, steps: 4 });
+      const dataUrl = await generateImage({ prompt: fluxPrompt, width: fluxW, height: fluxH, steps: 20 });
       console.log(`[ImageAI] FLUX generated ${fluxW}x${fluxH} image`);
       return dataUrl;
     } catch (err: any) {
@@ -589,23 +589,23 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   // ── Logo element (works on white bg) ─────────────────────────────────────────
   const logoEl = showBrandName
     ? (logoUrl
-        ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:46px;max-width:200px;object-fit:contain;" />`
-        : `<div style="display:flex;align-items:center;gap:10px;">
-             <div style="width:40px;height:40px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-               <span style="color:${onPrimary};font-size:17px;font-weight:900;font-family:${FONT_STACK};">${brandName.charAt(0).toUpperCase()}</span>
+        ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:72px;max-width:240px;object-fit:contain;" />`
+        : `<div style="display:flex;align-items:center;gap:12px;">
+             <div style="width:52px;height:52px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+               <span style="color:${onPrimary};font-size:22px;font-weight:900;font-family:${FONT_STACK};">${brandName.charAt(0).toUpperCase()}</span>
              </div>
-             <span style="color:${secondary};font-size:16px;font-weight:700;font-family:${FONT_STACK};">${brandName}</span>
+             <span style="color:${secondary};font-size:20px;font-weight:700;font-family:${FONT_STACK};">${brandName}</span>
            </div>`)
     : "";
 
   // ── Feature bullet rows: FILLED brand-color circle + bold label + description ──
   const featureBulletsHtml = features.length > 0
     ? features.slice(0, 4).map(f =>
-        `<div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:18px;">
-          <div style="width:40px;height:40px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;line-height:1;">${f.emoji}</div>
+        `<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;">
+          <div style="width:46px;height:46px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;line-height:1;">${f.emoji}</div>
           <div style="padding-top:4px;">
-            <p style="margin:0 0 3px;font-size:14px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.6px;font-family:${H_FONT};">${f.label}</p>
-            ${f.description ? `<p style="margin:0;font-size:12px;color:#555;line-height:1.45;font-family:${B_FONT};">${f.description}</p>` : ""}
+            <p style="margin:0 0 5px;font-size:17px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.6px;font-family:${H_FONT};">${f.label}</p>
+            ${f.description ? `<p style="margin:0;font-size:15px;color:#444;line-height:1.5;font-family:${B_FONT};">${f.description}</p>` : ""}
           </div>
         </div>`
       ).join("")
@@ -614,11 +614,11 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   // ── Feature grid for Story (horizontal, 2-col) ────────────────────────────────
   const featureGridHtml = features.length > 0
     ? features.slice(0, 4).map(f =>
-        `<div style="display:flex;align-items:flex-start;gap:16px;min-width:260px;flex:1;">
-          <div style="width:52px;height:52px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:23px;">${f.emoji}</div>
+        `<div style="display:flex;align-items:flex-start;gap:18px;min-width:260px;flex:1;">
+          <div style="width:56px;height:56px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:26px;">${f.emoji}</div>
           <div>
-            <p style="margin:0 0 3px;font-size:19px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.5px;font-family:${H_FONT};">${f.label}</p>
-            ${f.description ? `<p style="margin:0;font-size:16px;color:#555;line-height:1.4;font-family:${B_FONT};">${f.description}</p>` : ""}
+            <p style="margin:0 0 5px;font-size:21px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.5px;font-family:${H_FONT};">${f.label}</p>
+            ${f.description ? `<p style="margin:0;font-size:18px;color:#444;line-height:1.4;font-family:${B_FONT};">${f.description}</p>` : ""}
           </div>
         </div>`
       ).join("")
@@ -629,44 +629,44 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   const ctaButtonHtml = cta
     ? `<div style="width:100%;background:${primary};border-radius:10px;padding:15px 20px;box-sizing:border-box;display:flex;align-items:center;gap:14px;">
         <div style="width:36px;height:36px;background:rgba(255,255,255,0.18);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${calIconSvg}</div>
-        <span style="flex:1;color:${onPrimary};font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${H_FONT};">${cta}</span>
+        <span style="flex:1;color:${onPrimary};font-size:19px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${H_FONT};">${cta}</span>
         <span style="color:${onPrimary};font-size:22px;font-weight:700;">&#8594;</span>
       </div>`
     : "";
 
   // ── Footer bar: SVG icon badges + website ─────────────────────────────────────
-  function footerBar(padH = 44, h = 84, fz = 11.5): string {
+  function footerBar(padH = 44, h = 100, fz = 15): string {
     const ic = (svg: string) =>
-      `<div style="width:30px;height:30px;border-radius:50%;border:2px solid ${onPrimary}66;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${svg}</div>`;
-    const shieldSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 24 28" fill="none"><path d="M12 2L4 6v8c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6L12 2z" stroke="${onPrimary}" stroke-width="2.2" stroke-linejoin="round"/><path d="M9 14l2 2 4-4" stroke="${onPrimary}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
-    const heartSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 22" fill="none"><path d="M12 20S3 14 3 8a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6-9 12-9 12z" stroke="${onPrimary}" stroke-width="2.2" stroke-linejoin="round"/></svg>`);
-    const globeSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="${onPrimary}" stroke-width="2"/><path d="M12 3c-2.5 3-4 5.8-4 9s1.5 6 4 9M12 3c2.5 3 4 5.8 4 9s-1.5 6-4 9M3 12h18" stroke="${onPrimary}" stroke-width="1.8"/></svg>`);
+      `<div style="width:36px;height:36px;border-radius:50%;border:2px solid ${onPrimary}88;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${svg}</div>`;
+    const shieldSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="17" height="19" viewBox="0 0 24 28" fill="none"><path d="M12 2L4 6v8c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6L12 2z" stroke="${onPrimary}" stroke-width="2.2" stroke-linejoin="round"/><path d="M9 14l2 2 4-4" stroke="${onPrimary}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
+    const heartSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="19" height="18" viewBox="0 0 24 22" fill="none"><path d="M12 20S3 14 3 8a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6-9 12-9 12z" stroke="${onPrimary}" stroke-width="2.2" stroke-linejoin="round"/></svg>`);
+    const globeSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="${onPrimary}" stroke-width="2"/><path d="M12 3c-2.5 3-4 5.8-4 9s1.5 6 4 9M12 3c2.5 3 4 5.8 4 9s-1.5 6-4 9M3 12h18" stroke="${onPrimary}" stroke-width="1.8"/></svg>`);
     const badges = [
       { icon: shieldSvg, label: "TRUSTED CARE" },
       { icon: heartSvg, label: "PEACE OF MIND" },
     ];
     const badgesHtml = badges.map(b =>
-      `<div style="display:flex;align-items:center;gap:9px;">
+      `<div style="display:flex;align-items:center;gap:10px;">
         ${b.icon}
-        <span style="color:${onPrimary};font-size:${fz}px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${FONT_STACK};">${b.label}</span>
+        <span style="color:${onPrimary};font-size:${fz}px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;font-family:${FONT_STACK};">${b.label}</span>
       </div>`
-    ).join(`<div style="width:1px;height:28px;background:${onPrimary}44;margin:0 4px;"></div>`);
+    ).join(`<div style="width:1px;height:32px;background:${onPrimary}55;margin:0 8px;"></div>`);
     const websiteHtml = websiteUrl
-      ? `<div style="display:flex;align-items:center;gap:8px;">
+      ? `<div style="display:flex;align-items:center;gap:10px;">
           ${globeSvg}
-          <span style="color:${onPrimary};font-size:${fz}px;font-weight:600;font-family:${FONT_STACK};">${websiteUrl}</span>
+          <span style="color:${onPrimary};font-size:${fz}px;font-weight:700;font-family:${FONT_STACK};">${websiteUrl}</span>
         </div>`
       : "";
     return `<div style="height:${h}px;background:${primary};flex-shrink:0;display:flex;align-items:center;padding:0 ${padH}px;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:20px;">${badgesHtml}</div>
+      <div style="display:flex;align-items:center;gap:24px;">${badgesHtml}</div>
       ${websiteHtml}
     </div>`;
   }
 
   // ── Callout accent strip ──────────────────────────────────────────────────────
   const calloutStripHtml = callout
-    ? `<div style="background:${primary}15;border-left:4px solid ${primary};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:14px;flex-shrink:0;">
-        <p style="margin:0;font-size:12.5px;font-weight:600;color:${secondary};line-height:1.5;font-family:${FONT_STACK};">${callout}</p>
+    ? `<div style="background:${primary}15;border-left:5px solid ${primary};border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:14px;flex-shrink:0;">
+        <p style="margin:0;font-size:16px;font-weight:600;color:${secondary};line-height:1.5;font-family:${FONT_STACK};">${callout}</p>
       </div>`
     : "";
 
@@ -696,7 +696,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   // ── PORTRAIT: text-left + diagonal photo-right, taller canvas ───────────────
   if (isPortrait) {
     const textW = 460;
-    const footerH = 84;
+    const footerH = 108;
     const mainH = 1350 - footerH;
     const hFz = hl > 70 ? 52 : hl > 50 ? 62 : hl > 35 ? 72 : 86;
     return `${ANN_FONT_IMPORT}<div style="width:1080px;height:1350px;font-family:${B_FONT};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
@@ -712,7 +712,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
       ${showBrandName ? `<div style="margin-bottom:20px;flex-shrink:0;">${logoEl}</div>` : ""}
       <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
       <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.0;margin:0 0 14px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};text-transform:uppercase;">${headline}</h1>
-      <p style="font-size:16px;color:#3a3a3a;line-height:1.7;margin:0 0 20px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
+      <p style="font-size:19px;color:#3a3a3a;line-height:1.65;margin:0 0 20px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
       <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
       <div style="flex-shrink:0;margin-top:14px;">
         ${calloutStripHtml}
@@ -721,13 +721,13 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
     </div>
 
   </div>
-  ${footerBar(44, 92, 14)}
+  ${footerBar(44, 108, 15)}
 </div>`;
   }
 
   // ── SQUARE: diagonal photo bleed, agency-impact layout ───────────────────────
   const textW = 460;
-  const footerH = 92;
+  const footerH = 108;
   const mainH = 1080 - footerH;
   const hFz = hl > 70 ? 52 : hl > 50 ? 60 : hl > 35 ? 72 : 88;
 
@@ -744,7 +744,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
       ${showBrandName ? `<div style="margin-bottom:20px;flex-shrink:0;">${logoEl}</div>` : ""}
       <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:12px;flex-shrink:0;"></div>
       <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.0;margin:0 0 12px;letter-spacing:-0.5px;flex-shrink:0;font-family:${H_FONT};text-transform:uppercase;">${headline}</h1>
-      <p style="font-size:15.5px;color:#3a3a3a;line-height:1.7;margin:0 0 16px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
+      <p style="font-size:19px;color:#3a3a3a;line-height:1.65;margin:0 0 16px;flex-shrink:0;font-family:${B_FONT};">${subtext}</p>
       <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
       <div style="flex-shrink:0;margin-top:10px;">
         ${calloutStripHtml}
@@ -755,7 +755,7 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
   </div>
 
   <!-- FOOTER BAR: trust badges + website -->
-  ${footerBar(44, footerH, 11.5)}
+  ${footerBar(44, footerH, 15)}
 </div>`;
 }
 
