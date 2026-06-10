@@ -50,7 +50,7 @@ router.post("/generate/carousel", async (req, res): Promise<void> => {
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
 
   const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
-  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const style = prefs?.designStyle ?? "professional";
 
   try {
@@ -125,7 +125,7 @@ router.post("/generate/quote-card", async (req, res): Promise<void> => {
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
 
   const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
-  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
 
   const html = buildQuoteCardHtml({ quoteText, attribution, brandName: brand.name, colors, backgroundStyle, format, showBrandName, logoUrl });
@@ -149,7 +149,7 @@ function buildSlideHtml({ headline, body, cta, brandName, colors, style, slideNu
   headline: string; body: string; cta?: string; brandName: string;
   colors: string[]; style: string; slideNumber: number; total: number; showBrandName?: boolean; logoUrl?: string | null;
 }) {
-  const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
+  const [primary, bg, text] = [colors[0] ?? "#0D6B8C", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const hs = headline.length > 45 ? 52 : headline.length > 30 ? 64 : 76;
   const isFirst = slideNumber === 1;
 
@@ -192,7 +192,7 @@ function buildQuoteCardHtml({ quoteText, attribution, brandName, colors, backgro
   quoteText: string; attribution?: string; brandName: string; colors: string[];
   backgroundStyle: string; format: string; showBrandName?: boolean; logoUrl?: string | null;
 }) {
-  const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
+  const [primary, bg, text] = [colors[0] ?? "#0D6B8C", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
   const gradientBg = backgroundStyle === "gradient"
     ? `background:linear-gradient(145deg,${bg} 0%,${bg} 55%,${primary}40 100%)`
@@ -364,14 +364,24 @@ function buildDNAFluxPrompt(opts: {
   // ── Strip "photograph of" prefix from the AI scene so we can lead with person ──
   const sceneEnv = scene.replace(/^photograph of\s*/i, "").trim();
 
+  // ── Inject brand color into the person description so FLUX paints the right uniform ──
+  const subjectWithColor = subjectCtx.replace(
+    /\bin uniform\b/i, `in ${primaryColorName} professional uniform`
+  ).replace(
+    /\bin (a |the )?uniform\b/i, `in ${primaryColorName} professional uniform`
+  );
+  // If no "uniform" in description, append the color clothing hint
+  const coloredSubject = subjectWithColor !== subjectCtx
+    ? subjectWithColor
+    : `${subjectCtx}, wearing ${primaryColorName} uniform`;
+
   // ── Assemble: PERSON FIRST so FLUX renders the subject, not the background ──
-  // Format: "professional photograph of [person], [scene/action], [city], [lighting], [camera], [quality]"
+  // Format: "professional photograph of [person with color uniform], [scene/action], [city], [lighting], [camera], [quality]"
   const parts = [
-    `professional photograph of ${subjectCtx}`,
+    `professional photograph of ${coloredSubject}`,
     sceneEnv,
     city,
     lighting,
-    `wearing or near ${primaryColorName} colored items`,
     camera,
     "looking at camera, sharp focus, photorealistic, 8k uhd, natural skin tones, magazine editorial quality, professional stock photography",
     "no text, no watermark, no logos, no overlay",
@@ -500,7 +510,7 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
     db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
@@ -696,7 +706,7 @@ router.post("/generate/product-showcase", async (req, res): Promise<void> => {
     db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
@@ -745,7 +755,7 @@ function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, 
   brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
   logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
-  const primary   = colors[0] ?? "#D97706";
+  const primary   = colors[0] ?? "#0D6B8C";
   const secondary = colors[1] ?? "#1C1917";
   const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
   const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
@@ -799,7 +809,7 @@ router.post("/generate/story-cover", async (req, res): Promise<void> => {
     db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
@@ -842,7 +852,7 @@ function buildStoryCoverHtml({ hookText, subText, brandName, colors, mood, showB
   mood: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
   logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
-  const primary   = colors[0] ?? "#D97706";
+  const primary   = colors[0] ?? "#0D6B8C";
   const secondary = colors[1] ?? "#1C1917";
   const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
   const hs = hookText.length > 22 ? 100 : hookText.length > 12 ? 120 : 144;
@@ -890,7 +900,7 @@ router.post("/generate/birthday-post", async (req, res): Promise<void> => {
     db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
@@ -925,7 +935,7 @@ function buildBirthdayPostHtml({ personName, personRole, message, brandName, col
   brandName: string; colors: string[]; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
   logoPosition?: string; contactInfo?: ContactInfo; celebrantPhotoDataUrl?: string; smoothFace?: boolean;
 }) {
-  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const [primary, secondary] = [colors[0] ?? "#0D6B8C", colors[1] ?? "#1C1917"];
   const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.08) contrast(1.04) brightness(1.02);" : "";
   const nameFz = personName.length > 14 ? 68 : personName.length > 8 ? 84 : 100;
   const logoEl = logoUrl
@@ -979,7 +989,7 @@ router.post("/generate/testimonial", async (req, res): Promise<void> => {
     db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
@@ -1003,7 +1013,7 @@ function buildTestimonialHtml({ testimonialText, customerName, customerRole, rat
   brandName: string; colors: string[]; format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
   logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean;
 }) {
-  const primary   = colors[0] ?? "#D97706";
+  const primary   = colors[0] ?? "#0D6B8C";
   const secondary = colors[1] ?? "#1C1917";
   const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
   const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
@@ -1057,7 +1067,7 @@ router.post("/generate/ad-creative", async (req, res): Promise<void> => {
     db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
-  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#D97706", "#1C1917", "#FFFFFF"];
+  const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
@@ -1131,7 +1141,7 @@ function buildAdCreativeHtml({ headline, tagline, cta, brandName, colors, adForm
   brandName: string; colors: string[]; adFormat: string;
   showBrandName: boolean; logoUrl?: string | null; photoUrl: string; platform: string;
 }) {
-  const [primary, secondary] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917"];
+  const [primary, secondary] = [colors[0] ?? "#0D6B8C", colors[1] ?? "#1C1917"];
   const isStory  = adFormat === "story";
   const isBanner = adFormat === "banner";
 
