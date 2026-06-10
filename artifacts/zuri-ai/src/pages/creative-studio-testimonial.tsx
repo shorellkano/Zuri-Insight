@@ -24,6 +24,8 @@ export default function CreativeStudioTestimonial() {
   const [loading, setLoading] = useState(false);
   const [html, setHtml] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [logoPosition, setLogoPosition] = useState("bottom-center");
+  const [contactInfo, setContactInfo] = useState({ website: "", instagram: "", phone: "" });
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function CreativeStudioTestimonial() {
       const r = await fetch(API("/generate/testimonial"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, testimonialText, customerName, customerRole, rating, format, showBrandName }),
+        body: JSON.stringify({ brandId: activeBrandId, testimonialText, customerName, customerRole, rating, format, showBrandName, logoPosition, contactInfo }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
@@ -184,6 +186,34 @@ export default function CreativeStudioTestimonial() {
                 style={{ transform: showBrandName ? "translateX(20px)" : "translateX(2px)" }}
               />
             </button>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Logo position</label>
+            <div className="grid grid-cols-5 gap-1.5">
+              {[
+                { value: "top-left", label: "↖ Top L" },
+                { value: "top-right", label: "↗ Top R" },
+                { value: "bottom-left", label: "↙ Bot L" },
+                { value: "bottom-center", label: "↓ Center" },
+                { value: "bottom-right", label: "↘ Bot R" },
+              ].map(pos => (
+                <button key={pos.value} type="button" onClick={() => setLogoPosition(pos.value)}
+                  className={cn("py-2 rounded-lg border text-xs font-medium transition-all",
+                    logoPosition === pos.value ? "border-primary bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-foreground/30")}>
+                  {pos.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact on post <span className="normal-case font-normal">(optional)</span></label>
+            <div className="space-y-2">
+              <input type="text" value={contactInfo.website} onChange={e => setContactInfo(ci => ({ ...ci, website: e.target.value }))} placeholder="🌐 Website (e.g. yoursite.com)" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <input type="text" value={contactInfo.instagram} onChange={e => setContactInfo(ci => ({ ...ci, instagram: e.target.value }))} placeholder="📷 Instagram (@yourbrand)" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <input type="text" value={contactInfo.phone} onChange={e => setContactInfo(ci => ({ ...ci, phone: e.target.value }))} placeholder="📞 Phone number" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
           </div>
 
           <button

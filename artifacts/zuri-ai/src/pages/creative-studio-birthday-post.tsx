@@ -22,6 +22,9 @@ export default function CreativeStudioBirthdayPost() {
   const [html, setHtml] = useState<string | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [logoPosition, setLogoPosition] = useState("bottom-center");
+  const [contactInfo, setContactInfo] = useState({ website: "", instagram: "", phone: "" });
+  const [celebrantPhotoDataUrl, setCelebrantPhotoDataUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
   useEffect(() => {
@@ -39,7 +42,7 @@ export default function CreativeStudioBirthdayPost() {
       const r = await fetch(API("/generate/birthday-post"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brandId: activeBrandId, personName, personRole, shortMessage, showBrandName }),
+        body: JSON.stringify({ brandId: activeBrandId, personName, personRole, shortMessage, showBrandName, logoPosition, contactInfo, celebrantPhotoDataUrl }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
@@ -71,6 +74,14 @@ export default function CreativeStudioBirthdayPost() {
     } finally {
       setDownloading(false);
     }
+  }
+
+  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setCelebrantPhotoDataUrl(ev.target?.result as string ?? null);
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -149,6 +160,50 @@ export default function CreativeStudioBirthdayPost() {
                 style={{ transform: showBrandName ? "translateX(20px)" : "translateX(2px)" }}
               />
             </button>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Celebrant photo <span className="normal-case font-normal">(optional)</span></label>
+            {celebrantPhotoDataUrl ? (
+              <div className="relative">
+                <img src={celebrantPhotoDataUrl} alt="Celebrant" className="w-full h-28 object-cover rounded-lg" />
+                <button type="button" onClick={() => setCelebrantPhotoDataUrl(null)} className="absolute top-2 right-2 bg-background/80 border border-border rounded-full px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">✕ Remove</button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                <span className="text-2xl">📷</span>
+                <span className="text-xs text-muted-foreground mt-1">Click to upload photo</span>
+                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+              </label>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Logo position</label>
+            <div className="grid grid-cols-5 gap-1.5">
+              {[
+                { value: "top-left", label: "↖ Top L" },
+                { value: "top-right", label: "↗ Top R" },
+                { value: "bottom-left", label: "↙ Bot L" },
+                { value: "bottom-center", label: "↓ Center" },
+                { value: "bottom-right", label: "↘ Bot R" },
+              ].map(pos => (
+                <button key={pos.value} type="button" onClick={() => setLogoPosition(pos.value)}
+                  className={cn("py-2 rounded-lg border text-xs font-medium transition-all",
+                    logoPosition === pos.value ? "border-primary bg-primary/8 text-primary" : "border-border text-muted-foreground hover:border-foreground/30")}>
+                  {pos.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Contact on post <span className="normal-case font-normal">(optional)</span></label>
+            <div className="space-y-2">
+              <input type="text" value={contactInfo.website} onChange={e => setContactInfo(ci => ({ ...ci, website: e.target.value }))} placeholder="🌐 Website (e.g. yoursite.com)" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <input type="text" value={contactInfo.instagram} onChange={e => setContactInfo(ci => ({ ...ci, instagram: e.target.value }))} placeholder="📷 Instagram (@yourbrand)" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <input type="text" value={contactInfo.phone} onChange={e => setContactInfo(ci => ({ ...ci, phone: e.target.value }))} placeholder="📞 Phone number" className="w-full px-3.5 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
           </div>
 
           <button
