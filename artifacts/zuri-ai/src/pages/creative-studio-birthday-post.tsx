@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
+import { removeBackground } from "@imgly/background-removal";
 
 const API = (path: string) => `/api${path}`;
 
@@ -25,6 +26,7 @@ export default function CreativeStudioBirthdayPost() {
   const [logoPosition, setLogoPosition] = useState("bottom-center");
   const [contactInfo, setContactInfo] = useState({ website: "", instagram: "", phone: "" });
   const [celebrantPhotoDataUrl, setCelebrantPhotoDataUrl] = useState<string | null>(null);
+  const [removingBg, setRemovingBg] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
   useEffect(() => {
@@ -82,6 +84,23 @@ export default function CreativeStudioBirthdayPost() {
     const reader = new FileReader();
     reader.onload = ev => setCelebrantPhotoDataUrl(ev.target?.result as string ?? null);
     reader.readAsDataURL(file);
+  }
+
+  async function handleRemoveBg() {
+    if (!celebrantPhotoDataUrl) return;
+    setRemovingBg(true);
+    try {
+      const res = await fetch(celebrantPhotoDataUrl);
+      const blob = await res.blob();
+      const resultBlob = await removeBackground(blob);
+      const reader = new FileReader();
+      reader.onload = ev => setCelebrantPhotoDataUrl(ev.target?.result as string ?? null);
+      reader.readAsDataURL(resultBlob);
+    } catch {
+      toast({ title: "Background removal failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setRemovingBg(false);
+    }
   }
 
   return (
@@ -165,9 +184,19 @@ export default function CreativeStudioBirthdayPost() {
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Celebrant photo <span className="normal-case font-normal">(optional)</span></label>
             {celebrantPhotoDataUrl ? (
-              <div className="relative">
-                <img src={celebrantPhotoDataUrl} alt="Celebrant" className="w-full h-28 object-cover rounded-lg" />
-                <button type="button" onClick={() => setCelebrantPhotoDataUrl(null)} className="absolute top-2 right-2 bg-background/80 border border-border rounded-full px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">✕ Remove</button>
+              <div className="space-y-2">
+                <div className="relative rounded-lg overflow-hidden" style={{ background: "repeating-conic-gradient(#80808020 0% 25%, transparent 0% 50%) 0 0 / 12px 12px" }}>
+                  <img src={celebrantPhotoDataUrl} alt="Celebrant" className="w-full h-28 object-contain" />
+                  <button type="button" onClick={() => setCelebrantPhotoDataUrl(null)} className="absolute top-2 right-2 bg-background/80 border border-border rounded-full px-2.5 py-0.5 text-xs font-medium text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors">✕</button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveBg}
+                  disabled={removingBg}
+                  className="w-full py-1.5 rounded-lg border border-border text-xs font-medium text-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+                >
+                  {removingBg ? <><Loader2 className="h-3 w-3 animate-spin" />Removing background...</> : "✨ Remove background"}
+                </button>
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
