@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
 const API = (path: string) => `/api${path}`;
@@ -14,6 +15,7 @@ interface IGStatus {
   username?: string;
   expiresAt?: string;
   connectedAt?: string;
+  needsReauth?: boolean;
 }
 
 export default function SettingsSocial() {
@@ -23,8 +25,14 @@ export default function SettingsSocial() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [location] = useLocation();
+  const { session } = useAuth();
 
   const [bannerMsg, setBannerMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  function authHeaders(): HeadersInit {
+    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -34,17 +42,18 @@ export default function SettingsSocial() {
     if (connected === "instagram") {
       setBannerMsg({
         type: "success",
-        text: username
-          ? `Instagram connected as @${username}`
-          : "Instagram connected successfully",
+        text: username ? `Instagram connected as @${username}` : "Instagram connected successfully",
       });
       window.history.replaceState({}, "", window.location.pathname);
     } else if (error) {
       const errorMessages: Record<string, string> = {
-        no_facebook_pages: "No Facebook Pages found. Make sure you have a Facebook Page linked to your Instagram Business account.",
-        no_instagram_business_account: "No Instagram Business Account found. Your Instagram account must be a Business or Creator account linked to a Facebook Page.",
+        no_facebook_pages:
+          "No Facebook Pages found. Make sure you have a Facebook Page linked to your Instagram Business account.",
+        no_instagram_business_account:
+          "No Instagram Business Account found. Your Instagram account must be a Business or Creator account linked to a Facebook Page.",
         missing_brand: "Brand not found. Please try again.",
-        Access_denied: "Access was denied. Please try again and grant all requested permissions.",
+        access_denied: "Access was denied. Please try again and grant all requested permissions.",
+        invalid_state: "Invalid session state. Please try connecting again.",
       };
       setBannerMsg({
         type: "error",
@@ -56,32 +65,64 @@ export default function SettingsSocial() {
 
   const { data: igStatus, isLoading: statusLoading } = useQuery<IGStatus>({
     queryKey: ["ig-status", activeBrandId],
-    queryFn: () =>
-      fetch(API(`/oauth/instagram/status?brandId=${activeBrandId}`)).then((r) => r.json()),
-    enabled: !!activeBrandId,
+    queryFn: async () => {
+      const r = await fetch(API(`/oauth/instagram/status?brandId=${activeBrandId}`), {
+        headers: authHeaders(),
+      });
+      if (!r.ok) throw new Error("Failed to fetch status");
+      return r.json();
+    },
+    enabled: !!activeBrandId && !!session,
     staleTime: 30000,
   });
 
   const disconnectMutation = useMutation({
-    mutationFn: () =>
-      fetch(API(`/oauth/instagram/disconnect?brandId=${activeBrandId}`), { method: "DELETE" }).then(
-        (r) => r.json(),
-      ),
+    mutationFn: async () => {
+      const r = await fetch(API(`/oauth/instagram/disconnect?brandId=${activeBrandId}`), {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        throw new Error(data?.error ?? "Failed to disconnect");
+      }
+      return r.json();
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ig-status", activeBrandId] });
       toast({ title: "Instagram disconnected" });
     },
-    onError: () => {
-      toast({ title: "Failed to disconnect", variant: "destructive" });
+    onError: (err: any) => {
+      toast({ title: err?.message ?? "Failed to disconnect", variant: "destructive" });
     },
   });
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (!activeBrandId) {
       toast({ title: "Select a brand first", variant: "destructive" });
       return;
     }
-    window.location.href = API(`/oauth/instagram/connect?brandId=${activeBrandId}`);
+    if (!session?.access_token) {
+      toast({ title: "You must be signed in to connect Instagram", variant: "destructive" });
+      return;
+    }
+    setConnecting(true);
+    try {
+      const r = await fetch(API(`/oauth/instagram/connect-url?brandId=${activeBrandId}`), {
+        headers: authHeaders(),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        toast({ title: data?.error ?? "Failed to start Instagram connection", variant: "destructive" });
+        return;
+      }
+      const { authUrl } = await r.json();
+      window.location.href = authUrl;
+    } catch {
+      toast({ title: "Failed to start Instagram connection", variant: "destructive" });
+    } finally {
+      setConnecting(false);
+    }
   };
 
   return (
@@ -154,14 +195,21 @@ export default function SettingsSocial() {
           ) : (
             <button
               onClick={handleConnect}
-              disabled={!activeBrandId}
+              disabled={!activeBrandId || connecting}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              <Link2 className="h-4 w-4" />
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
               Connect
             </button>
           )}
         </div>
+
+        {igStatus?.needsReauth && (
+          <div className="mt-4 pt-4 border-t border-border flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>Token expired — reconnect Instagram to resume publishing.</span>
+          </div>
+        )}
 
         {igStatus?.connected && igStatus.username && (
           <div className="mt-4 pt-4 border-t border-border flex items-center gap-3">
@@ -179,7 +227,7 @@ export default function SettingsSocial() {
           </div>
         )}
 
-        {!igStatus?.connected && (
+        {!igStatus?.connected && !igStatus?.needsReauth && (
           <div className="mt-4 pt-4 border-t border-border space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Requirements</p>
             <ul className="space-y-1.5">

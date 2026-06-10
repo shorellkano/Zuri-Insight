@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, socialConnectionsTable, brandsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { encryptToken, decryptToken, signOAuthState, verifyOAuthState } from "../lib/tokenCrypto";
+import { requireAuth, type AuthedRequest } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
@@ -20,32 +21,36 @@ function getAppSecret() {
 }
 
 function getAppUrl() {
-  return process.env.APP_URL ?? "https://zuri-insight-seunalla22.replit.app";
+  return (process.env.APP_URL ?? "https://zuri-insight-seunalla22.replit.app").replace(/\/$/, "");
 }
 
 function getCallbackUrl() {
   return `${getAppUrl()}/api/oauth/instagram/callback`;
 }
 
-async function verifyBrandExists(brandId: string): Promise<boolean> {
+async function verifyBrandOwnership(brandId: string, userId: string): Promise<boolean> {
   const [brand] = await db
-    .select({ id: brandsTable.id })
+    .select({ id: brandsTable.id, userId: brandsTable.userId })
     .from(brandsTable)
     .where(eq(brandsTable.id, brandId))
     .limit(1);
-  return !!brand;
+
+  if (!brand) return false;
+  return brand.userId === null || brand.userId === userId;
 }
 
-router.get("/oauth/instagram/connect", async (req: Request, res: Response): Promise<void> => {
+router.get("/oauth/instagram/connect-url", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const authed = req as AuthedRequest;
   const { brandId } = req.query as { brandId?: string };
+
   if (!brandId) {
     res.status(400).json({ error: "brandId is required" });
     return;
   }
 
-  const brandExists = await verifyBrandExists(brandId).catch(() => false);
-  if (!brandExists) {
-    res.status(404).json({ error: "Brand not found" });
+  const owned = await verifyBrandOwnership(brandId, authed.userId).catch(() => false);
+  if (!owned) {
+    res.status(403).json({ error: "You do not have access to this brand." });
     return;
   }
 
@@ -67,7 +72,7 @@ router.get("/oauth/instagram/connect", async (req: Request, res: Response): Prom
     response_type: "code",
   });
 
-  res.redirect(`https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`);
+  res.json({ authUrl: `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}` });
 });
 
 router.get("/oauth/instagram/callback", async (req: Request, res: Response): Promise<void> => {
@@ -85,8 +90,13 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
     return;
   }
 
-  const brandExists = await verifyBrandExists(brandId).catch(() => false);
-  if (!brandExists) {
+  const [brand] = await db
+    .select({ id: brandsTable.id })
+    .from(brandsTable)
+    .where(eq(brandsTable.id, brandId))
+    .limit(1);
+
+  if (!brand) {
     res.redirect(`${appUrl}/settings/social?error=brand_not_found`);
     return;
   }
@@ -169,14 +179,7 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
     if (existing.length > 0) {
       await db
         .update(socialConnectionsTable)
-        .set({
-          accessToken: encryptedToken,
-          tokenExpiresAt,
-          igUserId,
-          igUsername,
-          pageId,
-          updatedAt: new Date(),
-        })
+        .set({ accessToken: encryptedToken, tokenExpiresAt, igUserId, igUsername, pageId, updatedAt: new Date() })
         .where(eq(socialConnectionsTable.id, existing[0].id));
     } else {
       await db.insert(socialConnectionsTable).values({
@@ -192,22 +195,23 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
 
     res.redirect(`${appUrl}/settings/social?connected=instagram&username=${encodeURIComponent(igUsername ?? "")}`);
   } catch (err: any) {
-    req.log?.error({ err }, "Instagram OAuth callback error");
     const msg = err?.message ?? "Unknown error";
     res.redirect(`${appUrl}/settings/social?error=${encodeURIComponent(msg)}`);
   }
 });
 
-router.get("/oauth/instagram/status", async (req: Request, res: Response): Promise<void> => {
+router.get("/oauth/instagram/status", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const authed = req as AuthedRequest;
   const { brandId } = req.query as { brandId?: string };
+
   if (!brandId) {
     res.status(400).json({ error: "brandId is required" });
     return;
   }
 
-  const brandExists = await verifyBrandExists(brandId).catch(() => false);
-  if (!brandExists) {
-    res.status(404).json({ error: "Brand not found" });
+  const owned = await verifyBrandOwnership(brandId, authed.userId).catch(() => false);
+  if (!owned) {
+    res.status(403).json({ error: "You do not have access to this brand." });
     return;
   }
 
@@ -242,16 +246,18 @@ router.get("/oauth/instagram/status", async (req: Request, res: Response): Promi
   });
 });
 
-router.delete("/oauth/instagram/disconnect", async (req: Request, res: Response): Promise<void> => {
+router.delete("/oauth/instagram/disconnect", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const authed = req as AuthedRequest;
   const { brandId } = req.query as { brandId?: string };
+
   if (!brandId) {
     res.status(400).json({ error: "brandId is required" });
     return;
   }
 
-  const brandExists = await verifyBrandExists(brandId).catch(() => false);
-  if (!brandExists) {
-    res.status(404).json({ error: "Brand not found" });
+  const owned = await verifyBrandOwnership(brandId, authed.userId).catch(() => false);
+  if (!owned) {
+    res.status(403).json({ error: "You do not have access to this brand." });
     return;
   }
 
