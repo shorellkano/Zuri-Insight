@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const API = (path: string) => `/api${path}`;
@@ -12,11 +12,13 @@ interface SchedulePostSheetProps {
   brandId: string;
   defaultDate?: string;
   defaultCaption?: string;
+  previewHtml?: string;
+  canvasH?: number;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, onClose, onSaved }: SchedulePostSheetProps) {
+export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, previewHtml, canvasH = 1080, onClose, onSaved }: SchedulePostSheetProps) {
   const { toast } = useToast();
   const [platform, setPlatform] = useState("instagram");
   const [postType, setPostType] = useState("feed_post");
@@ -25,6 +27,9 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, onClos
   const [time, setTime] = useState("09:00");
   const [timezone, setTimezone] = useState("Africa/Lagos");
   const [saving, setSaving] = useState(false);
+  const thumbW = 160;
+  const thumbH = Math.round(thumbW * (canvasH / 1080));
+  const thumbScale = thumbW / 1080;
 
   async function save() {
     if (!date || !time) return;
@@ -58,6 +63,37 @@ export function SchedulePostSheet({ brandId, defaultDate, defaultCaption, onClos
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+          {/* ── Creative thumbnail ── */}
+          {previewHtml && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Creative</label>
+              <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg border border-border">
+                <div
+                  className="rounded overflow-hidden border border-border flex-shrink-0"
+                  style={{ width: thumbW, height: thumbH, position: "relative" }}
+                >
+                  <div
+                    style={{ position: "absolute", top: 0, left: 0, width: 1080, height: canvasH, transform: `scale(${thumbScale})`, transformOrigin: "top left", pointerEvents: "none" }}
+                    dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-xs font-medium text-foreground">Generated creative</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">1 image attached</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Posting notice ── */}
+          <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-lg">
+            <Info className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+              <strong>Saved to your calendar.</strong> Zuri does not auto-publish yet — you'll need to post the downloaded image manually at the scheduled time. Auto-publishing is on the roadmap.
+            </p>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Platform</label>
             <select

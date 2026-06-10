@@ -2,11 +2,11 @@ import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { useBrand } from "@/context/brand-context";
 import { Loader2, Download, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { PhotoUploadPanel } from "@/components/photo-upload-panel";
 import { StudioPageShell } from "@/components/studio-page-shell";
+import { SchedulePostSheet } from "@/components/schedule-post-sheet";
 
 const API = (path: string) => `/api${path}`;
 
@@ -29,6 +29,7 @@ export default function CreativeStudioAnnouncement() {
   const [contactInfo, setContactInfo] = useState({ website: "", instagram: "", phone: "" });
   const [customPhotoDataUrl, setCustomPhotoDataUrl] = useState<string | null>(null);
   const [smoothFace, setSmoothFace] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
   const measureRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(0);
   useLayoutEffect(() => {
@@ -234,17 +235,36 @@ export default function CreativeStudioAnnouncement() {
             >
               {downloading ? <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</> : <><Download className="h-4 w-4" />Download PNG</>}
             </button>
-            <Link href="/calendar" className="flex-1">
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                <Calendar className="h-4 w-4" />
-                Schedule
-              </button>
-            </Link>
+            <button
+              onClick={() => setShowSchedule(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              <Calendar className="h-4 w-4" />
+              Schedule
+            </button>
           </div>
         </>
       )}
     </div>
   );
 
-  return <StudioPageShell title="Announcement" settings={settingsNode} preview={previewNode} />;
+  const captionForSchedule = generated
+    ? `${generated.headline}\n\n${generated.subtext}\n\n${generated.cta}`
+    : "";
+
+  return (
+    <>
+      <StudioPageShell title="Announcement" settings={settingsNode} preview={previewNode} />
+      {showSchedule && activeBrandId && (
+        <SchedulePostSheet
+          brandId={activeBrandId}
+          defaultCaption={captionForSchedule}
+          previewHtml={html ?? undefined}
+          canvasH={canvasH}
+          onClose={() => setShowSchedule(false)}
+          onSaved={() => setShowSchedule(false)}
+        />
+      )}
+    </>
+  );
 }
