@@ -93,16 +93,24 @@ export default function BulkPlan() {
     if (!activeBrandId || selectedPlatforms.size === 0) return;
     setLoading(true);
     try {
-      const r = await fetch(API(`/brands/${activeBrandId}/bulk-plan/suggest`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startDate, endDate,
-          platforms: Array.from(selectedPlatforms),
-          postsPerPlatformPerWeek: postsPerWeek,
-          contentMix: mix,
-        }),
-      });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 75_000);
+      let r: Response;
+      try {
+        r = await fetch(API(`/brands/${activeBrandId}/bulk-plan/suggest`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate, endDate,
+            platforms: Array.from(selectedPlatforms),
+            postsPerPlatformPerWeek: postsPerWeek,
+            contentMix: mix,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Failed to generate suggestion");
       setPlan(data.plan);
@@ -111,7 +119,14 @@ export default function BulkPlan() {
       setFailedItems(new Set());
       setStep("suggestion");
     } catch (err: any) {
-      toast({ title: "Failed to generate plan", description: err.message, variant: "destructive" });
+      const isTimeout = err?.name === "AbortError";
+      toast({
+        title: isTimeout ? "Took too long" : "Failed to generate plan",
+        description: isTimeout
+          ? "The plan took too long to generate. Try fewer platforms or a shorter date range."
+          : err.message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

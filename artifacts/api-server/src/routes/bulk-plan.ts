@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lte, or } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 import { db, brandsTable, contentPlansTable, contentPlanItemsTable, calendarEventsTable, brandCalendarEventsTable, brandDnaTable } from "@workspace/db";
-import { aiJSON, hasAI } from "../lib/ai.js";
+import { aiJSONRace, hasAI } from "../lib/ai.js";
 
 const router: IRouter = Router();
 
@@ -48,55 +48,62 @@ router.post("/brands/:brandId/bulk-plan/suggest", async (req, res): Promise<void
   try {
     if (!hasAI()) throw new Error("no-ai");
 
-    const system = `You are a senior social media strategist for African businesses.
-Build a structured content calendar plan.
-Return ONLY valid JSON. No markdown, no explanation.`;
+    // Estimate total slots to size the token budget correctly
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const totalWeeks = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (7 * 86400000)));
+    const estimatedSlots = platforms.length * postsPerPlatformPerWeek * totalWeeks;
+    // ~110 tokens per slot (compact JSON) + 400 overhead; cap at 4000
+    const tokenBudget = Math.min(4000, Math.max(1200, estimatedSlots * 110 + 400));
+
+    const eventSummary = globalEvents
+      .slice(0, 6)
+      .map(e => `${e.name} (month ${e.month}, day ${e.day ?? "?"})`)
+      .join("; ");
+
+    const brandEventSummary = brandEvents
+      .slice(0, 4)
+      .map(e => `${e.name} on ${e.eventDate}`)
+      .join("; ");
+
+    const system = `You are a social media strategist for African businesses.
+Return ONLY valid compact JSON. No markdown fences, no explanation.`;
 
     const user = `Build a content calendar for ${brand.name} (${brand.industry ?? "business"}, ${brand.country ?? "Nigeria"}).
 
-PERIOD: ${startDate} to ${endDate}
-PLATFORMS: ${platforms.join(", ")}
-FREQUENCY: ${postsPerPlatformPerWeek} posts per platform per week
-CONTENT MIX: ${mix.promotional}% promotional, ${mix.educational}% educational, ${mix.engagement}% engagement, ${mix.brand_story}% brand story
-BRAND THEMES: ${themes.slice(0, 5).join(", ")}
+Period: ${startDate} to ${endDate}
+Platforms: ${platforms.join(", ")}
+Frequency: ${postsPerPlatformPerWeek} posts per platform per week
+Mix: ${mix.promotional}% promo, ${mix.educational}% edu, ${mix.engagement}% engage, ${mix.brand_story}% story
+Themes: ${themes.slice(0, 4).join(", ")}
+${eventSummary ? `Calendar events: ${eventSummary}` : ""}
+${brandEventSummary ? `Brand events: ${brandEventSummary}` : ""}
 
-GLOBAL CALENDAR EVENTS IN THIS PERIOD:
-${JSON.stringify(globalEvents.slice(0, 10).map(e => ({ name: e.name, month: e.month, day: e.day, angle: e.contentAngle })), null, 2)}
+Rules: Spread posts evenly. Vary post types (feed_post/carousel/reel/story). Peak times WAT: 07:00, 12:00, 19:00.
 
-BRAND-SPECIFIC EVENTS:
-${JSON.stringify(brandEvents.map(e => ({ name: e.name, date: e.eventDate, type: e.eventType })), null, 2)}
+Return JSON with a "slots" array. Each slot:
+{"date":"YYYY-MM-DD","platform":"instagram","time":"12:00","type":"reel","theme":"Product highlight","angle":"One sentence describing what this post says","event":null}
 
-RULES:
-1. Calendar events and brand events get dedicated posts.
-2. For major events, suggest a lead-up post 1-2 days before.
-3. Distribute posts evenly across the week.
-4. Vary post type (feed_post, carousel, reel, story) across the plan.
-5. Vary content theme - no two consecutive posts on same theme.
-6. Suggest optimal posting times (WAT timezone, peak hours: 7am, 12pm, 7pm).
-7. Professional English content angles only.
+Return exactly this JSON structure:
+{"slots":[...]}`;
 
-Return JSON:
-{
-  "period": { "start": "${startDate}", "end": "${endDate}", "total_posts": 0 },
-  "platforms": [],
-  "calendar_events_included": [],
-  "slots": [
-    {
-      "slot_number": 1,
-      "date": "YYYY-MM-DD",
-      "platform": "instagram",
-      "suggested_time": "09:00",
-      "post_type": "feed_post",
-      "content_theme": "Product highlight",
-      "calendar_event": null,
-      "content_angle": "What this post should say",
-      "design_style": "Quote card",
-      "priority": "normal"
-    }
-  ]
-}`;
+    const suggestion = await aiJSONRace<{ slots: any[] }>(system, user, tokenBudget);
 
-    const suggestion = await aiJSON<{ period: any; platforms: string[]; calendar_events_included: any[]; slots: any[] }>(system, user, 500);
+    const rawSlots: any[] = Array.isArray(suggestion?.slots) ? suggestion.slots : [];
+
+    // Normalise field names (model may vary: suggested_time vs time, post_type vs type, etc.)
+    const slots = rawSlots
+      .filter(s => s && s.date && s.platform)
+      .map((s, i) => ({
+        date: s.date,
+        platform: String(s.platform).toLowerCase(),
+        suggested_time: s.time ?? s.suggested_time ?? "12:00",
+        post_type: s.type ?? s.post_type ?? "feed_post",
+        content_theme: s.theme ?? s.content_theme ?? themes[i % themes.length] ?? "Brand story",
+        content_angle: s.angle ?? s.content_angle ?? "",
+        calendar_event: s.event ?? s.calendar_event ?? null,
+        design_style: s.design_style ?? "Standard post",
+      }));
 
     const userId = (req as any).user?.id ?? brandId;
     const [plan] = await db.insert(contentPlansTable).values({
@@ -110,29 +117,32 @@ Return JSON:
       status: "draft",
     }).returning();
 
-    const items = await db.insert(contentPlanItemsTable).values(
-      suggestion.slots.map((slot: any) => ({
-        planId: plan.id,
-        brandId,
-        platform: slot.platform,
-        postType: slot.post_type,
-        suggestedDate: slot.date,
-        suggestedTime: slot.suggested_time,
-        contentTheme: slot.content_theme,
-        calendarEvent: slot.calendar_event,
-        contentAngle: slot.content_angle,
-        designBrief: slot.design_style,
-        status: "draft",
-      }))
-    ).returning();
+    // Guard: don't insert if no slots (DB would throw on empty values)
+    const items = slots.length > 0
+      ? await db.insert(contentPlanItemsTable).values(
+          slots.map(slot => ({
+            planId: plan.id,
+            brandId,
+            platform: slot.platform,
+            postType: slot.post_type,
+            suggestedDate: slot.date,
+            suggestedTime: slot.suggested_time,
+            contentTheme: slot.content_theme,
+            calendarEvent: slot.calendar_event,
+            contentAngle: slot.content_angle,
+            designBrief: slot.design_style,
+            status: "draft",
+          }))
+        ).returning()
+      : [];
 
-    res.status(201).json({ plan, items, suggestion });
+    res.status(201).json({ plan, items, suggestion: { ...suggestion, slots } });
   } catch (err: any) {
     if (err.message === "no-ai") {
       res.status(503).json({ error: "AI unavailable" });
     } else {
       console.error("Bulk plan error:", err);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: String(err.message ?? "Generation failed") });
     }
   }
 });
