@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Video, Clapperboard, Star, Package, User, Instagram, Youtube,
   PlaySquare, Upload, X, Download, Loader2, Sparkles, RefreshCw,
-  Zap, CheckCircle, AlertCircle,
+  Zap, CheckCircle, AlertCircle, ArrowLeft,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -219,12 +219,15 @@ export default function CreativeStudioUgcVideo() {
       <div className="max-w-5xl mx-auto px-4 py-8">
 
         <div className="mb-6">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-            <Link href="/generate/creative-studio" className="hover:text-foreground transition-colors">
-              Creative Studio
-            </Link>
-            <span>/</span>
-            <span className="text-foreground">UGC Video</span>
+          <div className="flex items-center gap-4 flex-wrap mb-2">
+            <button onClick={() => window.history.back()} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-3.5 w-3.5" />Back
+            </button>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Link href="/generate/creative-studio" className="hover:text-foreground transition-colors">Creative Studio</Link>
+              <span>/</span>
+              <span className="text-foreground">UGC Video</span>
+            </div>
           </div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Video className="h-6 w-6 text-primary" />

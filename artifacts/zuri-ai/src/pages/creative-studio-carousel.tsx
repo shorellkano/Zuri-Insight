@@ -119,12 +119,15 @@ export default function CreativeStudioCarousel() {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/generate/creative-studio" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-          Creative Studio
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-sm font-medium text-foreground">Carousel Post</span>
+      <div className="flex items-center gap-4 flex-wrap">
+        <button onClick={() => window.history.back()} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ChevronLeft className="h-4 w-4" />Back
+        </button>
+        <div className="flex items-center gap-2 text-sm">
+          <Link href="/generate/creative-studio" className="text-muted-foreground hover:text-foreground transition-colors">Creative Studio</Link>
+          <span className="text-muted-foreground">/</span>
+          <span className="font-medium text-foreground">Carousel Post</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-6 items-start">

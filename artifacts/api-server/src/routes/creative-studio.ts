@@ -150,32 +150,45 @@ function buildSlideHtml({ headline, body, cta, brandName, colors, style, slideNu
   colors: string[]; style: string; slideNumber: number; total: number; showBrandName?: boolean; logoUrl?: string | null;
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
-  const isDark = style === "dark" || style === "premium";
-  const bgColor = isDark ? "#0F0F0F" : bg;
-  const textColor = isDark ? "#FFFFFF" : text;
+  const bgColor = bg;
+  const textColor = text;
+  const hs = headline.length > 45 ? 50 : headline.length > 30 ? 62 : 72;
+  const isFirst = slideNumber === 1;
+  const isLast = slideNumber === total;
 
-  let brandTag = `<span></span>`;
+  let brandTag = "";
   if (showBrandName) {
-    if (logoUrl) {
-      brandTag = `<img src="${logoUrl}" alt="${brandName}" style="height:36px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`;
-    } else {
-      brandTag = `<span style="color:${primary};font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`;
-    }
+    brandTag = logoUrl
+      ? `<img src="${logoUrl}" alt="${brandName}" style="height:38px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`
+      : `<span style="color:${primary};font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`;
   }
 
-  return `<div style="width:1080px;height:1080px;background:${bgColor};display:flex;flex-direction:column;justify-content:space-between;padding:80px;font-family:'Inter',sans-serif;box-sizing:border-box;position:relative;overflow:hidden;">
-  <div style="position:absolute;top:0;left:0;width:12px;height:100%;background:${primary};"></div>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-left:20px;">
-    ${brandTag}
-    <span style="color:${textColor}80;font-size:16px;">${slideNumber} / ${total}</span>
+  const accentBar = `<div style="position:absolute;left:0;top:0;bottom:0;width:22px;background:linear-gradient(180deg,${primary} 0%,${primary}88 100%);"></div>`;
+  const bgCircle = isFirst
+    ? `<div style="position:absolute;top:-160px;right:-160px;width:560px;height:560px;border-radius:50%;background:${primary};opacity:0.10;"></div>`
+    : `<div style="position:absolute;bottom:-120px;right:-120px;width:420px;height:420px;border-radius:50%;background:${primary};opacity:0.08;"></div>`;
+
+  const progressDots = Array.from({ length: total }, (_, i) =>
+    `<div style="width:${i === slideNumber - 1 ? '32px' : '10px'};height:10px;border-radius:5px;background:${i === slideNumber - 1 ? primary : text + '30'};transition:all 0.3s;"></div>`
+  ).join("");
+
+  return `<div style="width:1080px;height:1080px;background:${bgColor};display:flex;flex-direction:column;font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;box-sizing:border-box;position:relative;overflow:hidden;">
+  ${accentBar}
+  ${bgCircle}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:60px 64px 0 88px;position:relative;">
+    ${brandTag || "<span></span>"}
+    <div style="padding:10px 24px;background:${primary}22;border:1.5px solid ${primary}55;border-radius:100px;">
+      <span style="color:${primary};font-size:16px;font-weight:700;">${slideNumber} of ${total}</span>
+    </div>
   </div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;margin:40px 20px;">
-    <h2 style="color:${textColor};font-size:${headline.length > 40 ? '52px' : '64px'};font-weight:800;line-height:1.15;margin:0 0 32px 0;letter-spacing:-1px;">${headline}</h2>
-    <p style="color:${textColor}CC;font-size:26px;line-height:1.6;margin:0;">${body}</p>
-    ${cta ? `<div style="margin-top:40px;padding:16px 32px;background:${primary};display:inline-block;border-radius:8px;color:#FFFFFF;font-size:22px;font-weight:700;">${cta}</div>` : ""}
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:40px 64px 40px 88px;position:relative;gap:30px;">
+    ${isFirst ? `<div style="display:inline-flex;align-items:center;gap:10px;padding:8px 20px;background:${primary};border-radius:100px;width:fit-content;margin-bottom:4px;"><span style="color:#fff;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">START HERE</span></div>` : ""}
+    <h2 style="color:${textColor};font-size:${hs}px;font-weight:900;line-height:1.12;margin:0;letter-spacing:-1.5px;">${headline}</h2>
+    <p style="color:${textColor}CC;font-size:26px;line-height:1.65;margin:0;max-width:860px;">${body}</p>
+    ${cta ? `<div style="margin-top:8px;padding:20px 44px;background:${primary};display:inline-block;border-radius:14px;"><span style="color:#fff;font-size:22px;font-weight:700;">${cta} &#8594;</span></div>` : ""}
   </div>
-  <div style="height:4px;background:${primary}30;border-radius:2px;margin-left:20px;">
-    <div style="height:4px;width:${(slideNumber / total) * 100}%;background:${primary};border-radius:2px;"></div>
+  <div style="padding:0 64px 52px 88px;display:flex;align-items:center;gap:8px;position:relative;">
+    ${progressDots}
   </div>
 </div>`;
 }
@@ -186,24 +199,39 @@ function buildQuoteCardHtml({ quoteText, attribution, brandName, colors, backgro
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
+  const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const gradientBg = backgroundStyle === "gradient"
-    ? `background:linear-gradient(135deg, ${bg} 0%, ${primary}66 100%)`
+    ? `background:linear-gradient(145deg,${bg} 0%,${bg} 55%,${primary}44 100%)`
+    : backgroundStyle === "brand"
+    ? `background:${primary}`
     : `background:${bg}`;
+  const textOnBrand = backgroundStyle === "brand" ? "#fff" : text;
 
   let brandBlock = "";
   if (showBrandName) {
     if (logoUrl) {
-      brandBlock = `<img src="${logoUrl}" alt="${brandName}" style="height:40px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);margin:0 auto;" />`;
+      brandBlock = `<img src="${logoUrl}" alt="${brandName}" style="height:38px;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);" />`;
     } else {
-      brandBlock = `<p style="color:${primary};font-size:20px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin:0;">${brandName}</p>`;
+      brandBlock = `<span style="color:${backgroundStyle === "brand" ? "#fff" : primary};font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">${brandName}</span>`;
     }
   }
 
-  return `<div style="${dims};${gradientBg};display:flex;flex-direction:column;justify-content:center;align-items:center;padding:100px;font-family:'Inter',sans-serif;box-sizing:border-box;text-align:center;">
-  <div style="font-size:120px;color:${primary};line-height:0.5;margin-bottom:40px;opacity:0.4;">"</div>
-  <p style="color:${text};font-size:${quoteText.length > 100 ? '40px' : '52px'};font-weight:700;line-height:1.4;margin:0 0 48px 0;letter-spacing:-0.5px;">${quoteText}</p>
-  ${attribution ? `<p style="color:${text}80;font-size:24px;font-weight:500;margin:0 0 16px 0;">- ${attribution}</p>` : ""}
-  ${brandBlock ? `<div style="width:60px;height:3px;background:${primary};border-radius:2px;margin:16px 0;"></div>${brandBlock}` : ""}
+  const qs = quoteText.length > 140 ? 34 : quoteText.length > 80 ? 42 : 50;
+  const accentOnBrand = backgroundStyle === "brand" ? "#fff" : primary;
+  const circleOpacity = backgroundStyle === "brand" ? "0.15" : "0.12";
+  return `<div style="${dims};${gradientBg};display:flex;flex-direction:column;font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
+  <div style="position:absolute;top:-180px;right:-180px;width:600px;height:600px;border-radius:50%;background:${accentOnBrand};opacity:${circleOpacity};"></div>
+  <div style="position:absolute;bottom:-100px;left:-100px;width:380px;height:380px;border-radius:50%;background:${accentOnBrand};opacity:${circleOpacity};"></div>
+  <div style="position:absolute;left:0;top:0;bottom:0;width:18px;background:${accentOnBrand};opacity:0.9;"></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:80px 80px 60px 108px;position:relative;gap:32px;">
+    <div style="font-size:160px;color:${accentOnBrand};line-height:0.55;font-family:Georgia,serif;opacity:0.35;">"</div>
+    <p style="color:${textOnBrand};font-size:${qs}px;font-weight:700;line-height:1.45;margin:0;letter-spacing:-0.5px;">${quoteText}"</p>
+    ${attribution ? `<div style="display:flex;align-items:center;gap:16px;margin-top:8px;">
+      <div style="width:40px;height:3px;background:${accentOnBrand};border-radius:2px;opacity:0.7;"></div>
+      <p style="color:${textOnBrand}99;font-size:22px;font-weight:600;margin:0;">${attribution}</p>
+    </div>` : ""}
+  </div>
+  ${brandBlock ? `<div style="padding:32px 80px 56px 108px;position:relative;display:flex;align-items:center;">${brandBlock}</div>` : ""}
 </div>`;
 }
 
@@ -254,21 +282,34 @@ function buildAnnouncementHtml({ headline, subtext, cta, brandName, colors, form
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
+  const w = 1080;
+  const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const bm = brandMark({ showBrandName, logoUrl, brandName, primary, dark: true });
-  return `<div style="${dims};background:${bg};display:flex;flex-direction:column;font-family:'Inter',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-  <div style="position:absolute;top:0;left:0;right:0;height:8px;background:${primary};"></div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:100px;text-align:center;gap:32px;">
-    <div style="padding:8px 24px;background:${primary}22;border:1px solid ${primary}55;border-radius:100px;">
-      <span style="color:${primary};font-size:18px;font-weight:600;letter-spacing:3px;text-transform:uppercase;">Announcement</span>
-    </div>
-    <h1 style="color:${text};font-size:${headline.length > 30 ? '60px' : '76px'};font-weight:900;line-height:1.1;margin:0;letter-spacing:-2px;">${headline}</h1>
-    <p style="color:${text}BB;font-size:28px;line-height:1.5;margin:0;max-width:800px;">${subtext}</p>
-    <div style="margin-top:16px;padding:20px 48px;background:${primary};border-radius:12px;display:inline-block;">
-      <span style="color:#fff;font-size:24px;font-weight:700;">${cta}</span>
+  const hs = headline.length > 38 ? 60 : headline.length > 24 ? 72 : 86;
+
+  const diagSvg = `<svg style="position:absolute;top:0;left:0;width:${w}px;height:${h}px;pointer-events:none;" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polygon points="0,0 520,0 0,${Math.round(h * 0.42)}" fill="${primary}" opacity="0.20"/>
+    <polygon points="0,0 260,0 0,${Math.round(h * 0.22)}" fill="${primary}" opacity="0.18"/>
+  </svg>`;
+
+  return `<div style="${dims};background:${bg};display:flex;flex-direction:column;font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
+  ${diagSvg}
+  <div style="position:absolute;bottom:-200px;right:-200px;width:640px;height:640px;border-radius:50%;border:2px solid ${primary};opacity:0.14;"></div>
+  <div style="position:absolute;bottom:-100px;right:-100px;width:380px;height:380px;border-radius:50%;background:${primary};opacity:0.09;"></div>
+  <div style="position:absolute;left:0;top:0;bottom:0;width:20px;background:${primary};"></div>
+  <div style="padding:64px 64px 0 96px;display:flex;justify-content:space-between;align-items:center;position:relative;">
+    ${bm || "<span></span>"}
+    <div style="padding:10px 24px;border:2px solid ${primary};border-radius:100px;">
+      <span style="color:${primary};font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;">Announcement</span>
     </div>
   </div>
-  ${bm ? `<div style="padding:40px 100px;display:flex;justify-content:center;">${bm}</div>` : ""}
-  <div style="position:absolute;bottom:0;left:0;right:0;height:8px;background:${primary};"></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:48px 80px 48px 96px;position:relative;gap:32px;">
+    <h1 style="color:${text};font-size:${hs}px;font-weight:900;line-height:1.08;margin:0;letter-spacing:-2px;">${headline}</h1>
+    <p style="color:${text}BB;font-size:27px;line-height:1.7;margin:0;max-width:840px;">${subtext}</p>
+    <div style="padding:22px 48px;background:${primary};border-radius:16px;display:inline-block;margin-top:8px;">
+      <span style="color:#fff;font-size:23px;font-weight:700;">${cta} &#8594;</span>
+    </div>
+  </div>
 </div>`;
 }
 
@@ -308,24 +349,42 @@ function buildProductShowcaseHtml({ productName, headline, tagline, price, cta, 
 }) {
   const [primary, bg, text] = [colors[0] ?? "#D97706", colors[1] ?? "#1C1917", colors[2] ?? "#FFFFFF"];
   const dims = format === "story" ? "width:1080px;height:1920px" : format === "portrait" ? "width:1080px;height:1350px" : "width:1080px;height:1080px";
-  const bm = brandMark({ showBrandName, logoUrl, brandName, primary, dark: true });
-  return `<div style="${dims};background:${bg};display:flex;flex-direction:column;font-family:'Inter',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:60px 80px 0;">
-    ${bm || `<span></span>`}
-    ${price ? `<div style="padding:10px 28px;background:${primary};border-radius:100px;"><span style="color:#fff;font-size:22px;font-weight:800;">${price}</span></div>` : "<span></span>"}
-  </div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:60px 80px;gap:24px;">
-    <div style="width:60px;height:6px;background:${primary};border-radius:3px;"></div>
-    <p style="color:${primary};font-size:20px;font-weight:600;letter-spacing:3px;text-transform:uppercase;margin:0;">${productName}</p>
-    <h1 style="color:${text};font-size:${headline.length > 30 ? '56px' : '72px'};font-weight:900;line-height:1.1;margin:0;letter-spacing:-1px;">${headline}</h1>
-    <p style="color:${text}AA;font-size:26px;line-height:1.5;margin:0;">${tagline}</p>
-  </div>
-  <div style="padding:0 80px 80px;">
-    <div style="padding:22px 48px;background:${primary};border-radius:14px;display:inline-block;">
-      <span style="color:#fff;font-size:24px;font-weight:700;">${cta}</span>
+  const h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const hs = headline.length > 35 ? 54 : headline.length > 22 ? 66 : 78;
+  const bm = brandMark({ showBrandName, logoUrl, brandName, primary, dark: false });
+  const bmDark = brandMark({ showBrandName, logoUrl, brandName, primary, dark: true });
+
+  return `<div style="${dims};background:${bg};display:flex;flex-direction:row;font-family:system-ui,-apple-system,'Helvetica Neue',sans-serif;box-sizing:border-box;overflow:hidden;position:relative;">
+  <div style="width:340px;flex-shrink:0;background:${primary};display:flex;flex-direction:column;justify-content:space-between;padding:64px 48px;position:relative;overflow:hidden;">
+    <div style="position:absolute;bottom:-80px;left:-80px;width:320px;height:320px;border-radius:50%;background:#fff;opacity:0.08;"></div>
+    <div style="position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:#fff;opacity:0.08;"></div>
+    <div>
+      ${bm || ""}
+    </div>
+    <div style="position:relative;">
+      <p style="color:#fff;font-size:14px;font-weight:700;letter-spacing:4px;text-transform:uppercase;margin:0 0 20px 0;opacity:0.7;">PRODUCT</p>
+      <p style="color:#fff;font-size:32px;font-weight:900;line-height:1.2;margin:0;letter-spacing:-0.5px;">${productName}</p>
+      ${price ? `<div style="margin-top:28px;padding:14px 24px;background:#fff;border-radius:12px;display:inline-block;">
+        <span style="color:${primary};font-size:26px;font-weight:900;">${price}</span>
+      </div>` : ""}
     </div>
   </div>
-  <div style="position:absolute;right:0;top:0;bottom:0;width:8px;background:${primary};"></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:64px 72px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-140px;right:-140px;width:460px;height:460px;border-radius:50%;background:${primary};opacity:0.07;"></div>
+    <div style="display:flex;justify-content:flex-end;position:relative;">
+      ${bmDark || ""}
+    </div>
+    <div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;padding:32px 0;">
+      <div style="width:52px;height:5px;background:${primary};border-radius:3px;"></div>
+      <h1 style="color:${text};font-size:${hs}px;font-weight:900;line-height:1.1;margin:0;letter-spacing:-1.5px;">${headline}</h1>
+      <p style="color:${text}99;font-size:24px;line-height:1.6;margin:0;">${tagline}</p>
+    </div>
+    <div style="position:relative;">
+      <div style="padding:20px 44px;background:${primary};border-radius:14px;display:inline-block;">
+        <span style="color:#fff;font-size:22px;font-weight:700;">${cta} &#8594;</span>
+      </div>
+    </div>
+  </div>
 </div>`;
 }
 
