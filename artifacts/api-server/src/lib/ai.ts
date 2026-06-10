@@ -100,7 +100,7 @@ function logCooldownStatus(): void {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-const AI_REQUEST_TIMEOUT_MS = 25_000; // 25s per model attempt — skip slow models fast
+const AI_REQUEST_TIMEOUT_MS = 18_000; // 18s per model attempt — skip slow models fast
 
 export async function aiComplete(system: string, user: string, maxTokens = 900): Promise<string> {
   const client = getClient();
@@ -261,6 +261,52 @@ export async function aiJSON<T = any>(system: string, user: string, maxTokens = 
 
   if (availableModels().length < FREE_MODELS.length) throw RATE_LIMIT_ERR;
   throw lastErr ?? new Error("All AI models are currently unavailable. Please try again in a moment.");
+}
+
+/**
+ * Race the top `concurrency` available models simultaneously.
+ * Resolves as soon as the first valid JSON response arrives.
+ * Falls back to serial aiJSON if all racers fail.
+ */
+export async function aiJSONRace<T = any>(system: string, user: string, maxTokens = 600, concurrency = 3): Promise<T> {
+  const models = availableModels().slice(0, concurrency);
+
+  if (models.length === 0) {
+    // Nothing available — serial will throw RATE_LIMIT_ERR
+    return aiJSON<T>(system, user, maxTokens);
+  }
+
+  const client = getClient();
+  const messages = [
+    { role: "system" as const, content: system },
+    { role: "user" as const, content: user },
+  ];
+
+  const attempts = models.map(model =>
+    client.chat.completions.create(
+      { model, max_tokens: maxTokens, response_format: { type: "json_object" }, messages },
+      { timeout: AI_REQUEST_TIMEOUT_MS },
+    )
+    .then(response => {
+      const raw = response.choices[0]?.message?.content ?? "";
+      if (!raw) throw new Error("Empty response");
+      return extractJson<T>(raw);
+    })
+    .catch(err => {
+      if (isRateLimited(err)) markModelRateLimited(model);
+      console.warn(`[AI race] ${model} failed: ${err?.status ?? err?.message}`);
+      throw err;
+    }),
+  );
+
+  try {
+    // Promise.any: resolves with first success, rejects only if ALL fail
+    return await Promise.any(attempts);
+  } catch {
+    // All racers failed — fall back to full serial pool (different models)
+    console.warn(`[AI race] All ${models.length} racers failed — falling back to serial`);
+    return aiJSON<T>(system, user, maxTokens);
+  }
 }
 
 export function hasAI(): boolean {

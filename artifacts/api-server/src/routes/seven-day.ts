@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, brandsTable, brandDnaTable } from "@workspace/db";
-import { aiJSON, hasAI } from "../lib/ai.js";
+import { aiJSON, aiJSONRace, hasAI } from "../lib/ai.js";
 
 const router: IRouter = Router();
 
@@ -15,6 +15,32 @@ const DAY_PLAN = [
   { instagram: { format: "Reel", contentType: "Industry Insight with Strong CTA" }, tiktok: { contentType: "Special Offer or Follow Challenge" } },
 ];
 
+// ─── In-memory result cache (5 min TTL) ─────────────────────────────────────
+const CACHE_TTL_MS = 5 * 60 * 1000;
+interface CacheEntry { result: any; expiresAt: number; }
+const resultCache = new Map<string, CacheEntry>();
+
+function getCacheKey(brandId: string, weekFocus?: string, website?: string, instagram?: string, phone?: string): string {
+  return [brandId, weekFocus ?? "", website ?? "", instagram ?? "", phone ?? ""].join("|");
+}
+
+function getCached(key: string): any | null {
+  const entry = resultCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) { resultCache.delete(key); return null; }
+  return entry.result;
+}
+
+function setCache(key: string, result: any): void {
+  resultCache.set(key, { result, expiresAt: Date.now() + CACHE_TTL_MS });
+  // Prune stale entries every 50 writes
+  if (resultCache.size % 50 === 0) {
+    const now = Date.now();
+    for (const [k, v] of resultCache) { if (now > v.expiresAt) resultCache.delete(k); }
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function strip(text: string | undefined): string {
   if (!text) return "";
   return text.replace(/\u2014/g, " - ").replace(/\u2013/g, " - ").replace(/--/g, " - ");
@@ -73,23 +99,57 @@ function buildFallbackDays(brandName: string, weekFocus?: string) {
   }));
 }
 
+// ─── Prompt builder ───────────────────────────────────────────────────────────
+function buildBatchPrompt(
+  brandContext: string,
+  systemPrompt: string,
+  daySlice: typeof DAY_PLAN,
+  startDay: number,
+): { system: string; user: string } {
+  const instructions = daySlice.map((d, i) => (
+    `Day ${startDay + i}: Instagram ${d.instagram.format} (${d.instagram.contentType}) | TikTok UGC Video (${d.tiktok.contentType})`
+  )).join("\n");
+
+  const exampleDay = startDay;
+  const user = `Generate Instagram + TikTok content for ONLY these days:
+
+${brandContext}
+
+${instructions}
+
+For each Instagram post: hook (scroll-stopping first line) + caption + 7 hashtags.
+For each TikTok: hook (first 3-5 spoken words) + script (3-4 sentences, casual camera talk) + CTA + 4 hashtags.
+
+Return ONLY valid JSON:
+{
+  "days": [
+    {
+      "day": ${exampleDay},
+      "instagram": { "format": "...", "contentType": "...", "hook": "...", "caption": "...", "hashtags": ["#tag"] },
+      "tiktok": { "contentType": "...", "hook": "...", "script": "...", "cta": "...", "hashtags": ["#tag"] }
+    }
+  ]
+}`;
+
+  return { system: systemPrompt, user };
+}
+
+// ─── Route ────────────────────────────────────────────────────────────────────
 router.post("/generate/7day-starter", async (req, res) => {
   const { brandId, weekFocus, website, instagram, phone } = req.body;
 
-  if (!brandId) {
-    res.status(400).json({ error: "brandId is required" });
-    return;
-  }
+  if (!brandId) { res.status(400).json({ error: "brandId is required" }); return; }
+  if (!hasAI()) { res.status(503).json({ error: "AI not configured" }); return; }
 
-  if (!hasAI()) {
-    res.status(503).json({ error: "AI not configured" });
-    return;
-  }
-
-  // Fetch brand outside try so it's accessible in the catch fallback
   const brand = await db.select().from(brandsTable).where(eq(brandsTable.id, brandId)).then(r => r[0]);
-  if (!brand) {
-    res.status(404).json({ error: "Brand not found" });
+  if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
+
+  // ── Cache check ──────────────────────────────────────────────────────────
+  const cacheKey = getCacheKey(brandId, weekFocus, website, instagram, phone);
+  const cached = getCached(cacheKey);
+  if (cached) {
+    console.log(`[7day] Cache hit for brand ${brandId}`);
+    res.json({ ...cached, fromCache: true });
     return;
   }
 
@@ -112,60 +172,47 @@ router.post("/generate/7day-starter", async (req, res) => {
       phone ? `Phone/WhatsApp: ${phone}` : "",
     ].filter(Boolean).join("\n");
 
-    const systemPrompt = `You are Zuri AI, an expert social media content strategist for African businesses and global emerging markets.
-You write punchy, culturally aware content that connects with real people.
+    const systemPrompt = `You are Zuri AI, a social media content strategist for African businesses.
+Write punchy, culturally aware content that connects with real people.
 Rules:
 - Never use em dashes (use commas or regular dashes instead)
 - Keep captions human and authentic, not corporate
 - Use Lagos, Nairobi, Accra, or local market references where natural
 - Hashtags must be realistic and relevant
-- TikTok scripts should sound like someone actually talking, casual and direct
-- If a website, Instagram handle, or phone number is provided, weave them naturally into CTAs (e.g. "visit yoursite.com", "follow us @handle", "DM or WhatsApp us on +234...")
-- Do not invent contact details that were not provided`;
+- TikTok scripts must sound like casual talking-to-camera, not a script
+- If website/handle/phone is provided, weave into CTAs naturally
+- Never invent contact details not provided`;
 
-    const dayInstructions = DAY_PLAN.map((d, i) => (
-      `Day ${i + 1}: Instagram ${d.instagram.format} (${d.instagram.contentType}) | TikTok UGC Video (${d.tiktok.contentType})`
-    )).join("\n");
+    // ── Split into 2 parallel batches, race models for each ──────────────
+    const batchA = DAY_PLAN.slice(0, 4); // Days 1-4
+    const batchB = DAY_PLAN.slice(4);    // Days 5-7
 
-    const userPrompt = `Generate a complete 7-day Instagram and TikTok content plan for:
+    const promptA = buildBatchPrompt(brandContext, systemPrompt, batchA, 1);
+    const promptB = buildBatchPrompt(brandContext, systemPrompt, batchB, 5);
 
-${brandContext}
+    // Race top-3 models for each batch, both batches run concurrently
+    const [resultA, resultB] = await Promise.all([
+      aiJSONRace<{ days: any[] }>(promptA.system, promptA.user, 2000),
+      aiJSONRace<{ days: any[] }>(promptB.system, promptB.user, 1600),
+    ]);
 
-FIXED STRUCTURE - follow exactly:
-${dayInstructions}
+    const allDays = [
+      ...(resultA.days ?? []),
+      ...(resultB.days ?? []),
+    ]
+      .filter(d => d && typeof d.day === "number")
+      .sort((a, b) => a.day - b.day)
+      .map(d => cleanDay(d));
 
-For each Instagram post write a hook (the first line that stops scrolling) and a full caption with relevant hashtags.
-For each TikTok write: hook (first 3-5 words spoken), script (what to say on camera, 3-5 sentences), CTA (closing line), and hashtags.
+    // Derive a week theme from first day hook (avoids an extra AI round-trip)
+    const weekTheme = weekFocus
+      || allDays[0]?.instagram?.contentType
+      || `${brand.name} - Week 1`;
 
-Return ONLY valid JSON with this structure:
-{
-  "weekTheme": "short theme for the week",
-  "days": [
-    {
-      "day": 1,
-      "instagram": {
-        "format": "Reel",
-        "contentType": "Quote of the Day",
-        "hook": "the first visible line",
-        "caption": "full caption text",
-        "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5", "#tag6", "#tag7"]
-      },
-      "tiktok": {
-        "contentType": "Introduce Yourself and Your Brand",
-        "hook": "Opening words",
-        "script": "Full talking-camera script",
-        "cta": "Closing call to action",
-        "hashtags": ["#tag1", "#tag2", "#tag3", "#fyp"]
-      }
-    }
-  ]
-}`;
+    const result = { weekTheme, days: allDays };
 
-    const result = await aiJSON<{ weekTheme: string; days: any[] }>(systemPrompt, userPrompt, 4000);
-
-    const days = (result.days ?? []).map((d: any) => cleanDay(d));
-
-    res.json({ weekTheme: result.weekTheme ?? "", days });
+    setCache(cacheKey, result);
+    res.json(result);
   } catch (err: any) {
     console.error("7-day starter error:", err);
 
