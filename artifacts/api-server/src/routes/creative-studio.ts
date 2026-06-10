@@ -527,22 +527,26 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
   let imageScene = `${brand.name} ${brand.industry ?? "business"} announcement launch event, ${brand.city ?? brand.country ?? "African city"} setting, outdoor or modern venue`;
   try {
     if (hasAI()) {
-      const result = await aiJSON(`You are a brand copywriter for African businesses.
+      const result = await aiJSON(`You are a brand copywriter for African businesses. Create high-impact Instagram post copy.
 Brand: ${brand.name}. Industry: ${brand.industry || "Business"}. Location: ${brand.city ?? brand.country ?? "Nigeria"}.
 Announcement details: ${eventDetails || "General announcement — make something exciting"}
 
-Extract and generate announcement copy. Return JSON:
+Return JSON with these exact keys:
 {
-  "headline": "string (1-2 lines max, emotional hook, sentence case — NOT all caps)",
-  "subtext": "string (2-3 sentences, key details from the announcement, keep specific facts/numbers)",
-  "cta": "string (max 4 words, action-driven)",
+  "headline": "string — 3-7 words max, bold emotional hook, sentence case. Examples: 'Need a caring hand, fast?' / 'Meet our team of experts' / 'Trusted care, delivered fast'",
+  "subtext": "string — 2-3 sentences. Key facts/numbers from the announcement. Warm, direct tone.",
+  "cta": "string — max 4 words, action verb first. Examples: 'Book a caregiver today' / 'Get started now' / 'Find your perfect match'",
   "features": [
-    { "emoji": "single emoji", "label": "2-4 word service/benefit label" }
+    {
+      "emoji": "single relevant emoji",
+      "label": "2-4 words, UPPERCASE — the benefit title",
+      "description": "one sentence, max 12 words — brief supporting detail"
+    }
   ],
-  "callout": "string (1 punchy sentence, 10-18 words — the single most compelling reason to act)",
-  "imageScene": "string: start with 'photograph of' then describe a specific realistic scene — African person, action, indoor/outdoor setting, lighting. Example: 'photograph of smiling Nigerian woman in teal uniform caring for toddler, bright Lagos home, warm natural light'"
+  "callout": "string — 10-16 words, the single most compelling reason to act now",
+  "imageScene": "string: start with 'photograph of' then describe: specific African person + action + setting + lighting. Keep the person wearing the brand's uniform/colors. Example: 'photograph of smiling Nigerian caregiver in teal uniform helping elderly woman, bright modern Lagos home, warm natural light'"
 }
-Rules: features must be 3-5 items extracted from the announcement. Never use em dashes.`, "{}");
+Rules: 3-5 features. Each feature needs emoji + label + description. Never use em dashes. Headline must be short and punchy — 3-7 words only.`, "{}");
       if (result.headline) headline = result.headline;
       if (result.subtext) subtext = result.subtext;
       if (result.cta) cta = ctaText || result.cta;
@@ -562,127 +566,183 @@ Rules: features must be 3-5 items extracted from the announcement. Never use em 
 
 function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout = "", brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, smoothFace = false, designStyle = "professional" }: {
   headline: string; subtext: string; cta: string;
-  features?: { emoji: string; label: string }[];
+  features?: { emoji: string; label: string; description?: string }[];
   callout?: string;
   brandName: string; colors: string[];
   format: string; showBrandName: boolean; logoUrl?: string | null; photoUrl: string;
   logoPosition?: string; contactInfo?: ContactInfo; smoothFace?: boolean; designStyle?: string;
 }) {
-  const primary   = colors[0] ?? "#0097A7";
-  const secondary = colors[1] ?? "#1C1917";
-  const isStory   = format === "story";
+  const primary    = colors[0] ?? "#0097A7";
+  const secondary  = colors[1] ?? "#1C1917";
+  const isStory    = format === "story";
   const isPortrait = format === "portrait";
-  const h = isStory ? 1920 : isPortrait ? 1350 : 1080;
   const smoothStyle = smoothFace ? "filter:blur(0.5px) saturate(1.1) contrast(1.05);" : "";
   const hl = headline.length;
 
-  // determine readable text colour on primary background
   const primaryIsLight = isLightColor(primary);
   const onPrimary = primaryIsLight ? "#1a1a1a" : "#ffffff";
+  const websiteUrl = (contactInfo as Record<string, string>).website ?? "";
 
-  // logo element — works on white bg
+  // ── Logo element (works on white bg) ─────────────────────────────────────────
   const logoEl = showBrandName
     ? (logoUrl
-        ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:40px;max-width:180px;object-fit:contain;" />`
+        ? `<img src="${logoUrl}" crossorigin="anonymous" alt="${brandName}" style="height:46px;max-width:200px;object-fit:contain;" />`
         : `<div style="display:flex;align-items:center;gap:10px;">
-             <div style="width:36px;height:36px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-               <span style="color:${onPrimary};font-size:15px;font-weight:900;font-family:${FONT_STACK};">${brandName.charAt(0).toUpperCase()}</span>
+             <div style="width:40px;height:40px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+               <span style="color:${onPrimary};font-size:17px;font-weight:900;font-family:${FONT_STACK};">${brandName.charAt(0).toUpperCase()}</span>
              </div>
-             <span style="color:${secondary};font-size:15px;font-weight:700;font-family:${FONT_STACK};">${brandName}</span>
+             <span style="color:${secondary};font-size:16px;font-weight:700;font-family:${FONT_STACK};">${brandName}</span>
            </div>`)
     : "";
 
-  // feature icons grid
-  const featuresHtml = features.length > 0
-    ? `<div style="display:grid;grid-template-columns:repeat(${Math.min(features.length, 4)},1fr);gap:10px;margin:16px 0 14px;">
-        ${features.map(f => `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
-          <div style="width:38px;height:38px;border-radius:50%;border:1.5px solid ${primary};display:flex;align-items:center;justify-content:center;font-size:16px;">${f.emoji}</div>
-          <span style="font-size:10.5px;font-weight:600;color:#444;text-align:center;line-height:1.3;">${f.label}</span>
-        </div>`).join("")}
+  // ── Feature bullet rows: solid brand-color circle + bold label + description ──
+  const featureBulletsHtml = features.length > 0
+    ? features.slice(0, 4).map(f =>
+        `<div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;line-height:1;">${f.emoji}</div>
+          <div style="padding-top:3px;">
+            <p style="margin:0 0 3px;font-size:12.5px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.7px;font-family:${FONT_STACK};">${f.label}</p>
+            ${f.description ? `<p style="margin:0;font-size:11.5px;color:#666;line-height:1.45;font-family:${FONT_STACK};">${f.description}</p>` : ""}
+          </div>
+        </div>`
+      ).join("")
+    : "";
+
+  // ── Feature grid for Story (horizontal, 2-col) ────────────────────────────────
+  const featureGridHtml = features.length > 0
+    ? features.slice(0, 4).map(f =>
+        `<div style="display:flex;align-items:flex-start;gap:16px;min-width:260px;flex:1;">
+          <div style="width:52px;height:52px;border-radius:50%;background:${primary};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;">${f.emoji}</div>
+          <div>
+            <p style="margin:0 0 3px;font-size:18px;font-weight:800;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.5px;font-family:${FONT_STACK};">${f.label}</p>
+            ${f.description ? `<p style="margin:0;font-size:16px;color:#555;line-height:1.4;font-family:${FONT_STACK};">${f.description}</p>` : ""}
+          </div>
+        </div>`
+      ).join("")
+    : "";
+
+  // ── CTA button ────────────────────────────────────────────────────────────────
+  const ctaButtonHtml = cta
+    ? `<div style="display:inline-flex;align-items:center;gap:10px;background:${primary};color:${onPrimary};padding:13px 28px;border-radius:10px;font-weight:700;font-size:15px;font-family:${FONT_STACK};">
+        <span>${cta}</span><span style="font-size:18px;">&#8594;</span>
       </div>`
     : "";
 
-  // callout box
-  const calloutHtml = callout
-    ? `<div style="background:${primary};border-radius:12px;padding:13px 15px;display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;">
-        <span style="font-size:18px;flex-shrink:0;margin-top:1px;">🏠</span>
-        <p style="margin:0;font-size:13px;font-weight:500;color:${onPrimary};line-height:1.55;">${callout}</p>
+  // ── Teal footer bar with trust badges ─────────────────────────────────────────
+  function footerBar(padH = 44, h = 84, fz = 11.5): string {
+    const badges = [
+      { icon: "✓", label: "TRUSTED CARE" },
+      { icon: "♡", label: "PEACE OF MIND" },
+      { icon: "★", label: "EXCELLENCE" },
+    ];
+    const badgesHtml = badges.map(b =>
+      `<div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:28px;height:28px;border-radius:50%;border:1.5px solid ${onPrimary}55;display:flex;align-items:center;justify-content:center;color:${onPrimary};font-size:13px;">${b.icon}</div>
+        <span style="color:${onPrimary};font-size:${fz}px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:${FONT_STACK};">${b.label}</span>
+      </div>`
+    ).join(`<div style="width:1px;height:26px;background:${onPrimary}33;"></div>`);
+    const websiteHtml = websiteUrl
+      ? `<div style="display:flex;align-items:center;gap:7px;">
+          <span style="color:${onPrimary};font-size:18px;">🌐</span>
+          <span style="color:${onPrimary};font-size:${fz}px;font-weight:600;font-family:${FONT_STACK};">${websiteUrl}</span>
+        </div>`
+      : "";
+    return `<div style="height:${h}px;background:${primary};flex-shrink:0;display:flex;align-items:center;padding:0 ${padH}px;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:20px;">${badgesHtml}</div>
+      ${websiteHtml}
+    </div>`;
+  }
+
+  // ── Callout accent strip ──────────────────────────────────────────────────────
+  const calloutStripHtml = callout
+    ? `<div style="background:${primary}15;border-left:4px solid ${primary};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:14px;flex-shrink:0;">
+        <p style="margin:0;font-size:12.5px;font-weight:600;color:${secondary};line-height:1.5;font-family:${FONT_STACK};">${callout}</p>
       </div>`
     : "";
 
-  // website footer
-  const websiteUrl = (contactInfo as Record<string,string>).website ?? "";
-  const footerHtml = websiteUrl
-    ? `<div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#777;margin-top:10px;"><span>🌐</span><span>${websiteUrl}</span></div>`
-    : "";
-
-  // ── STORY: photo top strip, editorial text panel below ───────────────────────
+  // ── STORY: photo top, text + features below ───────────────────────────────────
   if (isStory) {
-    const photoH = 860;
-    const hFz = hl > 60 ? 46 : hl > 40 ? 56 : hl > 25 ? 66 : 78;
-    return `${FONT_IMPORT}<div style="width:1080px;height:1920px;font-family:${FONT_STACK};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
+    const photoH = 840;
+    const hFz = hl > 60 ? 50 : hl > 40 ? 60 : hl > 25 ? 70 : 82;
+    return `${FONT_IMPORT}<div style="width:1080px;height:1920px;font-family:${FONT_STACK};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;background:#ffffff;">
   <div style="width:1080px;height:${photoH}px;overflow:hidden;flex-shrink:0;position:relative;">
     <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
-    ${showBrandName ? `<div style="position:absolute;top:52px;left:52px;background:rgba(255,255,255,0.92);padding:10px 18px;border-radius:100px;">${logoEl}</div>` : ""}
+    ${showBrandName ? `<div style="position:absolute;top:44px;left:44px;background:rgba(255,255,255,0.95);padding:10px 20px;border-radius:100px;box-shadow:0 2px 14px rgba(0,0,0,0.13);">${logoEl}</div>` : ""}
   </div>
-  <div style="background:#ffffff;flex:1;padding:44px 52px 36px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;">
-    <div>
-      <h1 style="font-size:${hFz}px;font-weight:800;color:${primary};line-height:1.12;margin:0 0 14px;letter-spacing:-0.3px;">${headline}</h1>
-      <p style="font-size:26px;color:#333;line-height:1.6;margin:0 0 4px;">${subtext}</p>
-      ${featuresHtml}
-      ${calloutHtml}
-    </div>
-    <div>
-      ${cta ? `<div style="display:inline-flex;background:${primary};color:${onPrimary};padding:16px 40px;border-radius:100px;font-weight:700;font-size:22px;margin-bottom:14px;">${cta}</div>` : ""}
-      ${footerHtml}
-    </div>
+  <div style="flex:1;padding:44px 52px 0;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:14px;flex-shrink:0;"></div>
+    <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.08;margin:0 0 14px;letter-spacing:-1px;flex-shrink:0;font-family:${FONT_STACK};">${headline}</h1>
+    <p style="font-size:23px;color:#3a3a3a;line-height:1.68;margin:0 0 24px;flex-shrink:0;font-family:${FONT_STACK};">${subtext}</p>
+    <div style="flex:1;display:flex;flex-wrap:wrap;gap:20px 40px;overflow:hidden;">${featureGridHtml}</div>
   </div>
+  <div style="padding:20px 52px 24px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;">
+    ${calloutStripHtml}
+    ${ctaButtonHtml}
+  </div>
+  ${footerBar(52, 88, 15)}
 </div>`;
   }
 
-  // ── PORTRAIT: editorial, text top, photo card below ─────────────────────────
+  // ── PORTRAIT: text-left photo-right split, taller canvas ─────────────────────
   if (isPortrait) {
-    const hFz = hl > 60 ? 46 : hl > 40 ? 56 : hl > 25 ? 68 : 82;
-    return `${FONT_IMPORT}<div style="width:1080px;height:1350px;font-family:${FONT_STACK};overflow:hidden;background:#ffffff;box-sizing:border-box;display:flex;flex-direction:column;">
-  <div style="padding:52px 60px 28px;flex-shrink:0;">
-    ${showBrandName ? `<div style="margin-bottom:24px;">${logoEl}</div>` : ""}
-    <h1 style="font-size:${hFz}px;font-weight:800;color:${primary};line-height:1.12;margin:0 0 14px;letter-spacing:-0.3px;">${headline}</h1>
-    <p style="font-size:25px;color:#333;line-height:1.6;margin:0 0 12px;">${subtext}</p>
-    ${featuresHtml}
-    ${calloutHtml}
-    ${cta ? `<div style="display:inline-flex;background:${primary};color:${onPrimary};padding:14px 36px;border-radius:100px;font-weight:700;font-size:20px;margin-top:8px;">${cta}</div>` : ""}
-  </div>
-  <div style="flex:1;overflow:hidden;margin:0 40px;border-radius:24px;box-shadow:0 16px 48px rgba(0,0,0,0.12);">
-    <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;${smoothStyle}" />
-  </div>
-  ${footerHtml ? `<div style="padding:16px 60px 24px;">${footerHtml}</div>` : ""}
-</div>`;
-  }
-
-  // ── SQUARE: editorial split — text left panel, photo right panel ─────────────
-  const textW = 496;
-  const photoW = 1080 - textW;
-  const hFz = hl > 60 ? 36 : hl > 40 ? 44 : hl > 25 ? 52 : 62;
-
-  return `${FONT_IMPORT}<div style="width:1080px;height:1080px;font-family:${FONT_STACK};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:row;">
-  <div style="width:${textW}px;height:1080px;background:#ffffff;padding:40px 36px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
-    ${showBrandName ? `<div style="margin-bottom:20px;flex-shrink:0;">${logoEl}</div>` : ""}
-    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;">
-      <h1 style="font-size:${hFz}px;font-weight:800;color:${primary};line-height:1.15;margin:0 0 12px;letter-spacing:-0.3px;flex-shrink:0;">${headline}</h1>
-      <p style="font-size:14.5px;color:#333;line-height:1.65;margin:0 0 4px;flex-shrink:0;">${subtext}</p>
-      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;overflow:hidden;min-height:0;">
-        ${featuresHtml}
-        ${calloutHtml}
+    const textW = 460;
+    const footerH = 84;
+    const mainH = 1350 - footerH;
+    const hFz = hl > 70 ? 48 : hl > 50 ? 56 : hl > 35 ? 66 : 76;
+    return `${FONT_IMPORT}<div style="width:1080px;height:1350px;font-family:${FONT_STACK};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
+  <div style="flex:1;display:flex;overflow:hidden;">
+    <div style="width:${textW}px;height:${mainH}px;background:#ffffff;padding:48px 40px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
+      ${showBrandName ? `<div style="margin-bottom:22px;flex-shrink:0;">${logoEl}</div>` : ""}
+      <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:12px;flex-shrink:0;"></div>
+      <p style="margin:0 0 8px;font-size:10.5px;font-weight:700;color:${primary};text-transform:uppercase;letter-spacing:2.5px;flex-shrink:0;font-family:${FONT_STACK};">ANNOUNCEMENT</p>
+      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.08;margin:0 0 14px;letter-spacing:-1px;flex-shrink:0;font-family:${FONT_STACK};">${headline}</h1>
+      <p style="font-size:13.5px;color:#3a3a3a;line-height:1.72;margin:0 0 20px;flex-shrink:0;font-family:${FONT_STACK};">${subtext}</p>
+      <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
+      <div style="flex-shrink:0;margin-top:14px;">
+        ${calloutStripHtml}
+        ${ctaButtonHtml}
       </div>
     </div>
-    <div style="flex-shrink:0;">
-      ${cta ? `<div style="display:inline-flex;background:${primary};color:${onPrimary};padding:11px 26px;border-radius:100px;font-weight:700;font-size:14px;margin-bottom:10px;">${cta}</div>` : ""}
-      ${footerHtml}
+    <div style="flex:1;height:${mainH}px;overflow:hidden;">
+      <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
     </div>
   </div>
-  <div style="width:${photoW}px;height:1080px;overflow:hidden;flex-shrink:0;">
-    <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;${smoothStyle}" />
+  ${footerBar(44, 84, 11.5)}
+</div>`;
+  }
+
+  // ── SQUARE: "Agency Impact" — text-left + photo-right + full-width footer bar ─
+  const textW = 460;
+  const footerH = 84;
+  const mainH = 1080 - footerH; // 996px
+  const hFz = hl > 70 ? 48 : hl > 50 ? 56 : hl > 35 ? 64 : 72;
+
+  return `${FONT_IMPORT}<div style="width:1080px;height:1080px;font-family:${FONT_STACK};overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column;">
+  <div style="flex:1;display:flex;overflow:hidden;">
+
+    <!-- LEFT TEXT PANEL -->
+    <div style="width:${textW}px;height:${mainH}px;background:#ffffff;padding:44px 40px 32px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
+      ${showBrandName ? `<div style="margin-bottom:22px;flex-shrink:0;">${logoEl}</div>` : ""}
+      <div style="width:52px;height:4px;background:${primary};border-radius:2px;margin-bottom:12px;flex-shrink:0;"></div>
+      <p style="margin:0 0 8px;font-size:10.5px;font-weight:700;color:${primary};text-transform:uppercase;letter-spacing:2.5px;flex-shrink:0;font-family:${FONT_STACK};">ANNOUNCEMENT</p>
+      <h1 style="font-size:${hFz}px;font-weight:900;color:${primary};line-height:1.08;margin:0 0 12px;letter-spacing:-1px;flex-shrink:0;font-family:${FONT_STACK};">${headline}</h1>
+      <p style="font-size:13.5px;color:#3a3a3a;line-height:1.72;margin:0 0 18px;flex-shrink:0;font-family:${FONT_STACK};">${subtext}</p>
+      <div style="flex:1;overflow:hidden;">${featureBulletsHtml}</div>
+      <div style="flex-shrink:0;margin-top:12px;">
+        ${calloutStripHtml}
+        ${ctaButtonHtml}
+      </div>
+    </div>
+
+    <!-- RIGHT PHOTO PANEL: full bleed -->
+    <div style="flex:1;height:${mainH}px;overflow:hidden;">
+      <img src="${photoUrl}" crossorigin="anonymous" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
+    </div>
+
   </div>
+
+  <!-- FOOTER BAR: brand primary, trust badges + website -->
+  ${footerBar(44, footerH, 11.5)}
 </div>`;
 }
 
