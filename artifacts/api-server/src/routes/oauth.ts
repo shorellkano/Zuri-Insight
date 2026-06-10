@@ -1,23 +1,73 @@
-import { Router, type IRouter, type Request, type Response } from "express";
-import { db, socialConnectionsTable, brandsTable } from "@workspace/db";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { db, socialConnectionsTable, brandsTable, appConfigTable } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
-import { encryptToken, signOAuthState, verifyOAuthState } from "../lib/tokenCrypto";
+import { encryptToken, decryptToken, signOAuthState, verifyOAuthState } from "../lib/tokenCrypto";
 import { requireAuth, type AuthedRequest } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
 const FB_API = "https://graph.facebook.com/v19.0";
 
-function getAppId() {
-  const id = process.env.META_APP_ID;
-  if (!id) throw new Error("META_APP_ID is not set");
-  return id;
+// ── Admin guard ───────────────────────────────────────────────────────────────
+// Secure-by-default: OWNER_USER_ID **must** be set or the endpoint is disabled.
+// Set OWNER_USER_ID to your Supabase user UUID to enable credential management.
+function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  const authed = req as AuthedRequest;
+  const ownerId = process.env.OWNER_USER_ID?.trim();
+  if (!ownerId) {
+    res.status(503).json({
+      error:
+        "Meta credential management is not enabled. Set the OWNER_USER_ID environment variable to your Supabase user ID.",
+    });
+    return;
+  }
+  if (authed.userId !== ownerId) {
+    res.status(403).json({ error: "Admin access required to configure Meta app credentials." });
+    return;
+  }
+  next();
 }
 
-function getAppSecret() {
-  const s = process.env.META_APP_SECRET;
-  if (!s) throw new Error("META_APP_SECRET is not set");
-  return s;
+// ── Meta app credential helpers (env → DB fallback) ───────────────────────────
+
+async function getAppId(): Promise<string> {
+  if (process.env.META_APP_ID) return process.env.META_APP_ID;
+  const [row] = await db
+    .select({ value: appConfigTable.value })
+    .from(appConfigTable)
+    .where(eq(appConfigTable.key, "META_APP_ID"))
+    .limit(1);
+  if (row?.value) return row.value;
+  throw new Error("META_APP_ID is not configured");
+}
+
+async function getAppSecret(): Promise<string> {
+  if (process.env.META_APP_SECRET) return process.env.META_APP_SECRET;
+  const [row] = await db
+    .select({ value: appConfigTable.value })
+    .from(appConfigTable)
+    .where(eq(appConfigTable.key, "META_APP_SECRET"))
+    .limit(1);
+  if (row?.value) return decryptToken(row.value);
+  throw new Error("META_APP_SECRET is not configured");
+}
+
+async function isMetaConfigured(): Promise<{ configured: boolean; source: "env" | "db" | null }> {
+  if (process.env.META_APP_ID && process.env.META_APP_SECRET) {
+    return { configured: true, source: "env" };
+  }
+  const rows = await db
+    .select({ key: appConfigTable.key })
+    .from(appConfigTable)
+    .where(eq(appConfigTable.key, "META_APP_ID"));
+  const hasDbId = rows.length > 0;
+  const rows2 = await db
+    .select({ key: appConfigTable.key })
+    .from(appConfigTable)
+    .where(eq(appConfigTable.key, "META_APP_SECRET"));
+  const hasDbSecret = rows2.length > 0;
+  if (hasDbId && hasDbSecret) return { configured: true, source: "db" };
+  return { configured: false, source: null };
 }
 
 function getAppUrl() {
@@ -30,9 +80,6 @@ function getCallbackUrl() {
 
 /**
  * Verify ownership and auto-claim unowned (legacy) brands.
- * - Returns true if brand.userId === userId (already owned by this user).
- * - If brand.userId is NULL (pre-auth brand), atomically claims it for userId and returns true.
- * - Returns false if brand is owned by a different user, or if brand doesn't exist.
  */
 async function verifyAndClaimBrandOwnership(brandId: string, userId: string): Promise<boolean> {
   const [brand] = await db
@@ -45,7 +92,6 @@ async function verifyAndClaimBrandOwnership(brandId: string, userId: string): Pr
   if (brand.userId === userId) return true;
   if (brand.userId !== null) return false;
 
-  // Unowned brand — atomically claim it for this user (first authenticated user wins)
   const claimed = await db
     .update(brandsTable)
     .set({ userId })
@@ -55,6 +101,54 @@ async function verifyAndClaimBrandOwnership(brandId: string, userId: string): Pr
   return claimed.length > 0;
 }
 
+
+// ── GET /oauth/meta-config/status ─────────────────────────────────────────────
+
+router.get("/oauth/meta-config/status", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const authed = req as AuthedRequest;
+    const ownerId = process.env.OWNER_USER_ID?.trim();
+    const isAdmin = !!ownerId && authed.userId === ownerId;
+    const result = await isMetaConfigured();
+    res.json({ ...result, isAdmin });
+  } catch {
+    res.json({ configured: false, source: null, isAdmin: false });
+  }
+});
+
+// ── POST /oauth/meta-config ────────────────────────────────────────────────────
+
+router.post("/oauth/meta-config", requireAuth, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const { appId, appSecret } = req.body as { appId?: string; appSecret?: string };
+
+  if (!appId?.trim() || !appSecret?.trim()) {
+    res.status(400).json({ error: "Both appId and appSecret are required" });
+    return;
+  }
+
+  const trimmedId = appId.trim();
+  const trimmedSecret = appSecret.trim();
+
+  const encryptedSecret = encryptToken(trimmedSecret);
+
+  await db
+    .insert(appConfigTable)
+    .values({ key: "META_APP_ID", value: trimmedId })
+    .onConflictDoUpdate({ target: appConfigTable.key, set: { value: trimmedId, updatedAt: new Date() } });
+
+  await db
+    .insert(appConfigTable)
+    .values({ key: "META_APP_SECRET", value: encryptedSecret })
+    .onConflictDoUpdate({ target: appConfigTable.key, set: { value: encryptedSecret, updatedAt: new Date() } });
+
+  // Sync to in-memory env so credentials are usable immediately without restart.
+  // getAppId() / getAppSecret() check process.env first, so setting these here
+  // means the very next connect-url request will find them without a DB lookup.
+  process.env.META_APP_ID = trimmedId;
+  process.env.META_APP_SECRET = trimmedSecret;
+
+  res.json({ success: true });
+});
 
 // ── GET /oauth/instagram/connect-url ─────────────────────────────────────────
 
@@ -75,13 +169,12 @@ router.get("/oauth/instagram/connect-url", requireAuth, async (req: Request, res
 
   let appId: string;
   try {
-    appId = getAppId();
+    appId = await getAppId();
   } catch {
-    res.status(500).json({ error: "META_APP_ID is not configured. Please set it in Secrets." });
+    res.status(500).json({ error: "META_APP_ID is not configured. Please set it up in Social Accounts settings." });
     return;
   }
 
-  // State includes both brandId and userId so callback can verify user binding + has 1-hour expiry
   const signedState = signOAuthState(brandId, authed.userId);
 
   const params = new URLSearchParams({
@@ -96,7 +189,6 @@ router.get("/oauth/instagram/connect-url", requireAuth, async (req: Request, res
 });
 
 // ── GET /oauth/instagram/callback ─────────────────────────────────────────────
-// Public — Meta redirects here; no Bearer token possible. State contains userId + expiry.
 
 router.get("/oauth/instagram/callback", async (req: Request, res: Response): Promise<void> => {
   const { code, state, error: fbError } = req.query as Record<string, string>;
@@ -115,7 +207,6 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
 
   const { brandId, userId } = statePayload;
 
-  // Verify brand still exists and belongs to the same user who initiated the flow
   const [brand] = await db
     .select({ id: brandsTable.id, ownerId: brandsTable.userId })
     .from(brandsTable)
@@ -133,8 +224,8 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
   }
 
   try {
-    const appId = getAppId();
-    const appSecret = getAppSecret();
+    const appId = await getAppId();
+    const appSecret = await getAppSecret();
     const callbackUrl = getCallbackUrl();
 
     const tokenResp = await fetch(
@@ -217,7 +308,6 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
       });
     }
 
-    // Ensure brand.userId is set (in case it was null before this flow)
     if (brand.ownerId === null) {
       await db.update(brandsTable).set({ userId }).where(eq(brandsTable.id, brandId));
     }

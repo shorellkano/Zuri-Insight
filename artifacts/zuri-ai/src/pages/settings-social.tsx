@@ -1,6 +1,21 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Instagram, Link2, Link2Off, CheckCircle2, AlertCircle, Loader2, Info } from "lucide-react";
+import {
+  Instagram,
+  Link2,
+  Link2Off,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Info,
+  Settings2,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronRight,
+  Shield,
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
@@ -18,6 +33,67 @@ interface IGStatus {
   needsReauth?: boolean;
 }
 
+interface MetaConfigStatus {
+  configured: boolean;
+  source: "env" | "db" | null;
+  isAdmin: boolean;
+}
+
+const META_STEPS = [
+  {
+    title: "Go to Meta for Developers",
+    description: (
+      <>
+        Visit{" "}
+        <a
+          href="https://developers.facebook.com/apps"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline inline-flex items-center gap-0.5"
+        >
+          developers.facebook.com/apps <ExternalLink className="h-3 w-3" />
+        </a>{" "}
+        and click <strong>Create App</strong>.
+      </>
+    ),
+  },
+  {
+    title: "Choose app type",
+    description: (
+      <>
+        Select <strong>Business</strong> as the app type, then click <strong>Next</strong> and fill in a name and contact email.
+      </>
+    ),
+  },
+  {
+    title: "Add Instagram product",
+    description: (
+      <>
+        In your new app's dashboard, find <strong>Instagram Graph API</strong> in the product list and click <strong>Set Up</strong>.
+      </>
+    ),
+  },
+  {
+    title: "Copy your credentials",
+    description: (
+      <>
+        Go to <strong>App Settings → Basic</strong>. Copy the <strong>App ID</strong> and <strong>App Secret</strong> and paste them below.
+      </>
+    ),
+  },
+  {
+    title: "Add the OAuth redirect URI",
+    description: (
+      <>
+        Still in your app, go to <strong>Facebook Login → Settings</strong> and add this exact URL to <strong>Valid OAuth Redirect URIs</strong>:
+        <code className="ml-1 px-1.5 py-0.5 rounded bg-muted text-xs font-mono break-all">
+          {window.location.origin}/api/oauth/instagram/callback
+        </code>
+      </>
+    ),
+  },
+];
+
 export default function SettingsSocial() {
   const { activeBrandId } = useBrand();
   const { data: brands } = useListBrands();
@@ -29,6 +105,12 @@ export default function SettingsSocial() {
 
   const [bannerMsg, setBannerMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [connecting, setConnecting] = useState(false);
+
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [appId, setAppId] = useState("");
+  const [appSecret, setAppSecret] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
 
   function authHeaders(): HeadersInit {
     return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
@@ -62,6 +144,17 @@ export default function SettingsSocial() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
+
+  const { data: metaConfig, isLoading: metaConfigLoading } = useQuery<MetaConfigStatus>({
+    queryKey: ["meta-config-status"],
+    queryFn: async () => {
+      const r = await fetch(API("/oauth/meta-config/status"), { headers: authHeaders() });
+      if (!r.ok) return { configured: false, source: null };
+      return r.json();
+    },
+    enabled: !!session,
+    staleTime: 30000,
+  });
 
   const { data: igStatus, isLoading: statusLoading } = useQuery<IGStatus>({
     queryKey: ["ig-status", activeBrandId],
@@ -125,6 +218,38 @@ export default function SettingsSocial() {
     }
   };
 
+  const handleSaveConfig = async () => {
+    if (!appId.trim() || !appSecret.trim()) {
+      toast({ title: "Both App ID and App Secret are required", variant: "destructive" });
+      return;
+    }
+    setSavingConfig(true);
+    try {
+      const r = await fetch(API("/oauth/meta-config"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ appId: appId.trim(), appSecret: appSecret.trim() }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        toast({ title: data?.error ?? "Failed to save credentials", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Meta app credentials saved successfully" });
+      setAppId("");
+      setAppSecret("");
+      setShowSetupGuide(false);
+      qc.invalidateQueries({ queryKey: ["meta-config-status"] });
+    } catch {
+      toast({ title: "Failed to save credentials", variant: "destructive" });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const metaNotConfigured = !metaConfigLoading && metaConfig && !metaConfig.configured;
+  const isAdmin = metaConfig?.isAdmin ?? false;
+
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div>
@@ -158,6 +283,169 @@ export default function SettingsSocial() {
           <p className="text-sm text-amber-700 dark:text-amber-400">
             Select an active brand from the top bar to connect social accounts.
           </p>
+        </div>
+      )}
+
+      {metaNotConfigured && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-2xl overflow-hidden">
+          <div className="p-5 flex items-start gap-3">
+            <Settings2 className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Meta app credentials required</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                {isAdmin
+                  ? "Instagram OAuth requires a Meta Developer App. Set up yours in a few steps to unlock Instagram connection."
+                  : "Instagram OAuth requires a Meta Developer App to be configured by your account admin."}
+              </p>
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => setShowSetupGuide((v) => !v)}
+                className="flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 transition-colors shrink-0"
+              >
+                {showSetupGuide ? "Hide" : "Set up"}
+                {showSetupGuide ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              </button>
+            )}
+          </div>
+
+          {isAdmin && showSetupGuide && (
+            <div className="border-t border-amber-200 dark:border-amber-800/40 p-5 space-y-6 bg-card">
+              <div className="space-y-4">
+                <p className="text-sm font-semibold text-foreground">How to create a Meta Developer App</p>
+                <ol className="space-y-4">
+                  {META_STEPS.map((step, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center mt-0.5">
+                        {i + 1}
+                      </span>
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium text-foreground">{step.title}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className="space-y-3 pt-2 border-t border-border">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Shield className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                  Your credentials are encrypted before being stored.
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-foreground">
+                    App ID <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={appId}
+                    onChange={(e) => setAppId(e.target.value)}
+                    placeholder="e.g. 1234567890123456"
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-foreground">
+                    App Secret <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showSecret ? "text" : "password"}
+                      value={appSecret}
+                      onChange={(e) => setAppSecret(e.target.value)}
+                      placeholder="Paste your App Secret here"
+                      className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleSaveConfig}
+                  disabled={savingConfig || !appId.trim() || !appSecret.trim()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {savingConfig ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                  Save Credentials
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {metaConfig?.configured && metaConfig.source === "db" && (
+        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-xl">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-800 dark:text-green-300">Meta app credentials configured</p>
+            <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">Your Meta Developer App credentials are saved and ready.</p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => setShowSetupGuide((v) => !v)}
+              className="text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 transition-colors flex items-center gap-1 shrink-0"
+            >
+              Update
+              {showSetupGuide ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </button>
+          )}
+        </div>
+      )}
+
+      {metaConfig?.configured && metaConfig.source === "db" && isAdmin && showSetupGuide && (
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <p className="text-sm font-semibold text-foreground">Update Meta app credentials</p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Shield className="h-3.5 w-3.5 text-green-500 shrink-0" />
+            Saving new credentials will overwrite the existing ones.
+          </div>
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-foreground">App ID <span className="text-destructive">*</span></label>
+            <input
+              type="text"
+              value={appId}
+              onChange={(e) => setAppId(e.target.value)}
+              placeholder="e.g. 1234567890123456"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-foreground">App Secret <span className="text-destructive">*</span></label>
+            <div className="relative">
+              <input
+                type={showSecret ? "text" : "password"}
+                value={appSecret}
+                onChange={(e) => setAppSecret(e.target.value)}
+                placeholder="Paste your App Secret here"
+                className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSecret((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={handleSaveConfig}
+            disabled={savingConfig || !appId.trim() || !appSecret.trim()}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {savingConfig ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+            Update Credentials
+          </button>
         </div>
       )}
 
@@ -195,7 +483,8 @@ export default function SettingsSocial() {
           ) : (
             <button
               onClick={handleConnect}
-              disabled={!activeBrandId || connecting}
+              disabled={!activeBrandId || connecting || metaNotConfigured === true}
+              title={metaNotConfigured ? "Set up Meta app credentials first" : undefined}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
