@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useBrand } from "@/context/brand-context";
 import { Loader2, Download, Calendar, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { StudioPageShell } from "@/components/studio-page-shell";
+import { SchedulePostSheet } from "@/components/schedule-post-sheet";
 
 const API = (path: string) => `/api${path}`;
 
@@ -27,6 +27,9 @@ export default function CreativeStudioQuoteCard() {
   const [canvaEditUrl, setCanvaEditUrl] = useState<string | null>(null);
   const [canvaLoading, setCanvaLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [renderingSchedule, setRenderingSchedule] = useState(false);
 
   useEffect(() => {
     fetch(API("/canva/status"))
@@ -67,25 +70,49 @@ export default function CreativeStudioQuoteCard() {
     }
   }
 
+  async function renderToPng(): Promise<string | null> {
+    if (!html) return null;
+    const size = format === "story" ? { w: 1080, h: 1920 } : format === "portrait" ? { w: 1080, h: 1350 } : { w: 1080, h: 1080 };
+    const container = document.createElement("div");
+    container.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${size.w}px;height:${size.h}px;overflow:hidden;`;
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, { width: size.w, height: size.h, scale: 1, useCORS: true, backgroundColor: null });
+      return canvas.toDataURL("image/png");
+    } finally {
+      document.body.removeChild(container);
+    }
+  }
+
   async function downloadPng() {
     if (!html) return;
     setDownloading(true);
     try {
-      const size = format === "story" ? { w: 1080, h: 1920 } : format === "portrait" ? { w: 1080, h: 1350 } : { w: 1080, h: 1080 };
-      const container = document.createElement("div");
-      container.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${size.w}px;height:${size.h}px;overflow:hidden;`;
-      container.innerHTML = html;
-      document.body.appendChild(container);
-      const canvas = await html2canvas(container, { width: size.w, height: size.h, scale: 1, useCORS: true, backgroundColor: null });
-      document.body.removeChild(container);
+      const dataUrl = await renderToPng();
+      if (!dataUrl) throw new Error("Render failed");
       const link = document.createElement("a");
       link.download = `zuri-quote-card-${Date.now()}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.click();
     } catch {
       toast({ title: "Download failed", description: "Could not export the image. Try again.", variant: "destructive" });
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function handleScheduleClick() {
+    if (!html) return;
+    setRenderingSchedule(true);
+    try {
+      const dataUrl = await renderToPng();
+      setPreviewDataUrl(dataUrl);
+    } catch {
+      setPreviewDataUrl(null);
+    } finally {
+      setRenderingSchedule(false);
+      setShowSchedule(true);
     }
   }
 
@@ -159,11 +186,9 @@ export default function CreativeStudioQuoteCard() {
             <button onClick={downloadPng} disabled={downloading} className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-60">
               {downloading ? <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</> : <><Download className="h-4 w-4" />Download PNG</>}
             </button>
-            <Link href="/calendar" className="flex-1">
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                <Calendar className="h-4 w-4" />Schedule
-              </button>
-            </Link>
+            <button onClick={handleScheduleClick} disabled={renderingSchedule} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60">
+              {renderingSchedule ? <><Loader2 className="h-4 w-4 animate-spin" />Preparing...</> : <><Calendar className="h-4 w-4" />Schedule</>}
+            </button>
           </div>
           {(canvaEditUrl || canvaLoading) && (
             <a href={canvaEditUrl ?? "#"} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-2 py-2.5 border border-[#8B3DFF]/30 bg-[#8B3DFF]/8 text-[#8B3DFF] rounded-lg text-sm font-medium hover:bg-[#8B3DFF]/15 transition-colors">
@@ -175,5 +200,23 @@ export default function CreativeStudioQuoteCard() {
     </div>
   );
 
-  return <StudioPageShell title="Quote Card" settings={settingsNode} preview={previewNode} />;
+  const canvasH = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const captionForSchedule = quoteText + (attribution ? `\n\n— ${attribution}` : "");
+
+  return (
+    <>
+      <StudioPageShell title="Quote Card" settings={settingsNode} preview={previewNode} />
+      {showSchedule && activeBrandId && (
+        <SchedulePostSheet
+          brandId={activeBrandId}
+          defaultCaption={captionForSchedule}
+          previewHtml={html ?? undefined}
+          previewDataUrl={previewDataUrl ?? undefined}
+          canvasH={canvasH}
+          onClose={() => setShowSchedule(false)}
+          onSaved={() => setShowSchedule(false)}
+        />
+      )}
+    </>
+  );
 }

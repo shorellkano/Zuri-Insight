@@ -2,11 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { useBrand } from "@/context/brand-context";
 import { Loader2, Download, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { PhotoUploadPanel } from "@/components/photo-upload-panel";
 import { StudioPageShell } from "@/components/studio-page-shell";
+import { SchedulePostSheet } from "@/components/schedule-post-sheet";
 
 const API = (path: string) => `/api${path}`;
 
@@ -31,6 +31,9 @@ export default function CreativeStudioProductShowcase() {
   const [html, setHtml] = useState<string | null>(null);
   const [generated, setGenerated] = useState<{ headline: string; tagline: string; cta: string } | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [renderingSchedule, setRenderingSchedule] = useState(false);
   const [logoPosition, setLogoPosition] = useState("bottom-center");
   const [contactInfo, setContactInfo] = useState({ website: "", instagram: "", phone: "" });
   const [customPhotoDataUrl, setCustomPhotoDataUrl] = useState<string | null>(null);
@@ -65,25 +68,49 @@ export default function CreativeStudioProductShowcase() {
     }
   }
 
+  async function renderToPng(): Promise<string | null> {
+    if (!html) return null;
+    const size = format === "story" ? { w: 1080, h: 1920 } : format === "portrait" ? { w: 1080, h: 1350 } : { w: 1080, h: 1080 };
+    const container = document.createElement("div");
+    container.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${size.w}px;height:${size.h}px;overflow:hidden;`;
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, { width: size.w, height: size.h, scale: 1, useCORS: true, backgroundColor: null });
+      return canvas.toDataURL("image/png");
+    } finally {
+      document.body.removeChild(container);
+    }
+  }
+
   async function downloadPng() {
     if (!html) return;
     setDownloading(true);
     try {
-      const size = format === "story" ? { w: 1080, h: 1920 } : format === "portrait" ? { w: 1080, h: 1350 } : { w: 1080, h: 1080 };
-      const container = document.createElement("div");
-      container.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${size.w}px;height:${size.h}px;overflow:hidden;`;
-      container.innerHTML = html;
-      document.body.appendChild(container);
-      const canvas = await html2canvas(container, { width: size.w, height: size.h, scale: 1, useCORS: true, backgroundColor: null });
-      document.body.removeChild(container);
+      const dataUrl = await renderToPng();
+      if (!dataUrl) throw new Error("Render failed");
       const link = document.createElement("a");
       link.download = `zuri-product-${Date.now()}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.click();
     } catch {
       toast({ title: "Download failed", description: "Could not export the image.", variant: "destructive" });
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function handleScheduleClick() {
+    if (!html) return;
+    setRenderingSchedule(true);
+    try {
+      const dataUrl = await renderToPng();
+      setPreviewDataUrl(dataUrl);
+    } catch {
+      setPreviewDataUrl(null);
+    } finally {
+      setRenderingSchedule(false);
+      setShowSchedule(true);
     }
   }
 
@@ -186,16 +213,32 @@ export default function CreativeStudioProductShowcase() {
             <button onClick={downloadPng} disabled={downloading} className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-60">
               {downloading ? <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</> : <><Download className="h-4 w-4" />Download PNG</>}
             </button>
-            <Link href="/calendar" className="flex-1">
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                <Calendar className="h-4 w-4" />Schedule
-              </button>
-            </Link>
+            <button onClick={handleScheduleClick} disabled={renderingSchedule} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60">
+              {renderingSchedule ? <><Loader2 className="h-4 w-4 animate-spin" />Preparing...</> : <><Calendar className="h-4 w-4" />Schedule</>}
+            </button>
           </div>
         </>
       )}
     </div>
   );
 
-  return <StudioPageShell title="Product Showcase" settings={settingsNode} preview={previewNode} />;
+  const canvasH = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const captionForSchedule = generated ? `${generated.headline}\n\n${generated.tagline}` : "";
+
+  return (
+    <>
+      <StudioPageShell title="Product Showcase" settings={settingsNode} preview={previewNode} />
+      {showSchedule && activeBrandId && (
+        <SchedulePostSheet
+          brandId={activeBrandId}
+          defaultCaption={captionForSchedule}
+          previewHtml={html ?? undefined}
+          previewDataUrl={previewDataUrl ?? undefined}
+          canvasH={canvasH}
+          onClose={() => setShowSchedule(false)}
+          onSaved={() => setShowSchedule(false)}
+        />
+      )}
+    </>
+  );
 }

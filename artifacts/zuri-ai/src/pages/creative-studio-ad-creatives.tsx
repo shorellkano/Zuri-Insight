@@ -3,14 +3,14 @@ import { useBrand } from "@/context/brand-context";
 import { useListBrands } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Link } from "wouter";
 import html2canvas from "html2canvas";
 import {
-  Zap, Download, RefreshCw, Loader2, Sparkles,
+  Zap, Download, RefreshCw, Loader2, Sparkles, Calendar,
   Instagram, PlaySquare, Monitor, Smile,
 } from "lucide-react";
 import { PhotoUploadPanel } from "@/components/photo-upload-panel";
 import { StudioPageShell } from "@/components/studio-page-shell";
+import { SchedulePostSheet } from "@/components/schedule-post-sheet";
 
 const API = (path: string) => `/api${path}`;
 
@@ -83,6 +83,9 @@ export default function CreativeStudioAdCreatives() {
   const [downloading, setDownloading] = useState(false);
   const [html,        setHtml]        = useState<string | null>(null);
   const [generated,   setGenerated]   = useState<{ headline: string; tagline: string; cta: string } | null>(null);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [renderingSchedule, setRenderingSchedule] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
@@ -140,24 +143,48 @@ export default function CreativeStudioAdCreatives() {
     }
   }
 
+  async function renderToPng(): Promise<string | null> {
+    if (!html) return null;
+    const container = document.createElement("div");
+    container.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${dims.w}px;height:${dims.h}px;overflow:hidden;`;
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    try {
+      const canvas = await html2canvas(container, { width: dims.w, height: dims.h, scale: 1, useCORS: true, backgroundColor: null });
+      return canvas.toDataURL("image/png");
+    } finally {
+      document.body.removeChild(container);
+    }
+  }
+
   async function downloadPng() {
     if (!html) return;
     setDownloading(true);
     try {
-      const container = document.createElement("div");
-      container.style.cssText = `position:fixed;left:-9999px;top:-9999px;width:${dims.w}px;height:${dims.h}px;overflow:hidden;`;
-      container.innerHTML = html;
-      document.body.appendChild(container);
-      const canvas = await html2canvas(container, { width: dims.w, height: dims.h, scale: 1, useCORS: true, backgroundColor: null });
-      document.body.removeChild(container);
+      const dataUrl = await renderToPng();
+      if (!dataUrl) throw new Error("Render failed");
       const link = document.createElement("a");
       link.download = `zuri-ad-${platform}-${adFormat}-${Date.now()}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.click();
     } catch {
       toast({ title: "Download failed", description: "Could not export the image.", variant: "destructive" });
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function handleScheduleClick() {
+    if (!html) return;
+    setRenderingSchedule(true);
+    try {
+      const dataUrl = await renderToPng();
+      setPreviewDataUrl(dataUrl);
+    } catch {
+      setPreviewDataUrl(null);
+    } finally {
+      setRenderingSchedule(false);
+      setShowSchedule(true);
     }
   }
 
@@ -282,12 +309,15 @@ export default function CreativeStudioAdCreatives() {
       )}
 
       {html && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <button onClick={downloadPng} disabled={downloading} className="flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors">
             {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}Download PNG
           </button>
           <button onClick={generate} disabled={loading} className="flex items-center justify-center gap-2 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-medium hover:bg-primary/20 transition-colors">
             <RefreshCw className="h-4 w-4" /> Regenerate
+          </button>
+          <button onClick={handleScheduleClick} disabled={renderingSchedule} className="flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60">
+            {renderingSchedule ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}{renderingSchedule ? "Preparing..." : "Schedule"}
           </button>
         </div>
       )}
@@ -306,5 +336,22 @@ export default function CreativeStudioAdCreatives() {
     </div>
   );
 
-  return <StudioPageShell title="Ad Creatives" settings={settingsNode} preview={previewNode} />;
+  const captionForSchedule = generated ? `${generated.headline}\n\n${generated.tagline}\n\n${generated.cta}` : "";
+
+  return (
+    <>
+      <StudioPageShell title="Ad Creatives" settings={settingsNode} preview={previewNode} />
+      {showSchedule && activeBrandId && (
+        <SchedulePostSheet
+          brandId={activeBrandId}
+          defaultCaption={captionForSchedule}
+          previewHtml={html ?? undefined}
+          previewDataUrl={previewDataUrl ?? undefined}
+          canvasH={dims.h}
+          onClose={() => setShowSchedule(false)}
+          onSaved={() => setShowSchedule(false)}
+        />
+      )}
+    </>
+  );
 }
