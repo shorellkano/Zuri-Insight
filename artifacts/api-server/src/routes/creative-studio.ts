@@ -85,9 +85,10 @@ Return JSON:
 
 Rules: First slide is the hook - make it impossible to scroll past. Last slide has a clear CTA. NEVER use the em dash character \u2014 (—).`;
 
-    const result = await aiJSON<{ title: string; slides: Array<{ slide_number: number; headline: string; body: string; cta?: string }> }>(system, user, 500);
-
-    const logoUrl = reqLogoUrl ?? prefs?.logoUrl ?? null;
+    const [result, logoUrl] = await Promise.all([
+      aiJSONRace<{ title: string; slides: Array<{ slide_number: number; headline: string; body: string; cta?: string }> }>(system, user, 500),
+      resolveLogoUrl(reqLogoUrl ?? prefs?.logoUrl ?? null),
+    ]);
     const cleanResult = stripEmDashes(result);
     const slides = cleanResult.slides.map((slide, i) => ({
       ...slide,
@@ -126,7 +127,7 @@ router.post("/generate/quote-card", async (req, res): Promise<void> => {
 
   const [prefs] = await db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId));
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
-  const logoUrl = prefs?.logoUrl ?? null;
+  const logoUrl = await resolveLogoUrl(prefs?.logoUrl ?? null);
 
   const html = buildQuoteCardHtml({ quoteText, attribution, brandName: brand.name, colors, backgroundStyle, format, showBrandName, logoUrl });
 
@@ -404,6 +405,16 @@ function buildDNAFluxPrompt(opts: {
 }
 
 /**
+ * Pre-fetch a logo URL as base64 so html2canvas never hits Supabase Storage CORS.
+ * Falls back to the original URL if fetch fails.
+ */
+async function resolveLogoUrl(rawUrl: string | null): Promise<string | null> {
+  if (!rawUrl) return null;
+  const b64 = await fetchAsDataUrl(rawUrl);
+  return b64 ?? rawUrl;
+}
+
+/**
  * Fetch any image URL and return it as a base64 data URL so it never expires.
  */
 async function fetchAsDataUrl(url: string): Promise<string | null> {
@@ -532,9 +543,7 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
 
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
-  const rawLogoUrl = prefs?.logoUrl ?? null;
-  // Pre-fetch logo as base64 so html2canvas never hits Supabase Storage CORS restrictions
-  const logoUrl = rawLogoUrl ? (await fetchAsDataUrl(rawLogoUrl)) ?? rawLogoUrl : null;
+  const logoUrl = await resolveLogoUrl(prefs?.logoUrl ?? null);
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
     targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
@@ -1054,7 +1063,6 @@ router.post("/generate/product-showcase", async (req, res): Promise<void> => {
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
-  const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
     targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
@@ -1067,9 +1075,13 @@ router.post("/generate/product-showcase", async (req, res): Promise<void> => {
   let headline = `Introducing ${productName}`, tagline = productDescription || "Premium quality, made for you.";
   let cta = ctaText || "Shop Now";
   let imageScene = `${productName} product lifestyle shot, ${brand.city ?? brand.country ?? "African city"}, ${brand.industry ?? "retail"} context`;
-  try {
-    if (hasAI()) {
-      const result = await aiJSON(`You are a product marketer for African brands.
+
+  const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
+  const defaultFluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, aspectHint, postType: "product-showcase" });
+
+  const [aiResult, photoUrlRaw, logoUrl] = await Promise.all([
+    hasAI() ? aiJSONRace(`You are a product marketer for African brands.
 Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.city ?? brand.country ?? "Nigeria"}).
 Product: ${productName}. ${productDescription ? `Description: ${productDescription}` : ""}
 ${price ? `Price: ${price}` : ""}
@@ -1081,18 +1093,17 @@ Write product showcase copy. Return JSON:
   "cta": "string (max 3 words)",
   "imageScene": "string: start with 'photograph of' then describe a realistic scene — the product in use by an African person, setting, lighting. Example: 'photograph of Nigerian woman holding skincare product, bright vanity mirror, Lagos apartment'"
 }
-Never use em dashes.`, "{}");
-      if (result.headline) headline = result.headline;
-      if (result.tagline) tagline = result.tagline;
-      if (result.cta) cta = ctaText || result.cta;
-      if (result.imageScene) imageScene = result.imageScene;
-    }
-  } catch { }
+Never use em dashes.`, "{}").catch(() => null) : Promise.resolve(null),
+    customPhotoDataUrl ? Promise.resolve(customPhotoDataUrl) : resolvePhotoUrl(industryPhotoQuery(brand.industry, `${productName} product lifestyle`), w, h, defaultFluxPrompt).catch(() => null),
+    resolveLogoUrl(prefs?.logoUrl ?? null),
+  ]);
 
-  const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
-  const fluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, aspectHint, postType: "product-showcase" });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, `${productName} product lifestyle`), w, h, fluxPrompt);
+  if (aiResult?.headline) headline = aiResult.headline;
+  if (aiResult?.tagline) tagline = aiResult.tagline;
+  if (aiResult?.cta) cta = ctaText || aiResult.cta;
+  if (aiResult?.imageScene && !customPhotoDataUrl) imageScene = aiResult.imageScene;
+
+  const photoUrl = photoUrlRaw ?? `data:image/svg+xml,${encodeURIComponent(makeSvgGradient(w, h))}`;
   const html = buildProductShowcaseHtml({ productName, headline, tagline, price, cta, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, headline, tagline, cta });
 });
@@ -1157,7 +1168,6 @@ router.post("/generate/story-cover", async (req, res): Promise<void> => {
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
-  const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
     targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
@@ -1169,9 +1179,10 @@ router.post("/generate/story-cover", async (req, res): Promise<void> => {
 
   let hookText = "SWIPE FOR MORE", subText = "Tap to open";
   let imageScene = `${brand.industry ?? "business"} lifestyle portrait, ${brand.city ?? brand.country ?? "African city"}, vertical framing`;
-  try {
-    if (hasAI()) {
-      const result = await aiJSON(`You are a social media strategist for African brands.
+  const defaultFluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, mood, aspectHint: "portrait 9:16 vertical story format", postType: "story-cover" });
+
+  const [aiResult, photoUrlRaw, logoUrl] = await Promise.all([
+    hasAI() ? aiJSONRace(`You are a social media strategist for African brands.
 Brand: ${brand.name}. Industry: ${brand.industry || "Business"}. Location: ${brand.city ?? brand.country ?? "Nigeria"}.
 Mood: ${mood}. ${topic ? `Topic: ${topic}` : "Generate a compelling hook"}
 
@@ -1181,15 +1192,15 @@ Write an Instagram/TikTok story cover. Return JSON:
   "subText": "string (call to action, max 5 words)",
   "imageScene": "string: start with 'photograph of' then describe a vertical lifestyle scene — African person, action, setting, lighting. Example: 'photograph of confident Nigerian woman in Lagos rooftop, golden hour light, looking at camera'"
 }
-Never use em dashes.`, "{}");
-      if (result.hookText) hookText = result.hookText;
-      if (result.subText) subText = result.subText;
-      if (result.imageScene) imageScene = result.imageScene;
-    }
-  } catch { }
+Never use em dashes.`, "{}").catch(() => null) : Promise.resolve(null),
+    customPhotoDataUrl ? Promise.resolve(customPhotoDataUrl) : resolvePhotoUrl(industryPhotoQuery(brand.industry, "lifestyle portrait vertical"), 1080, 1920, defaultFluxPrompt).catch(() => null),
+    resolveLogoUrl(prefs?.logoUrl ?? null),
+  ]);
 
-  const fluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, mood, aspectHint: "portrait 9:16 vertical story format", postType: "story-cover" });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, "lifestyle portrait vertical"), 1080, 1920, fluxPrompt);
+  if (aiResult?.hookText) hookText = aiResult.hookText;
+  if (aiResult?.subText) subText = aiResult.subText;
+
+  const photoUrl = photoUrlRaw ?? `data:image/svg+xml,${encodeURIComponent(makeSvgGradient(1080, 1920))}`;
   const html = buildStoryCoverHtml({ hookText, subText, brandName: brand.name, colors, mood, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html, hookText, subText });
 });
@@ -1248,7 +1259,6 @@ router.post("/generate/birthday-post", async (req, res): Promise<void> => {
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
-  const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
     targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
@@ -1259,20 +1269,22 @@ router.post("/generate/birthday-post", async (req, res): Promise<void> => {
   };
 
   let message = shortMessage || "Wishing you a wonderful birthday filled with joy and celebration!";
-  try {
-    if (hasAI() && !shortMessage) {
-      const result = await aiJSON(`You are a warm copywriter for an African business.
+  const birthdayScene = `joyful birthday celebration, confetti, balloons, festive decor, bokeh lights, ${brand.city ?? brand.country ?? "African city"} party setting, warm celebratory atmosphere`;
+  const birthdayFluxPrompt = buildDNAFluxPrompt({ scene: birthdayScene, ctx: brandCtx, mood: "joyful celebratory", aspectHint: "square format", postType: "birthday-post" });
+
+  const [aiResult, photoUrlRaw, logoUrl] = await Promise.all([
+    (hasAI() && !shortMessage) ? aiJSONRace(`You are a warm copywriter for an African business.
 Brand: ${brand.name}. We are celebrating ${personName}${personRole ? `, our ${personRole}` : ""}.
 
 Write a heartfelt birthday message. Return JSON: { "message": "string (2 sentences, warm and celebratory, brand-appropriate)" }
-Never use em dashes.`, "{}");
-      if (result.message) message = result.message;
-    }
-  } catch { }
+Never use em dashes.`, "{}").catch(() => null) : Promise.resolve(null),
+    customPhotoDataUrl ? Promise.resolve(customPhotoDataUrl) : resolvePhotoUrl("birthday celebration confetti balloons african joy colorful", 1080, 1080, birthdayFluxPrompt).catch(() => null),
+    resolveLogoUrl(prefs?.logoUrl ?? null),
+  ]);
 
-  const birthdayScene = `joyful birthday celebration, confetti, balloons, festive decor, bokeh lights, ${brand.city ?? brand.country ?? "African city"} party setting, warm celebratory atmosphere`;
-  const birthdayFluxPrompt = buildDNAFluxPrompt({ scene: birthdayScene, ctx: brandCtx, mood: "joyful celebratory", aspectHint: "square format", postType: "birthday-post" });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl("birthday celebration confetti balloons african joy colorful", 1080, 1080, birthdayFluxPrompt);
+  if (aiResult?.message) message = aiResult.message;
+
+  const photoUrl = photoUrlRaw ?? `data:image/svg+xml,${encodeURIComponent(makeSvgGradient(1080, 1080))}`;
   const html = buildBirthdayPostHtml({ personName, personRole, message, brandName: brand.name, colors, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, celebrantPhotoDataUrl, smoothFace });
   res.json({ html, message });
 });
@@ -1337,7 +1349,6 @@ router.post("/generate/testimonial", async (req, res): Promise<void> => {
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
-  const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
     targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
@@ -1350,7 +1361,13 @@ router.post("/generate/testimonial", async (req, res): Promise<void> => {
   const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
   const testimScene = `happy satisfied ${brand.industry ?? "business"} customer, ${brand.city ?? brand.country ?? "African city"}, warm professional environment, smiling person`;
   const testimFluxPrompt = buildDNAFluxPrompt({ scene: testimScene, ctx: brandCtx, mood: "warm trustworthy", aspectHint, postType: "testimonial" });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, "professional team satisfied customer"), w, h, testimFluxPrompt);
+
+  const [photoUrlRaw, logoUrl] = await Promise.all([
+    customPhotoDataUrl ? Promise.resolve(customPhotoDataUrl) : resolvePhotoUrl(industryPhotoQuery(brand.industry, "professional team satisfied customer"), w, h, testimFluxPrompt).catch(() => null),
+    resolveLogoUrl(prefs?.logoUrl ?? null),
+  ]);
+
+  const photoUrl = photoUrlRaw ?? `data:image/svg+xml,${encodeURIComponent(makeSvgGradient(w, h))}`;
   const html = buildTestimonialHtml({ testimonialText, customerName, customerRole, rating, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace });
   res.json({ html });
 });
@@ -1415,7 +1432,6 @@ router.post("/generate/ad-creative", async (req, res): Promise<void> => {
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
-  const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
     targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
@@ -1430,10 +1446,16 @@ router.post("/generate/ad-creative", async (req, res): Promise<void> => {
   let finalCta      = cta      || "Learn More";
   let imageScene    = `${brand.industry ?? "business"} lifestyle advertising scene, ${brand.city ?? brand.country ?? "African city"}, ${offerText ? offerText + " product in use" : "professional brand moment"}`;
 
-  try {
-    if (hasAI()) {
-      const result = await aiJSON<{ headline: string; tagline: string; cta: string; imageScene: string }>(
-        `You are a high-converting ad copywriter for African brands on digital platforms.
+  const isStory  = adFormat === "story";
+  const isBanner = adFormat === "banner";
+  const w = isBanner ? 1200 : 1080;
+  const h = isStory  ? 1920 : isBanner ? 628 : 1080;
+  const adAspectHint = isStory ? "portrait 9:16 vertical format" : isBanner ? "landscape wide banner format" : "square format";
+  const defaultAdFluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, mood: "bold impactful advertising", aspectHint: adAspectHint, postType: "ad-creative" });
+
+  const [aiResult, photoUrlRaw, logoUrl] = await Promise.all([
+    hasAI() ? aiJSONRace<{ headline: string; tagline: string; cta: string; imageScene: string }>(
+      `You are a high-converting ad copywriter for African brands on digital platforms.
 Write short, punchy ad copy that stops the scroll.
 Platform: ${platform}. Format: ${adFormat}. Location: ${brand.city ?? brand.country ?? "Nigeria"}.
 NEVER use em dashes.
@@ -1445,26 +1467,20 @@ Return JSON:
   "cta": "string (2-4 words, action-driven)",
   "imageScene": "string: start with 'photograph of' then describe the ad scene — African person using the product/service, setting, lighting, emotion. Example: 'photograph of smiling Nigerian family in clean modern home, teal caregiver helping with meal, warm afternoon light'"
 }`,
-        `Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.city ?? brand.country ?? "Nigeria"}).
+      `Brand: ${brand.name} (${brand.industry ?? "business"}, ${brand.city ?? brand.country ?? "Nigeria"}).
 Offer / product: ${offerText || "their product or service"}.
 ${headline ? `Existing headline: ${headline} (improve it slightly)` : "Write a fresh headline."}`,
-        350,
-      );
-      if (result?.headline) finalHeadline = result.headline;
-      if (result?.tagline)  finalTagline  = result.tagline;
-      if (result?.cta)      finalCta      = cta || result.cta;
-      if (result?.imageScene) imageScene  = result.imageScene;
-    }
-  } catch { /* fall through to defaults */ }
+      350,
+    ).catch(() => null) : Promise.resolve(null),
+    customPhotoDataUrl ? Promise.resolve(customPhotoDataUrl) : resolvePhotoUrl(industryPhotoQuery(brand.industry, offerText || brand.name), w, h, defaultAdFluxPrompt).catch(() => null),
+    resolveLogoUrl(prefs?.logoUrl ?? null),
+  ]);
 
-  const isStory  = adFormat === "story";
-  const isBanner = adFormat === "banner";
-  const w = isBanner ? 1200 : 1080;
-  const h = isStory  ? 1920 : isBanner ? 628 : 1080;
+  if (aiResult?.headline) finalHeadline = aiResult.headline;
+  if (aiResult?.tagline)  finalTagline  = aiResult.tagline;
+  if (aiResult?.cta)      finalCta      = cta || aiResult.cta;
 
-  const adAspectHint = isStory ? "portrait 9:16 vertical format" : isBanner ? "landscape wide banner format" : "square format";
-  const adFluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, mood: "bold impactful advertising", aspectHint: adAspectHint, postType: "ad-creative" });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, offerText || brand.name), w, h, adFluxPrompt);
+  const photoUrl = photoUrlRaw ?? `data:image/svg+xml,${encodeURIComponent(makeSvgGradient(w, h))}`;
   const html = buildAdCreativeHtml({
     headline: finalHeadline, tagline: finalTagline, cta: finalCta,
     brandName: brand.name, colors, adFormat, showBrandName, logoUrl, photoUrl, platform,
