@@ -280,23 +280,32 @@ function hexToColorName(hex: string): string {
     "#ef4444": "bright red", "#dc2626": "deep red", "#b91c1c": "dark red",
     "#10b981": "emerald green", "#059669": "deep green", "#047857": "forest green",
     "#3b82f6": "bright blue", "#2563eb": "royal blue", "#1d4ed8": "deep blue",
+    "#1e40af": "navy blue", "#1e3a8a": "dark navy blue",
+    "#0d6b8c": "teal blue", "#0e7490": "dark cyan", "#155e75": "dark teal blue",
+    "#0891b2": "cyan blue", "#06b6d4": "bright cyan", "#0284c7": "ocean blue",
     "#8b5cf6": "purple", "#7c3aed": "deep purple", "#6d28d9": "violet",
     "#ec4899": "pink", "#db2777": "hot pink", "#be185d": "deep pink",
     "#14b8a6": "teal", "#0d9488": "deep teal", "#0f766e": "dark teal",
   };
   const normalized = hex.toLowerCase();
   if (map[normalized]) return map[normalized];
-  // Heuristic for unknown hex
+  // Heuristic for unknown hex — must return a readable color word, never a raw hex
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   if (r > 200 && g > 150 && b < 80) return "warm gold";
   if (r > 180 && g < 80 && b < 80) return "rich red";
   if (r < 80 && g > 150 && b < 80) return "vibrant green";
+  // Teal/cyan family: low red, blue dominant over green, or green and blue both elevated
+  if (r < 80 && b > 100 && b >= g && g > 60) return "teal blue";
+  if (r < 80 && b > 100 && g > 100) return "teal";
   if (r < 80 && g < 80 && b > 180) return "deep blue";
+  if (r < 100 && g < 100 && b > 150) return "blue";
   if (r > 180 && g > 180 && b > 180) return "light silver";
   if (r < 60 && g < 60 && b < 60) return "near black";
-  return hex; // fallback to raw hex
+  if (r > 150 && g > 100 && b > 150) return "lavender";
+  if (r > 120 && g < 80 && b > 120) return "purple";
+  return "dark blue"; // safe fallback — never returns raw hex
 }
 
 /**
@@ -696,6 +705,8 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
     const shieldSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="17" height="19" viewBox="0 0 24 28" fill="none"><path d="M12 2L4 6v8c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6L12 2z" stroke="${onPrimary}" stroke-width="2.2" stroke-linejoin="round"/><path d="M9 14l2 2 4-4" stroke="${onPrimary}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
     const heartSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="19" height="18" viewBox="0 0 24 22" fill="none"><path d="M12 20S3 14 3 8a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6-9 12-9 12z" stroke="${onPrimary}" stroke-width="2.2" stroke-linejoin="round"/></svg>`);
     const globeSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="${onPrimary}" stroke-width="2"/><path d="M12 3c-2.5 3-4 5.8-4 9s1.5 6 4 9M12 3c2.5 3 4 5.8 4 9s-1.5 6-4 9M3 12h18" stroke="${onPrimary}" stroke-width="1.8"/></svg>`);
+    const igSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="${onPrimary}" stroke-width="2"/><circle cx="12" cy="12" r="5" stroke="${onPrimary}" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.2" fill="${onPrimary}"/></svg>`);
+    const phoneSvg = ic(`<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6.5 2h11A1.5 1.5 0 0 1 19 3.5v17a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20.5v-17A1.5 1.5 0 0 1 6.5 2z" stroke="${onPrimary}" stroke-width="2"/><circle cx="12" cy="19" r="1" fill="${onPrimary}"/></svg>`);
     const badges = [
       { icon: shieldSvg, label: "TRUSTED CARE" },
       { icon: heartSvg, label: "PEACE OF MIND" },
@@ -706,15 +717,21 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
         <span style="color:${onPrimary};font-size:${fz}px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;font-family:${FONT_STACK};">${b.label}</span>
       </div>`
     ).join(`<div style="width:1px;height:32px;background:${onPrimary}55;margin:0 8px;"></div>`);
-    const websiteHtml = websiteUrl
-      ? `<div style="display:flex;align-items:center;gap:10px;">
-          ${globeSvg}
-          <span style="color:${onPrimary};font-size:${fz}px;font-weight:700;font-family:${FONT_STACK};">${websiteUrl}</span>
-        </div>`
+
+    // Build contact items: website, instagram, phone — show whichever are provided
+    const contactItems: string[] = [];
+    const instagram = (contactInfo as Record<string,string>).instagram ?? "";
+    const phone = (contactInfo as Record<string,string>).phone ?? "";
+    if (websiteUrl) contactItems.push(`<div style="display:flex;align-items:center;gap:10px;">${globeSvg}<span style="color:${onPrimary};font-size:${fz}px;font-weight:700;font-family:${FONT_STACK};">${websiteUrl}</span></div>`);
+    if (instagram) contactItems.push(`<div style="display:flex;align-items:center;gap:10px;">${igSvg}<span style="color:${onPrimary};font-size:${fz}px;font-weight:700;font-family:${FONT_STACK};">${instagram.startsWith("@") ? instagram : "@" + instagram}</span></div>`);
+    if (phone) contactItems.push(`<div style="display:flex;align-items:center;gap:10px;">${phoneSvg}<span style="color:${onPrimary};font-size:${fz}px;font-weight:700;font-family:${FONT_STACK};">${phone}</span></div>`);
+    const contactHtml = contactItems.length
+      ? `<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">${contactItems.join("")}</div>`
       : "";
+
     return `<div style="height:${h}px;background:${primary};flex-shrink:0;display:flex;align-items:center;padding:0 ${padH}px;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:24px;">${badgesHtml}</div>
-      ${websiteHtml}
+      ${contactHtml}
     </div>`;
   }
 
