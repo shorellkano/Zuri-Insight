@@ -31,6 +31,7 @@ interface IGStatus {
   expiresAt?: string;
   connectedAt?: string;
   needsReauth?: boolean;
+  expiringSoon?: boolean;
 }
 
 interface MetaConfigStatus {
@@ -120,11 +121,15 @@ export default function SettingsSocial() {
     const params = new URLSearchParams(window.location.search);
     const connected = params.get("connected");
     const username = params.get("username");
+    const resumed = params.get("resumed");
     const error = params.get("error");
     if (connected === "instagram") {
+      const resumedText = resumed && parseInt(resumed) > 0
+        ? ` ${parseInt(resumed) === 1 ? "1 paused post has been rescheduled." : `${resumed} paused posts have been rescheduled.`}`
+        : "";
       setBannerMsg({
         type: "success",
-        text: username ? `Instagram connected as @${username}` : "Instagram connected successfully",
+        text: (username ? `Instagram connected as @${username}.` : "Instagram connected successfully.") + resumedText,
       });
       window.history.replaceState({}, "", window.location.pathname);
     } else if (error) {
@@ -471,6 +476,16 @@ export default function SettingsSocial() {
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Connected
               </span>
+              {igStatus.expiringSoon && (
+                <button
+                  onClick={handleConnect}
+                  disabled={!activeBrandId || connecting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 text-xs font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/40 transition-colors disabled:opacity-50"
+                >
+                  {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                  Refresh token
+                </button>
+              )}
               <button
                 onClick={() => disconnectMutation.mutate()}
                 disabled={disconnectMutation.isPending || !activeBrandId}
@@ -480,6 +495,16 @@ export default function SettingsSocial() {
                 Disconnect
               </button>
             </div>
+          ) : igStatus?.needsReauth ? (
+            <button
+              onClick={handleConnect}
+              disabled={!activeBrandId || connecting || metaNotConfigured === true}
+              title={metaNotConfigured ? "Set up Meta app credentials first" : undefined}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+              Reconnect
+            </button>
           ) : (
             <button
               onClick={handleConnect}
@@ -494,9 +519,30 @@ export default function SettingsSocial() {
         </div>
 
         {igStatus?.needsReauth && (
-          <div className="mt-4 pt-4 border-t border-border flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>Token expired — reconnect Instagram to resume publishing.</span>
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Token expired</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                  Scheduled posts have been paused. Reconnect to resume publishing.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {igStatus?.expiringSoon && !igStatus?.needsReauth && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Token expiring soon</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                  Your access token expires on {igStatus.expiresAt ? new Date(igStatus.expiresAt).toLocaleDateString() : "soon"}. Refresh it now to avoid interruptions.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

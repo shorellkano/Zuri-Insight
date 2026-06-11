@@ -3,6 +3,7 @@ import { db, socialConnectionsTable, brandsTable, appConfigTable } from "@worksp
 import { eq, and, isNull } from "drizzle-orm";
 import { encryptToken, decryptToken, signOAuthState, verifyOAuthState } from "../lib/tokenCrypto";
 import { requireAuth, type AuthedRequest } from "../middleware/requireAuth";
+import { resumePausedPosts } from "../lib/scheduler";
 
 const router: IRouter = Router();
 
@@ -312,7 +313,10 @@ router.get("/oauth/instagram/callback", async (req: Request, res: Response): Pro
       await db.update(brandsTable).set({ userId }).where(eq(brandsTable.id, brandId));
     }
 
-    res.redirect(`${appUrl}/settings/social?connected=instagram&username=${encodeURIComponent(igUsername ?? "")}`);
+    const resumedCount = await resumePausedPosts(brandId).catch(() => 0);
+    const resumedParam = resumedCount > 0 ? `&resumed=${resumedCount}` : "";
+
+    res.redirect(`${appUrl}/settings/social?connected=instagram&username=${encodeURIComponent(igUsername ?? "")}${resumedParam}`);
   } catch (err: any) {
     const msg = err?.message ?? "Unknown error";
     res.redirect(`${appUrl}/settings/social?error=${encodeURIComponent(msg)}`);
@@ -352,13 +356,17 @@ router.get("/oauth/instagram/status", requireAuth, async (req: Request, res: Res
     return;
   }
 
-  const isExpired = conn.tokenExpiresAt ? conn.tokenExpiresAt < new Date() : false;
+  const now = new Date();
+  const isExpired = conn.tokenExpiresAt ? conn.tokenExpiresAt < now : false;
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const expiringSoon = !isExpired && conn.tokenExpiresAt != null && conn.tokenExpiresAt < sevenDaysFromNow;
   res.json({
     connected: !isExpired,
     username: conn.igUsername,
     expiresAt: conn.tokenExpiresAt,
     connectedAt: conn.createdAt,
     needsReauth: isExpired,
+    expiringSoon,
   });
 });
 

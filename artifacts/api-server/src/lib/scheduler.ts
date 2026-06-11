@@ -74,7 +74,7 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
     }
 
     if (conn.tokenExpiresAt && conn.tokenExpiresAt < new Date()) {
-      await markFailed(post.id, "Instagram access token has expired. Please reconnect in Settings > Social.");
+      await markPaused(post.id, "Instagram access token has expired. Reconnect in Settings › Social to resume.");
       return;
     }
 
@@ -150,6 +150,8 @@ async function processPost(post: typeof scheduledPostsTable.$inferSelect) {
           ),
         );
       logger.warn({ postId: post.id }, "Scheduler: marked Instagram token as expired (code 190)");
+      await markPaused(post.id, "Instagram access token has expired. Reconnect in Settings › Social to resume.");
+      return;
     }
 
     await markFailed(post.id, message);
@@ -161,6 +163,28 @@ async function markFailed(postId: string, errorMessage: string) {
     .update(scheduledPostsTable)
     .set({ status: "failed", errorMessage })
     .where(eq(scheduledPostsTable.id, postId));
+}
+
+async function markPaused(postId: string, errorMessage: string) {
+  await db
+    .update(scheduledPostsTable)
+    .set({ status: "paused", errorMessage })
+    .where(eq(scheduledPostsTable.id, postId));
+}
+
+export async function resumePausedPosts(brandId: string): Promise<number> {
+  const resumed = await db
+    .update(scheduledPostsTable)
+    .set({ status: "scheduled", errorMessage: null })
+    .where(
+      and(
+        eq(scheduledPostsTable.brandId, brandId),
+        eq(scheduledPostsTable.status, "paused"),
+        eq(scheduledPostsTable.platform, "instagram"),
+      ),
+    )
+    .returning({ id: scheduledPostsTable.id });
+  return resumed.length;
 }
 
 export async function startScheduler() {
