@@ -539,7 +539,7 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
   // ── Run text-copy AI and image generation in PARALLEL ─────────────────────
   // Both are independent — no reason to wait for copy before starting the image.
   // Wrapped in a 38-second hard timeout so the route always responds within 40s.
-  const OVERALL_TIMEOUT_MS = 38_000;
+  const OVERALL_TIMEOUT_MS = 25_000; // Stay well under Replit's ~30s proxy timeout
 
   const textPromise = hasAI()
     ? aiJSONRace(`You are a brand copywriter for African businesses. Create high-impact Instagram post copy.

@@ -56,7 +56,9 @@ export default function CreativeStudioAnnouncement() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ brandId: activeBrandId, eventDetails, ctaText, format, showBrandName, logoPosition, contactInfo, customPhotoDataUrl, smoothFace }),
       });
-      const data = await r.json();
+      const text = await r.text();
+      let data: any;
+      try { data = JSON.parse(text); } catch { throw new Error("Server took too long to respond. Please try again."); }
       if (!r.ok) throw new Error(data.error ?? "Generation failed");
       setHtml(data.html);
       setGenerated({ headline: data.headline, subtext: data.subtext, cta: data.cta });
