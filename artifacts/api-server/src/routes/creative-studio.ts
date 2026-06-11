@@ -313,6 +313,18 @@ function hexToColorName(hex: string): string {
  * Build a FLUX.1-dev prompt using photography-first language.
  * FLUX responds to camera/lighting/subject descriptions, not abstract brand concepts.
  */
+// ── Person variety pool — randomly sampled so every generation looks different ──
+const PERSON_VARIANTS = [
+  "Nigerian woman, late 20s, natural afro hair",
+  "Nigerian man, early 30s, short beard, warm smile",
+  "Nigerian woman, mid 30s, braided hair, confident expression",
+  "Nigerian man, 40s, clean-shaven, friendly demeanour",
+  "Nigerian woman, 50s, grey locs, dignified presence",
+  "Nigerian woman, mid 20s, box braids, bright smile",
+  "Nigerian man, late 20s, fade haircut, relaxed",
+  "Nigerian woman, 40s, headwrap, professional poise",
+];
+
 function buildDNAFluxPrompt(opts: {
   scene: string;          // AI-generated scene: "photograph of [subject] doing [action] in [place]"
   ctx: BrandImageContext;
@@ -325,79 +337,90 @@ function buildDNAFluxPrompt(opts: {
   // ── Location ──
   const city = ctx.city ?? ctx.country ?? "Lagos, Nigeria";
 
-  // ── Lighting from design style (no bokeh — sharp focus is required for SDXL) ──
+  // ── Naturalistic lighting — avoid studio/softbox which triggers the AI-generated look ──
   const lightingMap: Record<string, string> = {
-    "bold":         "dramatic studio lighting, strong key light, deep crisp shadows, sharp",
-    "minimal":      "bright even window light, clean white tones, bright airy, sharp focus",
-    "professional": "professional soft-box lighting, even exposure, crisp sharp detail",
-    "warm":         "warm golden afternoon sunlight, inviting glow, sharp focus, vivid",
-    "luxury":       "moody cinematic lighting, rich shadows, sharp detail, premium feel",
-    "playful":      "bright cheerful natural sunlight, vivid saturated colors, sharp",
-    "modern":       "cool blue-white studio light, sleek contemporary, sharp clinical detail",
+    "bold":         "strong directional natural sunlight, dramatic outdoor light, real shadows",
+    "minimal":      "soft diffused window light, bright airy interior, gentle natural tones",
+    "professional": "soft natural light from a window, warm indoor ambient, candid documentary feel",
+    "warm":         "warm golden hour sunlight, outdoor setting, rich warm tones, authentic glow",
+    "luxury":       "soft moody ambient light, elegant interior, cinematic natural feel",
+    "playful":      "bright cheerful outdoor sunlight, vivid natural colors, energetic feel",
+    "modern":       "clean cool daylight, open plan interior, crisp natural exposure",
   };
-  const lighting = lightingMap[ctx.designStyle ?? "professional"] ?? "professional soft-box lighting, even exposure, crisp detail";
+  const lighting = lightingMap[ctx.designStyle ?? "professional"] ?? "soft natural window light, candid documentary feel";
 
-  // ── Camera specs for realism ──
+  // ── Camera specs — favour reportage/street over studio ──
   const cameraMap: Record<string, string> = {
-    "bold":         "Sony A7 III, 35mm f/1.4, slightly underexposed",
-    "minimal":      "Canon EOS R5, 50mm f/2.0, overexposed +1 stop",
-    "professional": "Canon 5D Mark IV, 85mm f/2.0, clean background",
-    "warm":         "Nikon D850, 85mm f/1.8, warm color grade",
-    "luxury":       "Hasselblad X2D, 90mm f/2.2, medium format detail",
-    "playful":      "Canon EOS R6, 35mm f/2.0, vibrant color grade",
-    "modern":       "Sony A9 II, 70mm f/1.8, sharp and clinical",
+    "bold":         "Sony A7 III, 35mm f/1.8, shot on location",
+    "minimal":      "Canon EOS R5, 50mm f/2.0, natural light only",
+    "professional": "Canon 5D Mark IV, 85mm f/2.0, environmental portrait",
+    "warm":         "Nikon D850, 85mm f/1.8, golden hour outdoor",
+    "luxury":       "Hasselblad X2D, 90mm f/2.2, ambient light portrait",
+    "playful":      "Canon EOS R6, 35mm f/2.0, outdoor daylight",
+    "modern":       "Sony A9 II, 70mm f/1.8, clean daylight",
   };
-  const camera = cameraMap[ctx.designStyle ?? "professional"] ?? "Canon 5D Mark IV, 85mm f/2.0";
+  const camera = cameraMap[ctx.designStyle ?? "professional"] ?? "Canon 5D Mark IV, 85mm f/2.0, environmental portrait";
 
   // ── Brand accent color for clothing/props ──
   const primaryColorName = hexToColorName(ctx.colors[0] ?? "#0097A7");
 
+  // ── Detect group/team scene — use multi-person subject instead of single person ──
+  const isGroupScene = /\b(team|group|staff|colleagues|workers|professionals|crew|caregivers|nurses|doctors|people)\b/i.test(scene);
+
+  // ── Random person variant for visual variety across generations ──
+  const personVariant = PERSON_VARIANTS[Math.floor(Math.random() * PERSON_VARIANTS.length)];
+
   // ── Subject context from industry ──
   const subjectMap: Record<string, string> = {
-    "Food & Beverage":              "West African chef or food vendor, delicious food presentation",
-    "Health & Wellness":            "fit African woman doing wellness activity, healthy lifestyle",
-    "Healthcare & Medical":         "Nigerian medical professional in scrubs, modern clinic",
-    "Beauty & Personal Care":       "stylish African woman in beauty salon, cosmetics and skincare",
-    "Fashion & Apparel":            "confident Nigerian model in fashionable outfit, editorial pose",
-    "Technology & SaaS":            "young African tech professional at laptop, modern office",
-    "Real Estate & Property":       "elegant Nigerian professional in luxury interior, modern home",
-    "Education & Training":         "engaged Nigerian students in bright classroom, learning",
-    "Entertainment & Events":       "joyful African crowd at vibrant event, celebration energy",
-    "Travel & Hospitality":         "smiling Nigerian guest at premium hotel, luxury travel",
-    "Agriculture & Farming":        "Nigerian farmer with fresh produce, golden farmland",
-    "Retail & E-commerce":          "happy Nigerian customer shopping, beautiful retail display",
-    "Fintech & Payments":           "confident Nigerian professional with smartphone, fintech",
-    "Logistics & Courier":          "professional Nigerian delivery worker, urban cityscape",
-    "Construction & Engineering":   "Nigerian engineer at modern construction site, hard hat",
-    "Non-profit & NGO":             "smiling Nigerian community members, empowerment scene",
-    "Church & Religious Organisation": "joyful Nigerian congregation, uplifting atmosphere",
-    "Domestic Staffing & Caregiving": "smiling Nigerian caregiver in uniform caring for family, warm home",
+    "Food & Beverage":              `${personVariant}, West African chef or food vendor, delicious food presentation`,
+    "Health & Wellness":            `${personVariant}, doing a wellness activity, healthy active lifestyle`,
+    "Healthcare & Medical":         `${personVariant}, medical professional in scrubs, modern clinic`,
+    "Beauty & Personal Care":       `${personVariant}, beauty salon setting, cosmetics and skincare`,
+    "Fashion & Apparel":            `${personVariant}, fashionable outfit, relaxed editorial setting`,
+    "Technology & SaaS":            `${personVariant}, tech professional at laptop, casual modern workspace`,
+    "Real Estate & Property":       `${personVariant}, standing in a well-lit modern interior`,
+    "Education & Training":         `${personVariant}, engaged in learning or teaching, bright classroom`,
+    "Entertainment & Events":       `joyful group of diverse Nigerians at a vibrant event, celebration energy`,
+    "Travel & Hospitality":         `${personVariant}, relaxed at a premium hotel or travel setting`,
+    "Agriculture & Farming":        `${personVariant}, Nigerian farmer with fresh produce, farmland backdrop`,
+    "Retail & E-commerce":          `${personVariant}, happy customer or staff in a retail space`,
+    "Fintech & Payments":           `${personVariant}, fintech professional with smartphone, casual office`,
+    "Logistics & Courier":          `${personVariant}, delivery professional, urban Nigerian backdrop`,
+    "Construction & Engineering":   `${personVariant}, engineer at a modern construction site`,
+    "Non-profit & NGO":             `${personVariant}, community empowerment scene, warm outdoor setting`,
+    "Church & Religious Organisation": `joyful group of diverse Nigerian congregation members, warm uplifting atmosphere`,
+    "Domestic Staffing & Caregiving": `${personVariant}, caregiver in ${primaryColorName} uniform, warm Nigerian home`,
   };
-  const subjectCtx = subjectMap[ctx.industry ?? ""] ?? "confident Nigerian professional, modern setting";
+
+  // ── Group scene overrides single-person subject ──
+  const groupSubjectMap: Record<string, string> = {
+    "Healthcare & Medical":         `group of 3 diverse Nigerian healthcare professionals in scrubs, modern clinic, team moment`,
+    "Healthcare & Medical services": `group of 3 diverse Nigerian healthcare professionals, modern setting`,
+    "Domestic Staffing & Caregiving": `group of 3 diverse Nigerian caregivers in ${primaryColorName} uniforms, warm professional team photo, mixed ages and genders`,
+    "Education & Training":         `group of diverse Nigerian students and educators, engaged classroom scene`,
+    "Non-profit & NGO":             `group of smiling Nigerian community members, empowerment outdoor scene`,
+  };
+
+  const subjectCtx = isGroupScene
+    ? (groupSubjectMap[ctx.industry ?? ""] ?? `group of 3 diverse Nigerian professionals in ${primaryColorName} uniforms, team setting, mixed ages, genuine smiles`)
+    : (subjectMap[ctx.industry ?? ""] ?? `${personVariant}, confident Nigerian professional, modern setting`);
 
   // ── Strip "photograph of" prefix from the AI scene so we can lead with person ──
   const sceneEnv = scene.replace(/^photograph of\s*/i, "").trim();
 
-  // ── Inject brand color into the person description so FLUX paints the right uniform ──
-  const subjectWithColor = subjectCtx.replace(
-    /\bin uniform\b/i, `in ${primaryColorName} professional uniform`
-  ).replace(
-    /\bin (a |the )?uniform\b/i, `in ${primaryColorName} professional uniform`
-  );
-  // If no "uniform" in description, append the color clothing hint
-  const coloredSubject = subjectWithColor !== subjectCtx
-    ? subjectWithColor
-    : `${subjectCtx}, wearing ${primaryColorName} uniform`;
+  // ── Inject brand color into single-person descriptions ──
+  const coloredSubject = !isGroupScene ? subjectCtx.replace(
+    /\bin (a |the )?uniform\b/i, `in ${primaryColorName} uniform`
+  ) : subjectCtx;
 
-  // ── Assemble: PERSON FIRST so FLUX renders the subject, not the background ──
-  // Format: "professional photograph of [person with color uniform], [scene/action], [city], [lighting], [camera], [quality]"
+  // ── Assemble prompt — naturalistic quality tags, not studio/commercial ──
   const parts = [
-    `professional photograph of ${coloredSubject}`,
+    `candid documentary photograph of ${coloredSubject}`,
     sceneEnv,
     city,
     lighting,
     camera,
-    "sharp focus, hyperrealistic, ultra-detailed skin and fabric texture, 8k uhd, natural skin tones, magazine editorial photography, professional commercial photography, Nikon D850 RAW, vivid colors, no CGI, no 3D render",
+    "sharp focus, photorealistic, authentic candid moment, real natural expression, unposed, shot on location, natural skin texture, true-to-life colors, photojournalism style, not a stock photo, no CGI, no 3D render, no AI art",
     "no text, no watermark, no logos, no overlay",
   ].filter(Boolean);
 
