@@ -413,34 +413,40 @@ async function fetchAsDataUrl(url: string): Promise<string | null> {
 }
 
 /**
- * Get a photo — tries Together AI FLUX first, falls back to Unsplash.
- * Always returns an embedded base64 data URL so images never expire.
+ * Get a photo — tries Together AI FLUX first, falls back to Picsum (always base64).
+ * NEVER returns a raw external URL — that would break html2canvas rendering.
  */
 async function resolvePhotoUrl(query: string, w: number, h: number, fluxPrompt?: string): Promise<string> {
-  // 1. Try FLUX.1 AI image generation (already returns base64)
+  // 1. Try FLUX.1-schnell at 4 steps (~4s). 20 steps was the bug — always timed out.
   if (hasImageAI() && fluxPrompt) {
     try {
-      // Always portrait orientation for person photography — FLUX renders people
-      // far better in 3:4 portrait than square/landscape. Banner canvases are the exception.
       const isWide = w > h * 1.3;
       const fluxW = isWide ? 1024 : 768;
       const fluxH = isWide ? 576  : 1024;
-      const dataUrl = await generateImage({ prompt: fluxPrompt, width: fluxW, height: fluxH, steps: 20 });
-      console.log(`[ImageAI] FLUX generated ${fluxW}x${fluxH} image`);
+      const dataUrl = await generateImage({ prompt: fluxPrompt, width: fluxW, height: fluxH, steps: 4 });
+      console.log(`[ImageAI] FLUX.1-schnell generated ${fluxW}x${fluxH} image (4 steps)`);
       return dataUrl;
     } catch (err: any) {
-      console.warn(`[ImageAI] FLUX failed, falling back to Unsplash: ${err.message}`);
+      console.warn(`[ImageAI] FLUX failed (${err.message}), trying Picsum fallback`);
     }
   }
 
-  // 2. Unsplash fallback — fetch and embed as base64 so it doesn't expire
-  const q = query.trim().replace(/\s+/g, ",");
-  const sourceUrl = `https://source.unsplash.com/featured/${w}x${h}/?${encodeURIComponent(q)}`;
-  const dataUrl = await fetchAsDataUrl(sourceUrl);
-  if (dataUrl) return dataUrl;
+  // 2. Picsum — reliable CORS-safe photos, always serve as base64 for html2canvas
+  const pw = Math.min(w, 1080), ph = Math.min(h, 1080);
+  // Use a deterministic seed from the query so same query = same photo
+  const seed = query.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 900 + 100;
+  const picsumUrl = `https://picsum.photos/seed/${seed}/${pw}/${ph}`;
+  const picData = await fetchAsDataUrl(picsumUrl);
+  if (picData) return picData;
 
-  // 3. Last resort: return the external URL (will still render if network is up)
-  return sourceUrl;
+  // 3. Unsplash as secondary fallback (also embedded as base64)
+  const q = query.trim().replace(/\s+/g, ",");
+  const unsplashData = await fetchAsDataUrl(`https://source.unsplash.com/featured/${pw}x${ph}/?${encodeURIComponent(q)}`);
+  if (unsplashData) return unsplashData;
+
+  // 4. Absolute last resort: a neutral gradient SVG that always renders in html2canvas
+  console.warn("[ImageAI] All photo sources failed — using gradient placeholder");
+  return makeSvgGradient(pw, ph);
 }
 
 const INDUSTRY_PHOTO_QUERIES: Record<string, string> = {
@@ -517,7 +523,9 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
 
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
-  const logoUrl = prefs?.logoUrl ?? null;
+  const rawLogoUrl = prefs?.logoUrl ?? null;
+  // Pre-fetch logo as base64 so html2canvas never hits Supabase Storage CORS restrictions
+  const logoUrl = rawLogoUrl ? (await fetchAsDataUrl(rawLogoUrl)) ?? rawLogoUrl : null;
   const brandCtx: BrandImageContext = {
     brandName: brand.name, industry: brand.industry, country: brand.country, city: brand.city,
     targetMarket: brand.targetMarket, brandBrief: brand.brandBrief, colors,
@@ -536,10 +544,17 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
   const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
   const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
 
-  // ── Run text-copy AI and image generation in PARALLEL ─────────────────────
-  // Both are independent — no reason to wait for copy before starting the image.
-  // Wrapped in a 38-second hard timeout so the route always responds within 40s.
+  // ── Run text-copy AI and image generation in TRUE PARALLEL ────────────────
+  // FLUX starts immediately with default scene — no waiting for text AI.
+  // Both race to finish within 25s. Text result updates copy only.
   const OVERALL_TIMEOUT_MS = 25_000; // Stay well under Replit's ~30s proxy timeout
+
+  // Kick off FLUX immediately with the default imageScene (based on brand/industry).
+  // This gives FLUX the full 25s budget instead of wasting 5s waiting for text AI.
+  const defaultFluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, aspectHint, postType: "announcement" });
+  const imagePromise: Promise<string | null> = customPhotoDataUrl
+    ? Promise.resolve(customPhotoDataUrl)
+    : resolvePhotoUrl(industryPhotoQuery(brand.industry, "announcement launch event outdoor"), w, h, defaultFluxPrompt).catch(() => null);
 
   const textPromise = hasAI()
     ? aiJSONRace(`You are a brand copywriter for African businesses. Create high-impact Instagram post copy.
@@ -559,27 +574,10 @@ Return JSON with these exact keys:
     }
   ],
   "callout": "string — 10-16 words, the single most compelling reason to act now",
-  "imageScene": "string: start with 'photograph of' then describe: specific African person + action + setting + lighting. Keep the person wearing the brand's uniform/colors. Example: 'photograph of smiling Nigerian caregiver in teal uniform helping elderly woman, bright modern Lagos home, warm natural light'"
+  "imageScene": "string: start with 'photograph of' then describe: specific African person + action + setting + lighting. Keep the person wearing brand colors. Example: 'photograph of smiling Nigerian caregiver in teal uniform helping elderly woman, bright modern Lagos home, warm natural light'"
 }
 Rules: 3-5 features. Each feature needs emoji + label + description. Never use em dashes. Headline must be short and punchy — 3-7 words only.`, "{}", 900, 3)
     : Promise.resolve(null);
-
-  // Start building the default flux prompt with the fallback imageScene first,
-  // then override once we have AI copy. We can't know imageScene before AI completes,
-  // so kick off image with the default and let the AI result update it if faster.
-  // Instead: just race everything together and use whatever finishes first.
-  const imagePromise: Promise<string | null> = customPhotoDataUrl
-    ? Promise.resolve(customPhotoDataUrl)
-    : (async () => {
-        // Wait up to 5s for text AI to provide imageScene before starting image gen
-        const earlyText = await Promise.race([
-          textPromise,
-          new Promise<null>(r => setTimeout(() => r(null), 5_000)),
-        ]);
-        const scene = earlyText?.imageScene || imageScene;
-        const fluxP = buildDNAFluxPrompt({ scene, ctx: brandCtx, aspectHint, postType: "announcement" });
-        return resolvePhotoUrl(industryPhotoQuery(brand.industry, "announcement launch event outdoor"), w, h, fluxP).catch(() => null);
-      })();
 
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("generation_timeout")), OVERALL_TIMEOUT_MS)
@@ -600,26 +598,27 @@ Rules: 3-5 features. Each feature needs emoji + label + description. Never use e
       if (textResult.imageScene) imageScene = textResult.imageScene;
     }
 
-    const photoUrl = photoResult || (() => {
-      const q = industryPhotoQuery(brand.industry, "announcement launch event outdoor");
-      return `https://source.unsplash.com/featured/${w}x${h}/?${encodeURIComponent(q.replace(/\s+/g, ","))}`;
-    })();
+    // photoResult is always base64 from resolvePhotoUrl — never a raw external URL
+    const photoUrl = photoResult ?? makeSvgGradient(w, h);
 
     const html = buildAnnouncementHtml({ headline, subtext, cta, features, callout, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
     res.json({ html, headline, subtext, cta });
   } catch (err: any) {
     if (err?.message === "generation_timeout") {
-      // Timeout: return a post with defaults + fallback photo — better than spinning forever
       console.warn("[Announcement] Generation timed out — returning fallback post");
-      const q = industryPhotoQuery(brand.industry, "announcement launch event outdoor");
-      const fallbackPhoto = `https://source.unsplash.com/featured/${w}x${h}/?${encodeURIComponent(q.replace(/\s+/g, ","))}`;
-      const html = buildAnnouncementHtml({ headline, subtext, cta, features, callout, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl: fallbackPhoto, logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
+      const html = buildAnnouncementHtml({ headline, subtext, cta, features, callout, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl: makeSvgGradient(w, h), logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
       res.json({ html, headline, subtext, cta });
       return;
     }
     throw err;
   }
 });
+
+function makeSvgGradient(w: number, h: number): string {
+  return `data:image/svg+xml;base64,${Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c8d6e5"/><stop offset="100%" stop-color="#8395a7"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/></svg>`
+  ).toString("base64")}`;
+}
 
 function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout = "", brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, smoothFace = false, designStyle = "professional" }: {
   headline: string; subtext: string; cta: string;
