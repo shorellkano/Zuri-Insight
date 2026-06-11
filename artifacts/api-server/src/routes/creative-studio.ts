@@ -733,23 +733,26 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
       </div>`
     : "";
 
-  // ── STORY variant 1: full-bleed photo + gradient overlay (dramatic) ───────────
+  // ── STORY variant 1: cinematic — photo hero top, dark text panel bottom ────────
   if (isStory && stVariant === 1) {
     const stHFz = hl > 60 ? 56 : hl > 40 ? 68 : hl > 25 ? 80 : 94;
-    return `${fp.fi}<div style="width:1080px;height:1920px;font-family:${fp.B};overflow:hidden;box-sizing:border-box;position:relative;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;${smoothStyle}" />
-  ${showBrandName ? `<div style="position:absolute;top:60px;left:52px;background:rgba(255,255,255,0.94);padding:10px 22px;border-radius:100px;box-shadow:0 3px 16px rgba(0,0,0,0.14);">${logoEl}</div>` : ""}
-  <div style="position:absolute;bottom:0;left:0;right:0;height:1150px;background:linear-gradient(to top, ${primary}F5 0%, ${primary}D8 28%, ${primary}80 52%, transparent 80%);">
-    <div style="position:absolute;bottom:128px;left:52px;right:52px;">
-      <div style="width:60px;height:5px;background:${onPrimary}80;border-radius:3px;margin-bottom:18px;"></div>
-      <h1 style="font-size:${stHFz}px;font-weight:900;color:${onPrimary};line-height:1.0;margin:0 0 18px;letter-spacing:-0.5px;font-family:${fp.H};text-transform:uppercase;">${headline}</h1>
-      <p style="font-size:26px;color:${onPrimary}CC;line-height:1.58;margin:0 0 28px;font-family:${fp.B};">${subtext}</p>
-      <div style="display:flex;flex-wrap:wrap;gap:20px 40px;">${featureGridOnPrimaryHtml}</div>
+    return `${fp.fi}<div style="width:1080px;height:1920px;font-family:${fp.B};overflow:hidden;box-sizing:border-box;position:relative;background:#0a0a0a;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:66%;object-fit:cover;object-position:center top;${smoothStyle}" />
+  <div style="position:absolute;top:0;left:0;right:0;height:66%;background:linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, transparent 40%, rgba(0,0,0,0.50) 100%);"></div>
+  ${showBrandName ? `<div style="position:absolute;top:52px;left:52px;background:rgba(255,255,255,0.95);padding:10px 22px;border-radius:100px;box-shadow:0 3px 16px rgba(0,0,0,0.18);">${logoEl}</div>` : ""}
+  <div style="position:absolute;left:0;right:0;bottom:0;height:34%;background:#0a0a0a;display:flex;flex-direction:column;justify-content:space-between;padding:36px 52px 0;box-sizing:border-box;">
+    <div style="display:flex;flex-direction:column;gap:16px;flex:1;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:14px;flex-shrink:0;">
+        <div style="width:6px;height:44px;background:${primary};border-radius:3px;flex-shrink:0;"></div>
+        <h1 style="font-size:${stHFz}px;font-weight:900;color:#ffffff;line-height:1.0;margin:0;letter-spacing:-0.5px;font-family:${fp.H};text-transform:uppercase;">${headline}</h1>
+      </div>
+      <p style="font-size:24px;color:rgba(255,255,255,0.75);line-height:1.55;margin:0;flex-shrink:0;font-family:${fp.B};">${subtext}</p>
+      <div style="flex:1;overflow:hidden;">${features.slice(0, 3).map(f => `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;"><span style="font-size:22px;">${f.emoji}</span><span style="color:rgba(255,255,255,0.85);font-size:19px;font-weight:700;font-family:${fp.H};text-transform:uppercase;">${f.label}</span></div>`).join("")}</div>
     </div>
-  </div>
-  <div style="position:absolute;bottom:0;left:0;right:0;height:108px;background:rgba(0,0,0,0.32);display:flex;align-items:center;padding:0 52px;gap:20px;">
-    <span style="flex:1;color:#ffffff;font-size:21px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${fp.H};">${cta} &#8594;</span>
-    ${websiteUrl ? `<span style="color:rgba(255,255,255,0.84);font-size:16px;font-weight:600;font-family:${fp.B};">${websiteUrl}</span>` : ""}
+    <div style="border-top:2px solid ${primary};margin:0 -52px;padding:20px 52px;display:flex;align-items:center;gap:20px;">
+      <span style="flex:1;color:#ffffff;font-size:20px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${fp.H};">${cta} &#8594;</span>
+      ${websiteUrl ? `<span style="color:rgba(255,255,255,0.65);font-size:15px;font-weight:600;font-family:${fp.B};">${websiteUrl}</span>` : ""}
+    </div>
   </div>
 </div>`;
   }
@@ -830,22 +833,24 @@ function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout 
 </div>`;
   }
 
-  // ── SQUARE variant 1: full-bleed photo + primary gradient overlay (bold) ────
+  // ── SQUARE variant 1: cinematic — photo hero, dark text band at bottom ──────
   if (sqVariant === 1) {
-    const sqHFz = hl > 70 ? 52 : hl > 50 ? 62 : hl > 35 ? 74 : 90;
-    return `${fp.fi}<div style="width:1080px;height:1080px;font-family:${fp.B};overflow:hidden;box-sizing:border-box;position:relative;">
-  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;${smoothStyle}" />
-  <div style="position:absolute;inset:0;background:linear-gradient(108deg, ${primary}F2 0%, ${primary}CC 36%, ${primary}77 58%, transparent 86%);"></div>
-  ${showBrandName ? `<div style="position:absolute;top:44px;left:48px;">${logoElOnPrimary}</div>` : ""}
-  <div style="position:absolute;top:${showBrandName ? 152 : 60}px;left:48px;right:450px;display:flex;flex-direction:column;gap:14px;">
-    <div style="width:50px;height:5px;background:${onPrimary}70;border-radius:3px;"></div>
-    <h1 style="font-size:${sqHFz}px;font-weight:900;color:${onPrimary};line-height:1.0;margin:0;letter-spacing:-0.5px;font-family:${fp.H};text-transform:uppercase;">${headline}</h1>
-    <p style="font-size:19px;color:${onPrimary}CC;line-height:1.6;margin:0;font-family:${fp.B};">${subtext}</p>
-    <div>${featureBulletsOnPrimaryHtml}</div>
-  </div>
-  <div style="position:absolute;bottom:0;left:0;right:0;height:108px;background:rgba(0,0,0,0.30);display:flex;align-items:center;padding:0 48px;gap:20px;">
-    <span style="flex:1;color:#ffffff;font-size:19px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${fp.H};">${cta} &#8594;</span>
-    ${websiteUrl ? `<span style="color:rgba(255,255,255,0.84);font-size:15px;font-weight:600;font-family:${fp.B};">${websiteUrl}</span>` : ""}
+    const sqHFz = hl > 70 ? 52 : hl > 50 ? 62 : hl > 35 ? 74 : 88;
+    const textBandH = 340;
+    return `${fp.fi}<div style="width:1080px;height:1080px;font-family:${fp.B};overflow:hidden;box-sizing:border-box;position:relative;background:#0a0a0a;">
+  <img src="${photoUrl}" crossorigin="anonymous" alt="" style="position:absolute;top:0;left:0;width:100%;height:${1080 - textBandH + 60}px;object-fit:cover;object-position:center top;${smoothStyle}" />
+  <div style="position:absolute;top:0;left:0;right:0;height:${1080 - textBandH + 60}px;background:linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 35%, rgba(0,0,0,0.55) 100%);"></div>
+  ${showBrandName ? `<div style="position:absolute;top:36px;left:40px;background:rgba(255,255,255,0.95);padding:9px 20px;border-radius:100px;box-shadow:0 2px 14px rgba(0,0,0,0.16);">${logoEl}</div>` : ""}
+  <div style="position:absolute;bottom:0;left:0;right:0;height:${textBandH}px;background:#0a0a0a;display:flex;flex-direction:column;justify-content:center;padding:28px 44px;box-sizing:border-box;gap:12px;">
+    <div style="display:flex;align-items:flex-start;gap:14px;">
+      <div style="width:5px;min-height:${sqHFz * 1.0}px;background:${primary};border-radius:3px;flex-shrink:0;margin-top:4px;"></div>
+      <h1 style="font-size:${sqHFz}px;font-weight:900;color:#ffffff;line-height:1.0;margin:0;letter-spacing:-0.5px;font-family:${fp.H};text-transform:uppercase;">${headline}</h1>
+    </div>
+    <p style="font-size:18px;color:rgba(255,255,255,0.72);line-height:1.55;margin:0;font-family:${fp.B};">${subtext}</p>
+    <div style="display:flex;align-items:center;gap:20px;margin-top:4px;">
+      <span style="color:${primary};font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:1px;font-family:${fp.H};">${cta} &#8594;</span>
+      ${websiteUrl ? `<span style="margin-left:auto;color:rgba(255,255,255,0.50);font-size:14px;font-weight:600;font-family:${fp.B};">${websiteUrl}</span>` : ""}
+    </div>
   </div>
 </div>`;
   }
