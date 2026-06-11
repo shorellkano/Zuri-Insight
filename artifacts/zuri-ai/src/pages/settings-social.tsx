@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   Shield,
+  Trash2,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useBrand } from "@/context/brand-context";
@@ -112,6 +113,7 @@ export default function SettingsSocial() {
   const [appSecret, setAppSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   function authHeaders(): HeadersInit {
     return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
@@ -252,6 +254,30 @@ export default function SettingsSocial() {
     }
   };
 
+  const removeConfigMutation = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(API("/oauth/meta-config"), {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        throw new Error(data?.error ?? "Failed to remove credentials");
+      }
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Meta app credentials removed" });
+      setConfirmRemove(false);
+      setShowSetupGuide(false);
+      qc.invalidateQueries({ queryKey: ["meta-config-status"] });
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message ?? "Failed to remove credentials", variant: "destructive" });
+      setConfirmRemove(false);
+    },
+  });
+
   const metaNotConfigured = !metaConfigLoading && metaConfig && !metaConfig.configured;
   const isAdmin = metaConfig?.isAdmin ?? false;
 
@@ -389,20 +415,60 @@ export default function SettingsSocial() {
       )}
 
       {metaConfig?.configured && metaConfig.source === "db" && (
-        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-xl">
-          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-green-800 dark:text-green-300">Meta app credentials configured</p>
-            <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">Your Meta Developer App credentials are saved and ready.</p>
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-3 p-4">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-800 dark:text-green-300">Meta app credentials configured</p>
+              <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">Your Meta Developer App credentials are saved and ready.</p>
+            </div>
+            {isAdmin && (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => { setShowSetupGuide((v) => !v); setConfirmRemove(false); }}
+                  className="text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 transition-colors flex items-center gap-1"
+                >
+                  Update
+                  {showSetupGuide ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                </button>
+                <button
+                  onClick={() => { setConfirmRemove(true); setShowSetupGuide(false); }}
+                  className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors flex items-center gap-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => setShowSetupGuide((v) => !v)}
-              className="text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 transition-colors flex items-center gap-1 shrink-0"
-            >
-              Update
-              {showSetupGuide ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-            </button>
+
+          {isAdmin && confirmRemove && (
+            <div className="border-t border-green-200 dark:border-green-800/40 p-4 bg-red-50 dark:bg-red-900/20 flex items-start gap-3">
+              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-300">Remove Meta app credentials?</p>
+                <p className="text-xs text-red-700 dark:text-red-400 mt-0.5">
+                  This will delete both the App ID and App Secret. Instagram connections will stop working until new credentials are added.
+                </p>
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    onClick={() => removeConfigMutation.mutate()}
+                    disabled={removeConfigMutation.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {removeConfigMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    Yes, remove credentials
+                  </button>
+                  <button
+                    onClick={() => setConfirmRemove(false)}
+                    disabled={removeConfigMutation.isPending}
+                    className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}

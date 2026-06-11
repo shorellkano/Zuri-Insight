@@ -151,6 +151,19 @@ router.post("/oauth/meta-config", requireAuth, requireAdmin, async (req: Request
   res.json({ success: true });
 });
 
+// ── DELETE /oauth/meta-config ──────────────────────────────────────────────────
+
+router.delete("/oauth/meta-config", requireAuth, requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+  await db.delete(appConfigTable).where(eq(appConfigTable.key, "META_APP_ID"));
+  await db.delete(appConfigTable).where(eq(appConfigTable.key, "META_APP_SECRET"));
+
+  // Clear from in-memory env so subsequent calls don't find stale values.
+  delete process.env.META_APP_ID;
+  delete process.env.META_APP_SECRET;
+
+  res.json({ success: true });
+});
+
 // ── GET /oauth/instagram/connect-url ─────────────────────────────────────────
 
 router.get("/oauth/instagram/connect-url", requireAuth, async (req: Request, res: Response): Promise<void> => {
