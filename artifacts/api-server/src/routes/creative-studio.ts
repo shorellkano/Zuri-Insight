@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, brandsTable, brandVisualPrefsTable, brandDnaTable, generatedDesignsTable } from "@workspace/db";
-import { aiJSON, hasAI, generateImage, hasImageAI } from "../lib/ai.js";
+import { aiJSON, aiJSONRace, hasAI, generateImage, hasImageAI } from "../lib/ai.js";
 
 const router: IRouter = Router();
 
@@ -508,12 +508,14 @@ function brandBar({ showBrandName, logoEl, logoPosition = "bottom-center", bg, c
 router.post("/generate/announcement", async (req, res): Promise<void> => {
   const { brandId, eventDetails, ctaText, format = "square", showBrandName = true, logoPosition = "bottom-center", contactInfo = {}, customPhotoDataUrl, smoothFace = false } = req.body;
   if (!brandId) { res.status(400).json({ error: "brandId required" }); return; }
+
   const [[brand], [prefs], [dna]] = await Promise.all([
     db.select().from(brandsTable).where(eq(brandsTable.id, brandId)),
     db.select().from(brandVisualPrefsTable).where(eq(brandVisualPrefsTable.brandId, brandId)),
     db.select().from(brandDnaTable).where(eq(brandDnaTable.brandId, brandId)),
   ]);
   if (!brand) { res.status(404).json({ error: "Brand not found" }); return; }
+
   const colors = prefs?.brandColors?.length ? prefs.brandColors : ["#0D6B8C", "#1C1917", "#FFFFFF"];
   const logoUrl = prefs?.logoUrl ?? null;
   const brandCtx: BrandImageContext = {
@@ -525,13 +527,22 @@ router.post("/generate/announcement", async (req, res): Promise<void> => {
     coreValues: dna?.coreValues, uniqueSellingPoints: dna?.uniqueSellingPoints, keyMessages: dna?.keyMessages,
   };
 
+  // Defaults used as fallback if AI is slow / unavailable
   let headline = "BIG NEWS IS HERE", subtext = eventDetails || "Stay tuned for something exciting.", cta = ctaText || "Learn More";
   let features: { emoji: string; label: string }[] = [];
   let callout = "";
   let imageScene = `${brand.name} ${brand.industry ?? "business"} announcement launch event, ${brand.city ?? brand.country ?? "African city"} setting, outdoor or modern venue`;
-  try {
-    if (hasAI()) {
-      const result = await aiJSON(`You are a brand copywriter for African businesses. Create high-impact Instagram post copy.
+
+  const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
+  const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
+
+  // ── Run text-copy AI and image generation in PARALLEL ─────────────────────
+  // Both are independent — no reason to wait for copy before starting the image.
+  // Wrapped in a 38-second hard timeout so the route always responds within 40s.
+  const OVERALL_TIMEOUT_MS = 38_000;
+
+  const textPromise = hasAI()
+    ? aiJSONRace(`You are a brand copywriter for African businesses. Create high-impact Instagram post copy.
 Brand: ${brand.name}. Industry: ${brand.industry || "Business"}. Location: ${brand.city ?? brand.country ?? "Nigeria"}.
 Announcement details: ${eventDetails || "General announcement — make something exciting"}
 
@@ -550,22 +561,64 @@ Return JSON with these exact keys:
   "callout": "string — 10-16 words, the single most compelling reason to act now",
   "imageScene": "string: start with 'photograph of' then describe: specific African person + action + setting + lighting. Keep the person wearing the brand's uniform/colors. Example: 'photograph of smiling Nigerian caregiver in teal uniform helping elderly woman, bright modern Lagos home, warm natural light'"
 }
-Rules: 3-5 features. Each feature needs emoji + label + description. Never use em dashes. Headline must be short and punchy — 3-7 words only.`, "{}");
-      if (result.headline) headline = result.headline;
-      if (result.subtext) subtext = result.subtext;
-      if (result.cta) cta = ctaText || result.cta;
-      if (Array.isArray(result.features)) features = result.features.slice(0, 5);
-      if (result.callout) callout = result.callout;
-      if (result.imageScene) imageScene = result.imageScene;
-    }
-  } catch { }
+Rules: 3-5 features. Each feature needs emoji + label + description. Never use em dashes. Headline must be short and punchy — 3-7 words only.`, "{}", 900, 3)
+    : Promise.resolve(null);
 
-  const w = 1080, h = format === "story" ? 1920 : format === "portrait" ? 1350 : 1080;
-  const aspectHint = format === "story" ? "portrait 9:16 vertical format" : format === "portrait" ? "portrait 4:5 format" : "square format";
-  const fluxPrompt = buildDNAFluxPrompt({ scene: imageScene, ctx: brandCtx, aspectHint, postType: "announcement" });
-  const photoUrl = customPhotoDataUrl || await resolvePhotoUrl(industryPhotoQuery(brand.industry, "announcement launch event outdoor"), w, h, fluxPrompt);
-  const html = buildAnnouncementHtml({ headline, subtext, cta, features, callout, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
-  res.json({ html, headline, subtext, cta });
+  // Start building the default flux prompt with the fallback imageScene first,
+  // then override once we have AI copy. We can't know imageScene before AI completes,
+  // so kick off image with the default and let the AI result update it if faster.
+  // Instead: just race everything together and use whatever finishes first.
+  const imagePromise: Promise<string | null> = customPhotoDataUrl
+    ? Promise.resolve(customPhotoDataUrl)
+    : (async () => {
+        // Wait up to 5s for text AI to provide imageScene before starting image gen
+        const earlyText = await Promise.race([
+          textPromise,
+          new Promise<null>(r => setTimeout(() => r(null), 5_000)),
+        ]);
+        const scene = earlyText?.imageScene || imageScene;
+        const fluxP = buildDNAFluxPrompt({ scene, ctx: brandCtx, aspectHint, postType: "announcement" });
+        return resolvePhotoUrl(industryPhotoQuery(brand.industry, "announcement launch event outdoor"), w, h, fluxP).catch(() => null);
+      })();
+
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("generation_timeout")), OVERALL_TIMEOUT_MS)
+  );
+
+  try {
+    const [textResult, photoResult] = await Promise.race([
+      Promise.all([textPromise, imagePromise]),
+      timeout,
+    ]) as [any, string | null];
+
+    if (textResult) {
+      if (textResult.headline) headline = textResult.headline;
+      if (textResult.subtext) subtext = textResult.subtext;
+      if (textResult.cta) cta = ctaText || textResult.cta;
+      if (Array.isArray(textResult.features)) features = textResult.features.slice(0, 5);
+      if (textResult.callout) callout = textResult.callout;
+      if (textResult.imageScene) imageScene = textResult.imageScene;
+    }
+
+    const photoUrl = photoResult || (() => {
+      const q = industryPhotoQuery(brand.industry, "announcement launch event outdoor");
+      return `https://source.unsplash.com/featured/${w}x${h}/?${encodeURIComponent(q.replace(/\s+/g, ","))}`;
+    })();
+
+    const html = buildAnnouncementHtml({ headline, subtext, cta, features, callout, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl, logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
+    res.json({ html, headline, subtext, cta });
+  } catch (err: any) {
+    if (err?.message === "generation_timeout") {
+      // Timeout: return a post with defaults + fallback photo — better than spinning forever
+      console.warn("[Announcement] Generation timed out — returning fallback post");
+      const q = industryPhotoQuery(brand.industry, "announcement launch event outdoor");
+      const fallbackPhoto = `https://source.unsplash.com/featured/${w}x${h}/?${encodeURIComponent(q.replace(/\s+/g, ","))}`;
+      const html = buildAnnouncementHtml({ headline, subtext, cta, features, callout, brandName: brand.name, colors, format, showBrandName, logoUrl, photoUrl: fallbackPhoto, logoPosition, contactInfo, smoothFace, designStyle: prefs?.designStyle ?? "professional" });
+      res.json({ html, headline, subtext, cta });
+      return;
+    }
+    throw err;
+  }
 });
 
 function buildAnnouncementHtml({ headline, subtext, cta, features = [], callout = "", brandName, colors, format, showBrandName, logoUrl, photoUrl, logoPosition = "bottom-center", contactInfo = {}, smoothFace = false, designStyle = "professional" }: {
