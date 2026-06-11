@@ -130,6 +130,25 @@ router.post("/oauth/meta-config", requireAuth, requireAdmin, async (req: Request
   const trimmedId = appId.trim();
   const trimmedSecret = appSecret.trim();
 
+  // Validate credentials against the Meta Graph API before persisting.
+  // The client_credentials grant returns an app access token for valid credentials
+  // and a descriptive error object for invalid ones.
+  try {
+    const validationResp = await fetch(
+      `${FB_API}/oauth/access_token?client_id=${encodeURIComponent(trimmedId)}&client_secret=${encodeURIComponent(trimmedSecret)}&grant_type=client_credentials`,
+    );
+    const validationData = await validationResp.json() as any;
+    if (validationData.error) {
+      res.status(400).json({
+        error: "Invalid App ID or App Secret — please double-check in your Meta Developer dashboard",
+      });
+      return;
+    }
+  } catch {
+    res.status(502).json({ error: "Could not reach the Meta API to validate credentials. Please try again." });
+    return;
+  }
+
   const encryptedSecret = encryptToken(trimmedSecret);
 
   await db

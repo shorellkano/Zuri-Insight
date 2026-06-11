@@ -113,6 +113,7 @@ export default function SettingsSocial() {
   const [appSecret, setAppSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   function authHeaders(): HeadersInit {
@@ -227,10 +228,11 @@ export default function SettingsSocial() {
 
   const handleSaveConfig = async () => {
     if (!appId.trim() || !appSecret.trim()) {
-      toast({ title: "Both App ID and App Secret are required", variant: "destructive" });
+      setConfigError("Both App ID and App Secret are required");
       return;
     }
     setSavingConfig(true);
+    setConfigError(null);
     try {
       const r = await fetch(API("/oauth/meta-config"), {
         method: "POST",
@@ -239,16 +241,17 @@ export default function SettingsSocial() {
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        toast({ title: data?.error ?? "Failed to save credentials", variant: "destructive" });
+        setConfigError(data?.error ?? "Failed to save credentials");
         return;
       }
       toast({ title: "Meta app credentials saved successfully" });
       setAppId("");
       setAppSecret("");
+      setConfigError(null);
       setShowSetupGuide(false);
       qc.invalidateQueries({ queryKey: ["meta-config-status"] });
     } catch {
-      toast({ title: "Failed to save credentials", variant: "destructive" });
+      setConfigError("Failed to save credentials — please check your connection and try again");
     } finally {
       setSavingConfig(false);
     }
@@ -372,7 +375,7 @@ export default function SettingsSocial() {
                   <input
                     type="text"
                     value={appId}
-                    onChange={(e) => setAppId(e.target.value)}
+                    onChange={(e) => { setAppId(e.target.value); setConfigError(null); }}
                     placeholder="e.g. 1234567890123456"
                     className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
@@ -386,7 +389,7 @@ export default function SettingsSocial() {
                     <input
                       type={showSecret ? "text" : "password"}
                       value={appSecret}
-                      onChange={(e) => setAppSecret(e.target.value)}
+                      onChange={(e) => { setAppSecret(e.target.value); setConfigError(null); }}
                       placeholder="Paste your App Secret here"
                       className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
@@ -399,6 +402,13 @@ export default function SettingsSocial() {
                     </button>
                   </div>
                 </div>
+
+                {configError && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-400 text-xs">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span>{configError}</span>
+                  </div>
+                )}
 
                 <button
                   onClick={handleSaveConfig}
@@ -485,7 +495,7 @@ export default function SettingsSocial() {
             <input
               type="text"
               value={appId}
-              onChange={(e) => setAppId(e.target.value)}
+              onChange={(e) => { setAppId(e.target.value); setConfigError(null); }}
               placeholder="e.g. 1234567890123456"
               className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
@@ -496,7 +506,7 @@ export default function SettingsSocial() {
               <input
                 type={showSecret ? "text" : "password"}
                 value={appSecret}
-                onChange={(e) => setAppSecret(e.target.value)}
+                onChange={(e) => { setAppSecret(e.target.value); setConfigError(null); }}
                 placeholder="Paste your App Secret here"
                 className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
@@ -509,6 +519,12 @@ export default function SettingsSocial() {
               </button>
             </div>
           </div>
+          {configError && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-400 text-xs">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>{configError}</span>
+            </div>
+          )}
           <button
             onClick={handleSaveConfig}
             disabled={savingConfig || !appId.trim() || !appSecret.trim()}
