@@ -3,6 +3,8 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 COPY . .
 RUN node --version && pnpm --version && pnpm install --frozen-lockfile --prod=false
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
 RUN pnpm run build
 ENV NODE_ENV=production
 ENV PORT=3000
